@@ -1,0 +1,22 @@
+PODS:
+  - Flutter (1.0.0)
+  - read_pdf_text (0.0.1):
+    - Flutter
+
+DEPENDENCIES:
+  - Flutter (from `Flutter`)
+  - read_pdf_text (from `.symlinks/plugins/read_pdf_text/ios`)
+
+EXTERNAL SOURCES:
+  Flutter:
+    :path: Flutter
+  read_pdf_text:
+    :path: ".symlinks/plugins/read_pdf_text/ios"
+
+SPEC CHECKSUMS:
+  Flutter: cabc95a1d2626b1b06e7179b784ebcf0c0cde467
+  read_pdf_text: 7b045befb4ce44f6bb6c281a956ff2436fd6822a
+
+PODFILE CHECKSUM: 3c63482e143d1b91d2d2560aee9fb04ecc74ac7e
+
+COCOAPODS: 1.17.0
