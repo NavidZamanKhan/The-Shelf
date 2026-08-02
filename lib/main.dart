@@ -1,7 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:the_shelf/screens/home_screen.dart';
+import 'package:the_shelf/services/shelf_classifier_service.dart';
 
 void main() {
+  WidgetsFlutterBinding.ensureInitialized();
+  // Kick off asynchronous asset loading for on-device classifier
+  ShelfClassifierService.instance.ensureInitialized();
+
   runApp(const TheShelfApp());
 }
 
