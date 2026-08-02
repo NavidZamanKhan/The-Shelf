@@ -51,6 +51,14 @@ void main() {
         'text': 'ভবিষ্যতের মহাকাশ অভিযান, ভিনগ্রহের প্রাণী ও রোবটের বৈজ্ঞানিক কল্পকাহিনী...',
         'expected': 'Science Fiction',
       },
+      {
+        'text': 'This paper proposes a novel neural network architecture for natural language processing tasks.',
+        'expected': 'School/Reference',
+      },
+      {
+        'text': 'We present an experimental analysis of quantum entanglement under varying environmental conditions.',
+        'expected': 'School/Reference',
+      },
     ];
 
     print('\n============================================================');

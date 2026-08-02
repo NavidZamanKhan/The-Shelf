@@ -1,4 +1,4 @@
-# The Shelf Mobile Application (`the_shelf`)
+# The Shelf Mobile Application (`The-Shelf`)
 
 Cross-platform Flutter client for **The Shelf**, a personal library and document management application that organizes books, articles, and digital files into auto-categorized shelves using on-device machine learning.
 
