@@ -1,6 +1,16 @@
 import 'package:flutter/material.dart';
-import 'package:the_shelf/screens/classifier_debug_screen.dart';
-import 'package:the_shelf/services/shelf_classifier_service.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:the_shelf/blocs/document_import/document_import_bloc.dart';
+import 'package:the_shelf/blocs/document_import/document_import_event.dart';
+import 'package:the_shelf/blocs/document_import/document_import_state.dart';
+import 'package:the_shelf/blocs/shelf/shelf_bloc.dart';
+import 'package:the_shelf/blocs/shelf/shelf_event.dart';
+import 'package:the_shelf/blocs/shelf/shelf_state.dart';
+import 'package:the_shelf/widgets/app_bottom_navigation_bar.dart';
+import 'package:the_shelf/widgets/app_header.dart';
+import 'package:the_shelf/widgets/category_filter_chips.dart';
+import 'package:the_shelf/widgets/import_bottom_sheet_modal.dart';
+import 'package:the_shelf/widgets/import_confirmation_sheet.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -10,349 +20,210 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  int _selectedIndex = 0;
-
-  final List<Widget> _pages = const [
-    _ShelfView(),
-    _CollectionsView(),
-    _InsightsView(),
-    _SettingsView(),
-  ];
+  int _currentNavIndex = 0;
+  String _selectedCategory = 'All Items';
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: IndexedStack(
-        index: _selectedIndex,
-        children: _pages,
-      ),
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: _selectedIndex,
-        onDestinationSelected: (index) {
-          setState(() {
-            _selectedIndex = index;
-          });
-        },
-        destinations: const [
-          NavigationDestination(
-            icon: Icon(Icons.shelves),
-            selectedIcon: Icon(Icons.shelves),
-            label: 'Shelf',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.collections_bookmark_outlined),
-            selectedIcon: Icon(Icons.collections_bookmark),
-            label: 'Collections',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.auto_awesome_outlined),
-            selectedIcon: Icon(Icons.auto_awesome),
-            label: 'Insights',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.settings_outlined),
-            selectedIcon: Icon(Icons.settings),
-            label: 'Settings',
-          ),
-        ],
-      ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () {
-          _showImportModal(context);
-        },
-        icon: const Icon(Icons.add_rounded),
-        label: const Text('Add Item'),
-      ),
-    );
-  }
+    return BlocListener<DocumentImportBloc, DocumentImportState>(
+      listener: (context, state) async {
+        if (state is DocumentImportSuccess) {
+          final summary = state.summary;
+          final result = await showModalBottomSheet<Map<String, dynamic>>(
+            context: context,
+            isScrollControlled: true,
+            shape: const RoundedRectangleBorder(
+              borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+            ),
+            builder: (modalContext) => ImportConfirmationSheet(summary: summary),
+          );
 
-  void _showImportModal(BuildContext context) {
-    showModalBottomSheet<void>(
-      context: context,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (context) {
-        return SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
-            child: FutureBuilder<void>(
-              future: ShelfClassifierService.instance.ensureInitialized(),
-              builder: (context, snapshot) {
-                final bool isReady = snapshot.connectionState == ConnectionState.done;
+          if (!context.mounted) return;
 
-                return Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Container(
-                      width: 40,
-                      height: 4,
-                      margin: const EdgeInsets.only(bottom: 20),
-                      decoration: BoxDecoration(
-                        color: Theme.of(context).colorScheme.outlineVariant,
-                        borderRadius: BorderRadius.circular(2),
-                      ),
-                    ),
-                    if (!isReady)
-                      const Padding(
-                        padding: EdgeInsets.symmetric(vertical: 8.0),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            SizedBox(
-                              width: 16,
-                              height: 16,
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            ),
-                            SizedBox(width: 8),
-                            Text('Loading classifier model...'),
-                          ],
-                        ),
-                      ),
-                    ListTile(
-                      leading: const Icon(Icons.picture_as_pdf_outlined),
-                      title: const Text('Import PDF / Document'),
-                      subtitle: const Text('Add files from your device storage'),
-                      onTap: () => Navigator.pop(context),
-                    ),
-                    ListTile(
-                      leading: const Icon(Icons.center_focus_weak_outlined),
-                      title: const Text('Scan Book or Document'),
-                      subtitle: const Text('Use camera to scan physical pages'),
-                      onTap: () => Navigator.pop(context),
-                    ),
-                    ListTile(
-                      leading: const Icon(Icons.link_outlined),
-                      title: const Text('Add Web Article'),
-                      subtitle: const Text('Save articles or URL documents'),
-                      onTap: () => Navigator.pop(context),
-                    ),
-                    const Divider(),
-                    ListTile(
-                      leading: const Icon(Icons.bug_report_outlined),
-                      title: const Text('Classifier Verification Debugger'),
-                      subtitle: const Text('Test on-device text classifier predictions'),
-                      trailing: isReady
-                          ? const Icon(Icons.check_circle, color: Colors.green, size: 18)
-                          : const SizedBox(
-                              width: 14,
-                              height: 14,
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            ),
-                      onTap: () {
-                        Navigator.pop(context);
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => const ClassifierDebugScreen(),
-                          ),
-                        );
-                      },
-                    ),
-                  ],
+          if (result != null && result['confirmed'] == true) {
+            final String title = result['title'];
+            final String shelf = result['shelf'];
+            context.read<ShelfBloc>().add(
+                  AddDocumentToShelfEvent(
+                    title: title,
+                    shelf: shelf,
+                    filePath: summary.filePath,
+                  ),
                 );
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Added "$title" to [$shelf] shelf!'),
+                backgroundColor: Colors.green,
+              ),
+            );
+          }
+          context.read<DocumentImportBloc>().add(const ResetImportEvent());
+        } else if (state is DocumentImportFailure) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Error importing PDF: ${state.errorMessage}')),
+          );
+          context.read<DocumentImportBloc>().add(const ResetImportEvent());
+        }
+      },
+      child: Scaffold(
+        body: IndexedStack(
+          index: _currentNavIndex,
+          children: [
+            _ShelfView(
+              selectedCategory: _selectedCategory,
+              onCategorySelected: (category) {
+                setState(() {
+                  _selectedCategory = category;
+                });
               },
             ),
-          ),
-        );
-      },
+            const _PlaceholderView(title: 'Collections', icon: Icons.collections_bookmark_outlined),
+            const _PlaceholderView(title: 'Insights', icon: Icons.auto_awesome_outlined),
+            const _PlaceholderView(title: 'Settings', icon: Icons.settings_outlined),
+          ],
+        ),
+        bottomNavigationBar: AppBottomNavigationBar(
+          selectedIndex: _currentNavIndex,
+          onDestinationSelected: (index) {
+            setState(() {
+              _currentNavIndex = index;
+            });
+          },
+        ),
+        floatingActionButton: _currentNavIndex == 0
+            ? FloatingActionButton.extended(
+                onPressed: () => ImportBottomSheetModal.show(context),
+                icon: const Icon(Icons.add),
+                label: const Text('Add Item'),
+              )
+            : null,
+      ),
     );
   }
 }
 
 class _ShelfView extends StatelessWidget {
-  const _ShelfView();
+  final String selectedCategory;
+  final ValueChanged<String> onCategorySelected;
+
+  const _ShelfView({
+    required this.selectedCategory,
+    required this.onCategorySelected,
+  });
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
     return CustomScrollView(
       slivers: [
-        SliverAppBar.large(
-          title: const Text('The Shelf'),
-          actions: [
-            IconButton(
-              icon: const Icon(Icons.search_rounded),
-              onPressed: () {},
-            ),
-            IconButton(
-              icon: const Icon(Icons.filter_list_rounded),
-              onPressed: () {},
-            ),
-          ],
-        ),
+        // Reusable compact header without excess top spacing
+        const AppHeader(title: 'The Shelf'),
+
+        // Reusable filter chips row
         SliverToBoxAdapter(
-          child: SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            child: Row(
-              children: [
-                FilterChip(
-                  label: const Text('All Items'),
-                  selected: true,
-                  onSelected: (val) {},
-                ),
-                const SizedBox(width: 8),
-                FilterChip(
-                  label: const Text('Books'),
-                  selected: false,
-                  onSelected: (val) {},
-                ),
-                const SizedBox(width: 8),
-                FilterChip(
-                  label: const Text('PDFs'),
-                  selected: false,
-                  onSelected: (val) {},
-                ),
-                const SizedBox(width: 8),
-                FilterChip(
-                  label: const Text('Articles'),
-                  selected: false,
-                  onSelected: (val) {},
-                ),
-              ],
-            ),
+          child: CategoryFilterChips(
+            selectedCategory: selectedCategory,
+            onCategorySelected: onCategorySelected,
           ),
         ),
-        SliverFillRemaining(
-          hasScrollBody: false,
-          child: Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(
-                  Icons.menu_book_rounded,
-                  size: 64,
-                  color: theme.colorScheme.primary.withValues(alpha: 0.5),
-                ),
-                const SizedBox(height: 16),
-                Text(
-                  'Your shelf is empty',
-                  style: theme.textTheme.titleMedium,
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  'Tap the + button to add your first book or document.',
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    color: theme.colorScheme.onSurfaceVariant,
+
+        // Shelf Items Content
+        BlocBuilder<ShelfBloc, ShelfState>(
+          builder: (context, state) {
+            if (state is ShelfLoading) {
+              return const SliverFillRemaining(
+                child: Center(child: CircularProgressIndicator()),
+              );
+            } else if (state is ShelfLoaded) {
+              final items = state.items;
+              if (items.isEmpty) {
+                return SliverFillRemaining(
+                  child: Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.shelves,
+                          size: 64,
+                          color: Theme.of(context).colorScheme.outline,
+                        ),
+                        const SizedBox(height: 16),
+                        Text(
+                          'Your Shelf is Empty',
+                          style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                                fontWeight: FontWeight.bold,
+                              ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          'Tap "+ Add Item" below to import documents or scan books.',
+                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                color: Theme.of(context).colorScheme.onSurfaceVariant,
+                              ),
+                        ),
+                      ],
+                    ),
                   ),
-                  textAlign: TextAlign.center,
+                );
+              }
+
+              return SliverPadding(
+                padding: const EdgeInsets.all(16),
+                sliver: SliverList(
+                  delegate: SliverChildBuilderDelegate(
+                    (context, index) {
+                      final item = items[index];
+                      return Card(
+                        margin: const EdgeInsets.only(bottom: 12),
+                        child: ListTile(
+                          leading: const CircleAvatar(
+                            child: Icon(Icons.picture_as_pdf),
+                          ),
+                          title: Text(item.title, style: const TextStyle(fontWeight: FontWeight.bold)),
+                          subtitle: Text('Shelf: ${item.shelf}'),
+                          trailing: const Icon(Icons.chevron_right),
+                        ),
+                      );
+                    },
+                    childCount: items.length,
+                  ),
                 ),
-              ],
-            ),
-          ),
+              );
+            }
+            return const SliverFillRemaining(
+              child: Center(child: Text('Initialize Shelf')),
+            );
+          },
         ),
       ],
     );
   }
 }
 
-class _CollectionsView extends StatelessWidget {
-  const _CollectionsView();
+class _PlaceholderView extends StatelessWidget {
+  final String title;
+  final IconData icon;
+
+  const _PlaceholderView({
+    required this.title,
+    required this.icon,
+  });
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Collections'),
-      ),
+      appBar: AppBar(title: Text(title)),
       body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(
-              Icons.folder_special_outlined,
-              size: 64,
-              color: theme.colorScheme.primary.withValues(alpha: 0.5),
-            ),
+            Icon(icon, size: 64, color: Theme.of(context).colorScheme.outline),
             const SizedBox(height: 16),
             Text(
-              'No collections created yet',
-              style: theme.textTheme.titleMedium,
+              '$title Feature Coming Soon',
+              style: Theme.of(context).textTheme.titleMedium,
             ),
           ],
         ),
-      ),
-    );
-  }
-}
-
-class _InsightsView extends StatelessWidget {
-  const _InsightsView();
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Auto-Classification & Insights'),
-      ),
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.auto_awesome_rounded,
-              size: 64,
-              color: theme.colorScheme.primary.withValues(alpha: 0.5),
-            ),
-            const SizedBox(height: 16),
-            Text(
-              'On-device AI Classifier Ready',
-              style: theme.textTheme.titleMedium,
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Imported documents will be automatically categorized here.',
-              style: theme.textTheme.bodyMedium?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
-              ),
-              textAlign: TextAlign.center,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _SettingsView extends StatelessWidget {
-  const _SettingsView();
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Settings'),
-      ),
-      body: ListView(
-        children: const [
-          ListTile(
-            leading: Icon(Icons.palette_outlined),
-            title: Text('Appearance'),
-            subtitle: Text('Theme and display settings'),
-          ),
-          ListTile(
-            leading: Icon(Icons.memory_outlined),
-            title: Text('On-Device Classification'),
-            subtitle: Text('Configure local machine learning models'),
-          ),
-          ListTile(
-            leading: Icon(Icons.storage_outlined),
-            title: Text('Storage & Indexing'),
-            subtitle: Text('Manage cached documents and search indexes'),
-          ),
-          Divider(),
-          ListTile(
-            leading: Icon(Icons.info_outline),
-            title: Text('About The Shelf'),
-            subtitle: Text('Version 1.0.0'),
-          ),
-        ],
       ),
     );
   }
