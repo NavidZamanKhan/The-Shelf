@@ -10,10 +10,7 @@ import 'package:the_shelf/widgets/book_row.dart';
 class ShelfDetailScreen extends StatelessWidget {
   final String category;
 
-  const ShelfDetailScreen({
-    super.key,
-    required this.category,
-  });
+  const ShelfDetailScreen({super.key, required this.category});
 
   @override
   Widget build(BuildContext context) {
@@ -22,7 +19,10 @@ class ShelfDetailScreen extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         leading: IconButton(
-          icon: const Icon(PhosphorIcons.arrowLeft, color: AppTheme.deepEspressoPrimaryText),
+          icon: const Icon(
+            PhosphorIcons.arrowLeft,
+            color: AppTheme.deepEspressoPrimaryText,
+          ),
           onPressed: () => Navigator.of(context).pop(),
         ),
         title: Row(
@@ -46,7 +46,9 @@ class ShelfDetailScreen extends StatelessWidget {
         builder: (context, state) {
           if (state is ShelfLoading) {
             return const Center(
-              child: CircularProgressIndicator(color: AppTheme.terracottaPrimary),
+              child: CircularProgressIndicator(
+                color: AppTheme.terracottaPrimary,
+              ),
             );
           } else if (state is ShelfLoaded) {
             // Combine state items with gated dev mock items for visual verification
@@ -62,7 +64,11 @@ class ShelfDetailScreen extends StatelessWidget {
 
             // Filter strictly by this screen's category
             final shelfItems = effectiveItems
-                .where((item) => item.shelf.trim().toLowerCase() == category.trim().toLowerCase())
+                .where(
+                  (item) =>
+                      item.shelf.trim().toLowerCase() ==
+                      category.trim().toLowerCase(),
+                )
                 .toList();
 
             if (shelfItems.isEmpty) {
@@ -117,7 +123,10 @@ class ShelfDetailScreen extends StatelessWidget {
                       decoration: BoxDecoration(
                         color: AppTheme.pureWhiteCard,
                         borderRadius: AppTheme.asymmetricCardRadius,
-                        border: Border.all(color: AppTheme.softWarmBorder, width: 1.0),
+                        border: Border.all(
+                          color: AppTheme.softWarmBorder,
+                          width: 1.0,
+                        ),
                       ),
                       padding: const EdgeInsets.all(16.0),
                       child: Row(
@@ -143,7 +152,7 @@ class ShelfDetailScreen extends StatelessWidget {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                  '${shelfItems.length} ${shelfItems.length == 1 ? 'document' : 'documents'} stored in shelf',
+                                  '${shelfItems.length} ${shelfItems.length == 1 ? 'document' : 'documents'} stored in this shelf',
                                   style: const TextStyle(
                                     fontFamily: AppTheme.serifFontFamily,
                                     fontSize: 16,
@@ -176,7 +185,10 @@ class ShelfDetailScreen extends StatelessWidget {
                       decoration: BoxDecoration(
                         color: AppTheme.pureWhiteCard,
                         borderRadius: AppTheme.asymmetricCardRadius,
-                        border: Border.all(color: AppTheme.softWarmBorder, width: 1.0),
+                        border: Border.all(
+                          color: AppTheme.softWarmBorder,
+                          width: 1.0,
+                        ),
                       ),
                       clipBehavior: Clip.antiAlias,
                       child: ListView.separated(
@@ -194,7 +206,9 @@ class ShelfDetailScreen extends StatelessWidget {
                         itemBuilder: (context, index) {
                           final item = shelfItems[index];
                           return TweenAnimationBuilder<double>(
-                            duration: Duration(milliseconds: 300 + (index * 50)),
+                            duration: Duration(
+                              milliseconds: 300 + (index * 50),
+                            ),
                             curve: Curves.decelerate,
                             tween: Tween<double>(begin: 0.0, end: 1.0),
                             builder: (context, animVal, child) {
