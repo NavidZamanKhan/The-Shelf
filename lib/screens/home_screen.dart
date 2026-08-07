@@ -85,7 +85,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 });
               },
             ),
-            const _PlaceholderView(title: 'Collections', iconData: PhosphorIcons.books),
+            const _PlaceholderView(title: 'Collections', iconData: PhosphorIcons.bookmarkSimple),
             const _PlaceholderView(title: 'Insights', iconData: PhosphorIcons.sparkle),
             const _PlaceholderView(title: 'Settings', iconData: PhosphorIcons.gear),
           ],
@@ -98,16 +98,8 @@ class _HomeScreenState extends State<HomeScreen> {
             });
           },
         ),
-        floatingActionButton: _currentNavIndex == 0
-            ? FloatingActionButton.extended(
-                onPressed: () => ImportBottomSheetModal.show(context),
-                icon: const Icon(PhosphorIcons.plus, size: 20),
-                label: const Text(
-                  'Add Item',
-                  style: TextStyle(fontWeight: FontWeight.w600),
-                ),
-              )
-            : null,
+        // Material FAB completely removed per non-Material design specification
+        floatingActionButton: null,
       ),
     );
   }
@@ -146,10 +138,13 @@ class _ShelfView extends StatelessWidget {
   Widget build(BuildContext context) {
     return CustomScrollView(
       slivers: [
-        // Reusable compact app header
-        const AppHeader(title: 'The Shelf'),
+        // Reusable compact app header with integrated Add Item action button
+        AppHeader(
+          title: 'The Shelf',
+          onAddItemPressed: () => ImportBottomSheetModal.show(context),
+        ),
 
-        // Category filter chips row
+        // Category filter underline tabs row
         SliverToBoxAdapter(
           child: CategoryFilterChips(
             selectedCategory: selectedCategory,
@@ -187,7 +182,7 @@ class _ShelfView extends StatelessWidget {
                 countsMap[normalizedKey] = (countsMap[normalizedKey] ?? 0) + 1;
               }
 
-              // Filter category cards shown on Home Screen based on CategoryFilterChip selection
+              // Filter category cards shown on Home Screen based on filter tab selection
               List<String> visibleCategories;
               if (selectedCategory == 'All Items') {
                 visibleCategories = all17Categories;

@@ -44,18 +44,18 @@ class _BookRowState extends State<BookRow> {
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           child: Row(
             children: [
-              // Icon Badge (Soft rounded container with Light Terracotta background)
+              // Icon Badge (Asymmetric Radius + Subtle Gradient)
               Container(
                 width: 44,
                 height: 44,
-                decoration: BoxDecoration(
-                  color: AppTheme.terracottaLightAccent.withValues(alpha: 0.22),
-                  borderRadius: BorderRadius.circular(12),
+                decoration: const BoxDecoration(
+                  gradient: AppTheme.badgeGradient,
+                  borderRadius: AppTheme.asymmetricBadgeRadius,
                 ),
                 child: Center(
                   child: Icon(
                     iconData,
-                    color: AppTheme.terracottaPrimary,
+                    color: AppTheme.deepEspressoPrimaryText,
                     size: 22,
                   ),
                 ),

@@ -70,10 +70,20 @@ class ShelfDetailScreen extends StatelessWidget {
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Icon(
-                      iconData,
-                      size: 64,
-                      color: AppTheme.terracottaLightAccent,
+                    Container(
+                      width: 72,
+                      height: 72,
+                      decoration: const BoxDecoration(
+                        color: AppTheme.desaturatedEmptyBadge,
+                        borderRadius: AppTheme.asymmetricBadgeRadius,
+                      ),
+                      child: Center(
+                        child: Icon(
+                          iconData,
+                          size: 36,
+                          color: AppTheme.desaturatedEmptyText,
+                        ),
+                      ),
                     ),
                     const SizedBox(height: 16),
                     Text(
@@ -81,12 +91,15 @@ class ShelfDetailScreen extends StatelessWidget {
                       style: Theme.of(context).textTheme.titleLarge,
                     ),
                     const SizedBox(height: 8),
-                    const Text(
-                      'Tap "+ Add Item" on the home screen to import documents into this shelf.',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        fontSize: 13,
-                        color: AppTheme.warmRustSecondaryText,
+                    const Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 32),
+                      child: Text(
+                        'Tap the "+" icon in the top header to import documents into this shelf.',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: AppTheme.warmRustSecondaryText,
+                        ),
                       ),
                     ),
                   ],
@@ -96,67 +109,75 @@ class ShelfDetailScreen extends StatelessWidget {
 
             return CustomScrollView(
               slivers: [
-                // Category Header Banner Card
+                // Category Header Banner Card with Asymmetric Geometry
                 SliverToBoxAdapter(
                   child: Padding(
                     padding: const EdgeInsets.all(16.0),
-                    child: Card(
-                      child: Padding(
-                        padding: const EdgeInsets.all(16.0),
-                        child: Row(
-                          children: [
-                            Container(
-                              width: 48,
-                              height: 48,
-                              decoration: BoxDecoration(
-                                color: AppTheme.terracottaLightAccent.withValues(alpha: 0.22),
-                                borderRadius: BorderRadius.circular(12),
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: AppTheme.pureWhiteCard,
+                        borderRadius: AppTheme.asymmetricCardRadius,
+                        border: Border.all(color: AppTheme.softWarmBorder, width: 1.0),
+                      ),
+                      padding: const EdgeInsets.all(16.0),
+                      child: Row(
+                        children: [
+                          Container(
+                            width: 48,
+                            height: 48,
+                            decoration: const BoxDecoration(
+                              gradient: AppTheme.badgeGradient,
+                              borderRadius: AppTheme.asymmetricBadgeRadius,
+                            ),
+                            child: Center(
+                              child: Icon(
+                                iconData,
+                                color: AppTheme.deepEspressoPrimaryText,
+                                size: 24,
                               ),
-                              child: Center(
-                                child: Icon(
-                                  iconData,
-                                  color: AppTheme.terracottaPrimary,
-                                  size: 26,
+                            ),
+                          ),
+                          const SizedBox(width: 14),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  category,
+                                  style: const TextStyle(
+                                    fontFamily: AppTheme.serifFontFamily,
+                                    fontSize: 20,
+                                    fontWeight: FontWeight.bold,
+                                    color: AppTheme.deepEspressoPrimaryText,
+                                  ),
                                 ),
-                              ),
-                            ),
-                            const SizedBox(width: 14),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    category,
-                                    style: const TextStyle(
-                                      fontFamily: AppTheme.serifFontFamily,
-                                      fontSize: 20,
-                                      fontWeight: FontWeight.bold,
-                                      color: AppTheme.deepEspressoPrimaryText,
-                                    ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  '${shelfItems.length} ${shelfItems.length == 1 ? 'document' : 'documents'} stored in this shelf',
+                                  style: const TextStyle(
+                                    fontSize: 13,
+                                    color: AppTheme.warmRustSecondaryText,
                                   ),
-                                  const SizedBox(height: 2),
-                                  Text(
-                                    '${shelfItems.length} ${shelfItems.length == 1 ? 'document' : 'documents'} stored in this shelf',
-                                    style: const TextStyle(
-                                      fontSize: 13,
-                                      color: AppTheme.warmRustSecondaryText,
-                                    ),
-                                  ),
-                                ],
-                              ),
+                                ),
+                              ],
                             ),
-                          ],
-                        ),
+                          ),
+                        ],
                       ),
                     ),
                   ),
                 ),
 
-                // Book Rows Card List with Entrance Motion
+                // Book Rows Card List with Asymmetric Geometry
                 SliverPadding(
                   padding: const EdgeInsets.symmetric(horizontal: 16),
                   sliver: SliverToBoxAdapter(
-                    child: Card(
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: AppTheme.pureWhiteCard,
+                        borderRadius: AppTheme.asymmetricCardRadius,
+                        border: Border.all(color: AppTheme.softWarmBorder, width: 1.0),
+                      ),
                       clipBehavior: Clip.antiAlias,
                       child: ListView.separated(
                         shrinkWrap: true,

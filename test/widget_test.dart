@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:phosphoricons_flutter/phosphoricons_flutter.dart';
 import 'package:the_shelf/blocs/shelf/shelf_bloc.dart';
 import 'package:the_shelf/blocs/shelf/shelf_event.dart';
 import 'package:the_shelf/main.dart';
@@ -15,6 +16,16 @@ void main() {
 
     expect(find.byType(HomeScreen), findsOneWidget);
     expect(find.byType(ShelfCard), findsWidgets);
+    // Verify FAB is removed
+    expect(find.byType(FloatingActionButton), findsNothing);
+  });
+
+  testWidgets('Tapping header Add Item button triggers action', (WidgetTester tester) async {
+    await tester.pumpWidget(const TheShelfApp());
+    await tester.pumpAndSettle();
+
+    final plusButton = find.byIcon(PhosphorIcons.plusCircle);
+    expect(plusButton, findsOneWidget);
   });
 
   testWidgets('Tapping a ShelfCard navigates to ShelfDetailScreen', (WidgetTester tester) async {

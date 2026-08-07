@@ -1,26 +1,56 @@
 import 'package:flutter/material.dart';
 import 'package:phosphoricons_flutter/phosphoricons_flutter.dart';
 
-/// Design System for The Shelf — Warm & Cozy Terracotta Aesthetics
+/// Design System for The Shelf — Bespoke Non-Material Terracotta Aesthetics
 abstract class AppTheme {
   // Brand Color Palette Tokens
-  static const Color terracottaPrimary = Color(0xFFD85A30);
+  static const Color terracottaPrimary = Color(0xFFC85A30);
   static const Color terracottaLightAccent = Color(0xFFF0997B);
+  static const Color gradientStartApricot = Color(0xFFF7C5B2);
   static const Color warmRustSecondaryText = Color(0xFF993C1D);
   static const Color deepEspressoPrimaryText = Color(0xFF4A1B0C);
-  static const Color warmCreamBackground = Color(0xFFFFF8F3);
+  static const Color softParchmentBackground = Color(0xFFFAF4ED);
   static const Color pureWhiteCard = Color(0xFFFFFFFF);
-  static const Color softWarmBorder = Color(0xFFF0D9C9);
+  static const Color softWarmBorder = Color(0xFFE8D5C8);
   static const Color subtleBadgeBackground = Color(0xFFF9EFE7);
+  static const Color desaturatedEmptyText = Color(0xFFB59A8B);
+  static const Color desaturatedEmptyBadge = Color(0xFFF5EDE6);
+  static const Color dashedBorderColor = Color(0xFFE5D0C0);
+  static const Color navInactiveColor = Color(0xFFA08575);
 
   // Typography Family
   static const String serifFontFamily = 'Georgia';
+
+  // Asymmetric Shape Geometry Tokens
+  static const BorderRadius asymmetricCardRadius = BorderRadius.only(
+    topLeft: Radius.circular(20),
+    topRight: Radius.circular(20),
+    bottomRight: Radius.circular(20),
+    bottomLeft: Radius.circular(6),
+  );
+
+  static const BorderRadius asymmetricBadgeRadius = BorderRadius.only(
+    topLeft: Radius.circular(14),
+    topRight: Radius.circular(14),
+    bottomRight: Radius.circular(14),
+    bottomLeft: Radius.circular(4),
+  );
+
+  // Subtle Gradient Token for Badges
+  static const LinearGradient badgeGradient = LinearGradient(
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+    colors: [
+      gradientStartApricot,
+      terracottaLightAccent,
+    ],
+  );
 
   /// Primary Theme Data Configuration
   static ThemeData get warmTerracottaTheme {
     return ThemeData(
       useMaterial3: true,
-      scaffoldBackgroundColor: warmCreamBackground,
+      scaffoldBackgroundColor: softParchmentBackground,
       colorScheme: const ColorScheme(
         brightness: Brightness.light,
         primary: terracottaPrimary,
@@ -35,10 +65,10 @@ abstract class AppTheme {
         onSurface: deepEspressoPrimaryText,
         onSurfaceVariant: warmRustSecondaryText,
         outline: softWarmBorder,
-        outlineVariant: Color(0xFFF7E8DE),
+        outlineVariant: Color(0xFFF4E4D9),
       ),
       appBarTheme: const AppBarTheme(
-        backgroundColor: warmCreamBackground,
+        backgroundColor: softParchmentBackground,
         elevation: 0,
         scrolledUnderElevation: 0,
         centerTitle: false,
@@ -50,51 +80,21 @@ abstract class AppTheme {
           color: deepEspressoPrimaryText,
         ),
       ),
-      cardTheme: CardThemeData(
+      cardTheme: const CardThemeData(
         color: pureWhiteCard,
         elevation: 0,
         margin: EdgeInsets.zero,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-          side: const BorderSide(color: softWarmBorder, width: 1.0),
-        ),
-      ),
-      chipTheme: ChipThemeData(
-        backgroundColor: pureWhiteCard,
-        disabledColor: pureWhiteCard.withValues(alpha: 0.5),
-        selectedColor: terracottaPrimary,
-        secondarySelectedColor: terracottaPrimary,
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        labelStyle: const TextStyle(
-          color: deepEspressoPrimaryText,
-          fontSize: 13,
-          fontWeight: FontWeight.w500,
-        ),
-        secondaryLabelStyle: const TextStyle(
-          color: Colors.white,
-          fontSize: 13,
-          fontWeight: FontWeight.w600,
-        ),
-        brightness: Brightness.light,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(10),
-          side: const BorderSide(color: softWarmBorder, width: 1.0),
-        ),
-      ),
-      floatingActionButtonTheme: const FloatingActionButtonThemeData(
-        backgroundColor: terracottaPrimary,
-        foregroundColor: Colors.white,
-        elevation: 2,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.all(Radius.circular(16)),
+          borderRadius: asymmetricCardRadius,
+          side: BorderSide(color: softWarmBorder, width: 1.0),
         ),
       ),
       bottomNavigationBarTheme: const BottomNavigationBarThemeData(
         backgroundColor: pureWhiteCard,
         selectedItemColor: terracottaPrimary,
-        unselectedItemColor: warmRustSecondaryText,
+        unselectedItemColor: navInactiveColor,
         type: BottomNavigationBarType.fixed,
-        elevation: 8,
+        elevation: 0,
       ),
       textTheme: const TextTheme(
         headlineMedium: TextStyle(
