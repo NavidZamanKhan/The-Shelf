@@ -1,16 +1,20 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:phosphoricons_flutter/phosphoricons_flutter.dart';
 import 'package:the_shelf/blocs/document_import/document_import_bloc.dart';
 import 'package:the_shelf/blocs/document_import/document_import_event.dart';
 import 'package:the_shelf/blocs/document_import/document_import_state.dart';
 import 'package:the_shelf/blocs/shelf/shelf_bloc.dart';
 import 'package:the_shelf/blocs/shelf/shelf_event.dart';
 import 'package:the_shelf/blocs/shelf/shelf_state.dart';
+import 'package:the_shelf/models/mock_shelf_items.dart';
+import 'package:the_shelf/theme/app_theme.dart';
 import 'package:the_shelf/widgets/app_bottom_navigation_bar.dart';
 import 'package:the_shelf/widgets/app_header.dart';
 import 'package:the_shelf/widgets/category_filter_chips.dart';
 import 'package:the_shelf/widgets/import_bottom_sheet_modal.dart';
 import 'package:the_shelf/widgets/import_confirmation_sheet.dart';
+import 'package:the_shelf/widgets/shelf_section.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -53,14 +57,17 @@ class _HomeScreenState extends State<HomeScreen> {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
                 content: Text('Added "$title" to [$shelf] shelf!'),
-                backgroundColor: Colors.green,
+                backgroundColor: AppTheme.terracottaPrimary,
               ),
             );
           }
           context.read<DocumentImportBloc>().add(const ResetImportEvent());
         } else if (state is DocumentImportFailure) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Error importing PDF: ${state.errorMessage}')),
+            SnackBar(
+              content: Text('Error importing document: ${state.errorMessage}'),
+              backgroundColor: Colors.redAccent,
+            ),
           );
           context.read<DocumentImportBloc>().add(const ResetImportEvent());
         }
@@ -77,9 +84,9 @@ class _HomeScreenState extends State<HomeScreen> {
                 });
               },
             ),
-            const _PlaceholderView(title: 'Collections', icon: Icons.collections_bookmark_outlined),
-            const _PlaceholderView(title: 'Insights', icon: Icons.auto_awesome_outlined),
-            const _PlaceholderView(title: 'Settings', icon: Icons.settings_outlined),
+            const _PlaceholderView(title: 'Collections', iconData: PhosphorIcons.books),
+            const _PlaceholderView(title: 'Insights', iconData: PhosphorIcons.sparkle),
+            const _PlaceholderView(title: 'Settings', iconData: PhosphorIcons.gear),
           ],
         ),
         bottomNavigationBar: AppBottomNavigationBar(
@@ -93,8 +100,11 @@ class _HomeScreenState extends State<HomeScreen> {
         floatingActionButton: _currentNavIndex == 0
             ? FloatingActionButton.extended(
                 onPressed: () => ImportBottomSheetModal.show(context),
-                icon: const Icon(Icons.add),
-                label: const Text('Add Item'),
+                icon: const Icon(PhosphorIcons.plus, size: 20),
+                label: const Text(
+                  'Add Item',
+                  style: TextStyle(fontWeight: FontWeight.w600),
+                ),
               )
             : null,
       ),
@@ -115,10 +125,10 @@ class _ShelfView extends StatelessWidget {
   Widget build(BuildContext context) {
     return CustomScrollView(
       slivers: [
-        // Reusable compact header without excess top spacing
+        // Reusable compact header
         const AppHeader(title: 'The Shelf'),
 
-        // Reusable filter chips row
+        // Reusable category filter chips row
         SliverToBoxAdapter(
           child: CategoryFilterChips(
             selectedCategory: selectedCategory,
@@ -126,39 +136,63 @@ class _ShelfView extends StatelessWidget {
           ),
         ),
 
-        // Shelf Items Content
+        const SliverToBoxAdapter(child: SizedBox(height: 12)),
+
+        // Shelf Items Content grouped by Category
         BlocBuilder<ShelfBloc, ShelfState>(
           builder: (context, state) {
             if (state is ShelfLoading) {
               return const SliverFillRemaining(
-                child: Center(child: CircularProgressIndicator()),
+                child: Center(
+                  child: CircularProgressIndicator(color: AppTheme.terracottaPrimary),
+                ),
               );
             } else if (state is ShelfLoaded) {
-              final items = state.items;
-              if (items.isEmpty) {
+              // Combine user imported items with gated dev mock items for visual verification
+              List<ShelfItem> effectiveItems = List.from(state.items);
+              if (showMockDataInDev) {
+                // Prepend user-imported items, append mock items if not already present
+                final existingIds = effectiveItems.map((e) => e.id).toSet();
+                for (final mock in devMockShelfItems) {
+                  if (!existingIds.contains(mock.id)) {
+                    effectiveItems.add(mock);
+                  }
+                }
+              }
+
+              // Filter by selected category chip
+              if (selectedCategory != 'All Items') {
+                effectiveItems = effectiveItems
+                    .where((item) => item.shelf.trim().toLowerCase() == selectedCategory.trim().toLowerCase())
+                    .toList();
+              }
+
+              if (effectiveItems.isEmpty) {
                 return SliverFillRemaining(
                   child: Center(
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         Icon(
-                          Icons.shelves,
+                          PhosphorIcons.books,
                           size: 64,
-                          color: Theme.of(context).colorScheme.outline,
+                          color: AppTheme.terracottaLightAccent,
                         ),
                         const SizedBox(height: 16),
                         Text(
                           'Your Shelf is Empty',
-                          style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                                fontWeight: FontWeight.bold,
-                              ),
+                          style: Theme.of(context).textTheme.titleLarge,
                         ),
                         const SizedBox(height: 8),
-                        Text(
-                          'Tap "+ Add Item" below to import documents or scan books.',
-                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                color: Theme.of(context).colorScheme.onSurfaceVariant,
-                              ),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 32),
+                          child: Text(
+                            selectedCategory == 'All Items'
+                                ? 'Tap "+ Add Item" below to import documents or scan books.'
+                                : 'No books found in the "$selectedCategory" category.',
+                            textAlign: TextAlign.center,
+                            style: Theme.of(context).textTheme.bodyMedium,
+                          ),
                         ),
                       ],
                     ),
@@ -166,29 +200,42 @@ class _ShelfView extends StatelessWidget {
                 );
               }
 
+              // Group items by category (shelf)
+              final Map<String, List<ShelfItem>> groupedItems = {};
+              for (final item in effectiveItems) {
+                groupedItems.putIfAbsent(item.shelf, () => []).add(item);
+              }
+
+              final categories = groupedItems.keys.toList();
+
               return SliverPadding(
-                padding: const EdgeInsets.all(16),
+                padding: const EdgeInsets.symmetric(horizontal: 16),
                 sliver: SliverList(
                   delegate: SliverChildBuilderDelegate(
                     (context, index) {
-                      final item = items[index];
-                      return Card(
-                        margin: const EdgeInsets.only(bottom: 12),
-                        child: ListTile(
-                          leading: const CircleAvatar(
-                            child: Icon(Icons.picture_as_pdf),
-                          ),
-                          title: Text(item.title, style: const TextStyle(fontWeight: FontWeight.bold)),
-                          subtitle: Text('Shelf: ${item.shelf}'),
-                          trailing: const Icon(Icons.chevron_right),
-                        ),
+                      final category = categories[index];
+                      final categoryItems = groupedItems[category]!;
+                      return ShelfSection(
+                        category: category,
+                        items: categoryItems,
+                        sectionIndex: index,
+                        onItemTap: (item) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text('Opening "${item.title}"...'),
+                              duration: const Duration(seconds: 1),
+                              backgroundColor: AppTheme.terracottaPrimary,
+                            ),
+                          );
+                        },
                       );
                     },
-                    childCount: items.length,
+                    childCount: categories.length,
                   ),
                 ),
               );
             }
+
             return const SliverFillRemaining(
               child: Center(child: Text('Initialize Shelf')),
             );
@@ -201,11 +248,11 @@ class _ShelfView extends StatelessWidget {
 
 class _PlaceholderView extends StatelessWidget {
   final String title;
-  final IconData icon;
+  final IconData iconData;
 
   const _PlaceholderView({
     required this.title,
-    required this.icon,
+    required this.iconData,
   });
 
   @override
@@ -216,7 +263,11 @@ class _PlaceholderView extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(icon, size: 64, color: Theme.of(context).colorScheme.outline),
+            Icon(
+              iconData,
+              size: 64,
+              color: AppTheme.terracottaLightAccent,
+            ),
             const SizedBox(height: 16),
             Text(
               '$title Feature Coming Soon',

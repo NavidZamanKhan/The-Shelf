@@ -5,6 +5,7 @@ import 'package:the_shelf/blocs/shelf/shelf_bloc.dart';
 import 'package:the_shelf/blocs/shelf/shelf_event.dart';
 import 'package:the_shelf/screens/home_screen.dart';
 import 'package:the_shelf/services/shelf_classifier_service.dart';
+import 'package:the_shelf/theme/app_theme.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -31,23 +32,7 @@ class TheShelfApp extends StatelessWidget {
       child: MaterialApp(
         title: 'The Shelf',
         debugShowCheckedModeBanner: false,
-        theme: ThemeData(
-          useMaterial3: true,
-          colorScheme: ColorScheme.fromSeed(
-            seedColor: const Color(0xFF2C4C3B), // Warm deep forest green
-            brightness: Brightness.light,
-          ),
-          appBarTheme: const AppBarTheme(centerTitle: false),
-        ),
-        darkTheme: ThemeData(
-          useMaterial3: true,
-          colorScheme: ColorScheme.fromSeed(
-            seedColor: const Color(0xFF2C4C3B),
-            brightness: Brightness.dark,
-          ),
-          appBarTheme: const AppBarTheme(centerTitle: false),
-        ),
-        themeMode: ThemeMode.system,
+        theme: AppTheme.warmTerracottaTheme,
         home: const HomeScreen(),
       ),
     );
