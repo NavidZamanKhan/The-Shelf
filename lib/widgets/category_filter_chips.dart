@@ -11,7 +11,7 @@ class CategoryFilterChips extends StatelessWidget {
     super.key,
     this.selectedCategory = 'All Items',
     required this.onCategorySelected,
-    this.categories = const ['All Items', 'Books', 'PDFs', 'Articles'],
+    this.categories = const ['All Items', 'PDFs', 'EPUBs'],
   });
 
   @override

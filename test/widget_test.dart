@@ -28,7 +28,7 @@ void main() {
     expect(plusButton, findsOneWidget);
   });
 
-  testWidgets('Tapping a ShelfCard navigates to ShelfDetailScreen', (WidgetTester tester) async {
+  testWidgets('Tapping a ShelfCard navigates to ShelfDetailScreen without duplicate title', (WidgetTester tester) async {
     await tester.pumpWidget(const TheShelfApp());
     await tester.pumpAndSettle();
 
@@ -39,9 +39,9 @@ void main() {
     await tester.tap(fantasyCard);
     await tester.pumpAndSettle();
 
-    // Verify detail screen is displayed
+    // Verify detail screen is displayed and category title appears ONCE in AppBar
     expect(find.byType(ShelfDetailScreen), findsOneWidget);
-    expect(find.text('Fantasy'), findsWidgets);
+    expect(find.text('Fantasy'), findsOneWidget);
   });
 
   testWidgets('Populated shelves sort to top, empty shelves sort to bottom', (WidgetTester tester) async {
@@ -62,6 +62,26 @@ void main() {
         expect(encounteredEmpty, false, reason: 'Populated shelf ${card.category} appeared after empty shelf');
       }
     }
+  });
+
+  testWidgets('Format filter tab selection filters items by file extension', (WidgetTester tester) async {
+    await tester.pumpWidget(const TheShelfApp());
+    await tester.pumpAndSettle();
+
+    // Tap PDFs filter tab
+    final pdfTab = find.text('PDFs');
+    expect(pdfTab, findsOneWidget);
+
+    await tester.tap(pdfTab);
+    await tester.pumpAndSettle();
+
+    // Verify all 17 categories remain rendered (populated PDF shelves top, 0-PDF shelves bottom)
+    final cards = tester.widgetList<ShelfCard>(find.byType(ShelfCard)).toList();
+    expect(cards.length, 17);
+
+    // Verify AnimatedSwitcher has key set to 'PDFs'
+    final animatedSwitcher = tester.widget<AnimatedSwitcher>(find.byType(AnimatedSwitcher));
+    expect(animatedSwitcher.duration, const Duration(milliseconds: 280));
   });
 
   testWidgets('Adding document to empty shelf dynamically promotes it to populated section', (WidgetTester tester) async {

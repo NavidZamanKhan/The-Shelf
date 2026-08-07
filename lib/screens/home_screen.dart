@@ -174,49 +174,22 @@ class _ShelfView extends StatelessWidget {
                 }
               }
 
-              // Compute live category item counts reactively
+              // Compute category item counts filtered by selected format extension
               final Map<String, int> countsMap = {};
               for (final item in effectiveItems) {
-                final normalizedKey = _findMatchingCategoryKey(item.shelf);
-                countsMap[normalizedKey] = (countsMap[normalizedKey] ?? 0) + 1;
+                if (_matchesFormatFilter(item, selectedCategory)) {
+                  final normalizedKey = _findMatchingCategoryKey(item.shelf);
+                  countsMap[normalizedKey] = (countsMap[normalizedKey] ?? 0) + 1;
+                }
               }
 
-              // Filter category cards shown on Home Screen based on filter tab selection
-              List<String> visibleCategories;
-              if (selectedCategory == 'All Items') {
-                visibleCategories = List.from(all17Categories);
-              } else {
-                visibleCategories = all17Categories
-                    .where((cat) => cat.trim().toLowerCase() == selectedCategory.trim().toLowerCase())
-                    .toList();
-              }
+              // Sort all 17 categories populated-first based on matching format counts
+              final List<String> sortedCategories = _sortCategories(
+                List.from(all17Categories),
+                countsMap,
+              );
 
-              // Apply Populated-First Stable Sorting: Populated shelves top (count desc, alpha tie-breaker), empty shelves bottom (alpha)
-              visibleCategories = _sortCategories(visibleCategories, countsMap);
-
-              if (visibleCategories.isEmpty) {
-                return SliverFillRemaining(
-                  child: Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const Icon(
-                          PhosphorIcons.books,
-                          size: 64,
-                          color: AppTheme.terracottaLightAccent,
-                        ),
-                        const SizedBox(height: 16),
-                        Text(
-                          'No Shelves Found',
-                          style: Theme.of(context).textTheme.titleLarge,
-                        ),
-                      ],
-                    ),
-                  ),
-                );
-              }
-
-              // AnimatedSwitcher for fluid tab switch transitions
+              // AnimatedSwitcher guarantees fluid slide+fade transition on every tab switch
               return SliverToBoxAdapter(
                 child: AnimatedSwitcher(
                   duration: const Duration(milliseconds: 280),
@@ -238,8 +211,8 @@ class _ShelfView extends StatelessWidget {
                     key: ValueKey<String>(selectedCategory),
                     padding: const EdgeInsets.symmetric(horizontal: 16),
                     child: Column(
-                      children: List.generate(visibleCategories.length, (index) {
-                        final catName = visibleCategories[index];
+                      children: List.generate(sortedCategories.length, (index) {
+                        final catName = sortedCategories[index];
                         final itemCount = countsMap[catName] ?? 0;
 
                         return ShelfCard(
@@ -269,6 +242,21 @@ class _ShelfView extends StatelessWidget {
         const SliverToBoxAdapter(child: SizedBox(height: 24)),
       ],
     );
+  }
+
+  /// Extension-based format filtering helper
+  bool _matchesFormatFilter(ShelfItem item, String filter) {
+    final ext = item.filePath.split('.').last.toLowerCase();
+    switch (filter) {
+      case 'PDFs':
+        return ext == 'pdf';
+      case 'EPUBs':
+      case 'Books':
+        return ext == 'epub';
+      case 'All Items':
+      default:
+        return true;
+    }
   }
 
   /// Populated-First Stable Sorting Algorithm

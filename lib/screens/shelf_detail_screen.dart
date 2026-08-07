@@ -109,7 +109,7 @@ class ShelfDetailScreen extends StatelessWidget {
 
             return CustomScrollView(
               slivers: [
-                // Category Header Banner Card with Asymmetric Geometry
+                // Streamlined Category Summary Banner (No duplicate category title text)
                 SliverToBoxAdapter(
                   child: Padding(
                     padding: const EdgeInsets.all(16.0),
@@ -143,18 +143,18 @@ class ShelfDetailScreen extends StatelessWidget {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                  category,
+                                  '${shelfItems.length} ${shelfItems.length == 1 ? 'document' : 'documents'} stored in shelf',
                                   style: const TextStyle(
                                     fontFamily: AppTheme.serifFontFamily,
-                                    fontSize: 20,
-                                    fontWeight: FontWeight.bold,
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w600,
                                     color: AppTheme.deepEspressoPrimaryText,
                                   ),
                                 ),
                                 const SizedBox(height: 2),
-                                Text(
-                                  '${shelfItems.length} ${shelfItems.length == 1 ? 'document' : 'documents'} stored in this shelf',
-                                  style: const TextStyle(
+                                const Text(
+                                  'Tap any item to view document details',
+                                  style: TextStyle(
                                     fontSize: 13,
                                     color: AppTheme.warmRustSecondaryText,
                                   ),
