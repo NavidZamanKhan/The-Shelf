@@ -8,13 +8,14 @@ import 'package:the_shelf/blocs/shelf/shelf_bloc.dart';
 import 'package:the_shelf/blocs/shelf/shelf_event.dart';
 import 'package:the_shelf/blocs/shelf/shelf_state.dart';
 import 'package:the_shelf/models/mock_shelf_items.dart';
+import 'package:the_shelf/screens/shelf_detail_screen.dart';
 import 'package:the_shelf/theme/app_theme.dart';
 import 'package:the_shelf/widgets/app_bottom_navigation_bar.dart';
 import 'package:the_shelf/widgets/app_header.dart';
 import 'package:the_shelf/widgets/category_filter_chips.dart';
 import 'package:the_shelf/widgets/import_bottom_sheet_modal.dart';
 import 'package:the_shelf/widgets/import_confirmation_sheet.dart';
-import 'package:the_shelf/widgets/shelf_section.dart';
+import 'package:the_shelf/widgets/shelf_card.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -121,14 +122,34 @@ class _ShelfView extends StatelessWidget {
     required this.onCategorySelected,
   });
 
+  static const List<String> all17Categories = [
+    'Fantasy',
+    'Historical Fiction',
+    'Mystery',
+    'Romance',
+    'Science Fiction',
+    'Horror',
+    'Graphic Novels & Comics',
+    'Anime & Manga',
+    'Poetry',
+    'History',
+    'Biography & Memoir',
+    'Philosophy',
+    'Self-Help & Personal Development',
+    'School/Reference',
+    'Classics',
+    'Religion & Spirituality',
+    'Miscellaneous',
+  ];
+
   @override
   Widget build(BuildContext context) {
     return CustomScrollView(
       slivers: [
-        // Reusable compact header
+        // Reusable compact app header
         const AppHeader(title: 'The Shelf'),
 
-        // Reusable category filter chips row
+        // Category filter chips row
         SliverToBoxAdapter(
           child: CategoryFilterChips(
             selectedCategory: selectedCategory,
@@ -138,7 +159,7 @@ class _ShelfView extends StatelessWidget {
 
         const SliverToBoxAdapter(child: SizedBox(height: 12)),
 
-        // Shelf Items Content grouped by Category
+        // Reactive Shelf Cards Content
         BlocBuilder<ShelfBloc, ShelfState>(
           builder: (context, state) {
             if (state is ShelfLoading) {
@@ -148,10 +169,9 @@ class _ShelfView extends StatelessWidget {
                 ),
               );
             } else if (state is ShelfLoaded) {
-              // Combine user imported items with gated dev mock items for visual verification
+              // Combine real state items with gated dev mock items for visual verification
               List<ShelfItem> effectiveItems = List.from(state.items);
               if (showMockDataInDev) {
-                // Prepend user-imported items, append mock items if not already present
                 final existingIds = effectiveItems.map((e) => e.id).toSet();
                 for (final mock in devMockShelfItems) {
                   if (!existingIds.contains(mock.id)) {
@@ -160,39 +180,38 @@ class _ShelfView extends StatelessWidget {
                 }
               }
 
-              // Filter by selected category chip
-              if (selectedCategory != 'All Items') {
-                effectiveItems = effectiveItems
-                    .where((item) => item.shelf.trim().toLowerCase() == selectedCategory.trim().toLowerCase())
+              // Compute live category item counts reactively
+              final Map<String, int> countsMap = {};
+              for (final item in effectiveItems) {
+                final normalizedKey = _findMatchingCategoryKey(item.shelf);
+                countsMap[normalizedKey] = (countsMap[normalizedKey] ?? 0) + 1;
+              }
+
+              // Filter category cards shown on Home Screen based on CategoryFilterChip selection
+              List<String> visibleCategories;
+              if (selectedCategory == 'All Items') {
+                visibleCategories = all17Categories;
+              } else {
+                visibleCategories = all17Categories
+                    .where((cat) => cat.trim().toLowerCase() == selectedCategory.trim().toLowerCase())
                     .toList();
               }
 
-              if (effectiveItems.isEmpty) {
+              if (visibleCategories.isEmpty) {
                 return SliverFillRemaining(
                   child: Center(
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(
+                        const Icon(
                           PhosphorIcons.books,
                           size: 64,
                           color: AppTheme.terracottaLightAccent,
                         ),
                         const SizedBox(height: 16),
                         Text(
-                          'Your Shelf is Empty',
+                          'No Shelves Found',
                           style: Theme.of(context).textTheme.titleLarge,
-                        ),
-                        const SizedBox(height: 8),
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 32),
-                          child: Text(
-                            selectedCategory == 'All Items'
-                                ? 'Tap "+ Add Item" below to import documents or scan books.'
-                                : 'No books found in the "$selectedCategory" category.',
-                            textAlign: TextAlign.center,
-                            style: Theme.of(context).textTheme.bodyMedium,
-                          ),
                         ),
                       ],
                     ),
@@ -200,37 +219,28 @@ class _ShelfView extends StatelessWidget {
                 );
               }
 
-              // Group items by category (shelf)
-              final Map<String, List<ShelfItem>> groupedItems = {};
-              for (final item in effectiveItems) {
-                groupedItems.putIfAbsent(item.shelf, () => []).add(item);
-              }
-
-              final categories = groupedItems.keys.toList();
-
               return SliverPadding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 sliver: SliverList(
                   delegate: SliverChildBuilderDelegate(
                     (context, index) {
-                      final category = categories[index];
-                      final categoryItems = groupedItems[category]!;
-                      return ShelfSection(
-                        category: category,
-                        items: categoryItems,
-                        sectionIndex: index,
-                        onItemTap: (item) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text('Opening "${item.title}"...'),
-                              duration: const Duration(seconds: 1),
-                              backgroundColor: AppTheme.terracottaPrimary,
+                      final catName = visibleCategories[index];
+                      final itemCount = countsMap[catName] ?? 0;
+
+                      return ShelfCard(
+                        category: catName,
+                        itemCount: itemCount,
+                        cardIndex: index,
+                        onTap: () {
+                          Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (context) => ShelfDetailScreen(category: catName),
                             ),
                           );
                         },
                       );
                     },
-                    childCount: categories.length,
+                    childCount: visibleCategories.length,
                   ),
                 ),
               );
@@ -241,8 +251,17 @@ class _ShelfView extends StatelessWidget {
             );
           },
         ),
+        const SliverToBoxAdapter(child: SizedBox(height: 24)),
       ],
     );
+  }
+
+  String _findMatchingCategoryKey(String rawShelf) {
+    final lowerRaw = rawShelf.trim().toLowerCase();
+    for (final cat in all17Categories) {
+      if (cat.trim().toLowerCase() == lowerRaw) return cat;
+    }
+    return rawShelf;
   }
 }
 

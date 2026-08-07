@@ -31,9 +31,9 @@ class _BookRowState extends State<BookRow> {
     final iconData = AppTheme.getCategoryIcon(widget.item.shelf);
 
     return AnimatedScale(
-      scale: _isPressed ? 0.975 : 1.0,
-      duration: const Duration(milliseconds: 120),
-      curve: Curves.easeOutCubic,
+      scale: _isPressed ? 0.988 : 1.0,
+      duration: const Duration(milliseconds: 200),
+      curve: Curves.easeInOutCubic,
       child: GestureDetector(
         onTapDown: (_) => setState(() => _isPressed = true),
         onTapUp: (_) => setState(() => _isPressed = false),

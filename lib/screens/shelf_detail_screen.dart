@@ -1,0 +1,216 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:phosphoricons_flutter/phosphoricons_flutter.dart';
+import 'package:the_shelf/blocs/shelf/shelf_bloc.dart';
+import 'package:the_shelf/blocs/shelf/shelf_state.dart';
+import 'package:the_shelf/models/mock_shelf_items.dart';
+import 'package:the_shelf/theme/app_theme.dart';
+import 'package:the_shelf/widgets/book_row.dart';
+
+class ShelfDetailScreen extends StatelessWidget {
+  final String category;
+
+  const ShelfDetailScreen({
+    super.key,
+    required this.category,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final iconData = AppTheme.getCategoryIcon(category);
+
+    return Scaffold(
+      appBar: AppBar(
+        leading: IconButton(
+          icon: const Icon(PhosphorIcons.arrowLeft, color: AppTheme.deepEspressoPrimaryText),
+          onPressed: () => Navigator.of(context).pop(),
+        ),
+        title: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(iconData, size: 22, color: AppTheme.terracottaPrimary),
+            const SizedBox(width: 8),
+            Text(
+              category,
+              style: const TextStyle(
+                fontFamily: AppTheme.serifFontFamily,
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+                color: AppTheme.deepEspressoPrimaryText,
+              ),
+            ),
+          ],
+        ),
+      ),
+      body: BlocBuilder<ShelfBloc, ShelfState>(
+        builder: (context, state) {
+          if (state is ShelfLoading) {
+            return const Center(
+              child: CircularProgressIndicator(color: AppTheme.terracottaPrimary),
+            );
+          } else if (state is ShelfLoaded) {
+            // Combine state items with gated dev mock items for visual verification
+            List<ShelfItem> effectiveItems = List.from(state.items);
+            if (showMockDataInDev) {
+              final existingIds = effectiveItems.map((e) => e.id).toSet();
+              for (final mock in devMockShelfItems) {
+                if (!existingIds.contains(mock.id)) {
+                  effectiveItems.add(mock);
+                }
+              }
+            }
+
+            // Filter strictly by this screen's category
+            final shelfItems = effectiveItems
+                .where((item) => item.shelf.trim().toLowerCase() == category.trim().toLowerCase())
+                .toList();
+
+            if (shelfItems.isEmpty) {
+              return Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      iconData,
+                      size: 64,
+                      color: AppTheme.terracottaLightAccent,
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      'No Documents in $category',
+                      style: Theme.of(context).textTheme.titleLarge,
+                    ),
+                    const SizedBox(height: 8),
+                    const Text(
+                      'Tap "+ Add Item" on the home screen to import documents into this shelf.',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: AppTheme.warmRustSecondaryText,
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            }
+
+            return CustomScrollView(
+              slivers: [
+                // Category Header Banner Card
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Card(
+                      child: Padding(
+                        padding: const EdgeInsets.all(16.0),
+                        child: Row(
+                          children: [
+                            Container(
+                              width: 48,
+                              height: 48,
+                              decoration: BoxDecoration(
+                                color: AppTheme.terracottaLightAccent.withValues(alpha: 0.22),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Center(
+                                child: Icon(
+                                  iconData,
+                                  color: AppTheme.terracottaPrimary,
+                                  size: 26,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 14),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    category,
+                                    style: const TextStyle(
+                                      fontFamily: AppTheme.serifFontFamily,
+                                      fontSize: 20,
+                                      fontWeight: FontWeight.bold,
+                                      color: AppTheme.deepEspressoPrimaryText,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    '${shelfItems.length} ${shelfItems.length == 1 ? 'document' : 'documents'} stored in this shelf',
+                                    style: const TextStyle(
+                                      fontSize: 13,
+                                      color: AppTheme.warmRustSecondaryText,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+
+                // Book Rows Card List with Entrance Motion
+                SliverPadding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  sliver: SliverToBoxAdapter(
+                    child: Card(
+                      clipBehavior: Clip.antiAlias,
+                      child: ListView.separated(
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
+                        padding: EdgeInsets.zero,
+                        itemCount: shelfItems.length,
+                        separatorBuilder: (context, index) => const Divider(
+                          height: 1,
+                          thickness: 1,
+                          color: AppTheme.softWarmBorder,
+                          indent: 16,
+                          endIndent: 16,
+                        ),
+                        itemBuilder: (context, index) {
+                          final item = shelfItems[index];
+                          return TweenAnimationBuilder<double>(
+                            duration: Duration(milliseconds: 300 + (index * 50)),
+                            curve: Curves.decelerate,
+                            tween: Tween<double>(begin: 0.0, end: 1.0),
+                            builder: (context, animVal, child) {
+                              return Opacity(
+                                opacity: animVal,
+                                child: Transform.translate(
+                                  offset: Offset(0, 14 * (1 - animVal)),
+                                  child: child,
+                                ),
+                              );
+                            },
+                            child: BookRow(
+                              item: item,
+                              onTap: () {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text('Opening "${item.title}"...'),
+                                    duration: const Duration(seconds: 1),
+                                    backgroundColor: AppTheme.terracottaPrimary,
+                                  ),
+                                );
+                              },
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                  ),
+                ),
+                const SliverToBoxAdapter(child: SizedBox(height: 24)),
+              ],
+            );
+          }
+
+          return const Center(child: Text('Initialize Shelf'));
+        },
+      ),
+    );
+  }
+}
