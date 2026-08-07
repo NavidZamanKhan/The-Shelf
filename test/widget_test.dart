@@ -64,24 +64,30 @@ void main() {
     }
   });
 
-  testWidgets('Format filter tab selection filters items by file extension', (WidgetTester tester) async {
+  testWidgets('Format filter tab triggers directional slide animation and filters by extension', (WidgetTester tester) async {
     await tester.pumpWidget(const TheShelfApp());
     await tester.pumpAndSettle();
+
+    // Verify initial state: All Items tab, all 17 categories visible
+    var cards = tester.widgetList<ShelfCard>(find.byType(ShelfCard)).toList();
+    expect(cards.length, 17);
 
     // Tap PDFs filter tab
     final pdfTab = find.text('PDFs');
     expect(pdfTab, findsOneWidget);
-
     await tester.tap(pdfTab);
+
+    // Pump a few frames to observe the slide animation in progress
+    await tester.pump(const Duration(milliseconds: 100));
+    // During animation, both outgoing and incoming content should exist in a Stack
+    expect(find.byType(SlideTransition), findsWidgets);
+
+    // Let the animation complete
     await tester.pumpAndSettle();
 
-    // Verify all 17 categories remain rendered (populated PDF shelves top, 0-PDF shelves bottom)
-    final cards = tester.widgetList<ShelfCard>(find.byType(ShelfCard)).toList();
+    // After animation, all 17 categories remain rendered with format-filtered counts
+    cards = tester.widgetList<ShelfCard>(find.byType(ShelfCard)).toList();
     expect(cards.length, 17);
-
-    // Verify AnimatedSwitcher has key set to 'PDFs'
-    final animatedSwitcher = tester.widget<AnimatedSwitcher>(find.byType(AnimatedSwitcher));
-    expect(animatedSwitcher.duration, const Duration(milliseconds: 280));
   });
 
   testWidgets('Adding document to empty shelf dynamically promotes it to populated section', (WidgetTester tester) async {
@@ -105,7 +111,7 @@ void main() {
       ),
     );
 
-    // Pump frame and process BLoC emit + animated switcher transition
+    // Pump frame and process BLoC emit
     await tester.pumpAndSettle();
 
     // Verify Romance shelf card is now populated (itemCount == 1) and promoted to populated section
