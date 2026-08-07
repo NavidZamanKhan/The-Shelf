@@ -5,11 +5,13 @@ import 'package:the_shelf/theme/app_theme.dart';
 class BookRow extends StatefulWidget {
   final ShelfItem item;
   final VoidCallback? onTap;
+  final bool showShelfName;
 
   const BookRow({
     super.key,
     required this.item,
     this.onTap,
+    this.showShelfName = false,
   });
 
   @override
@@ -29,6 +31,10 @@ class _BookRowState extends State<BookRow> {
   Widget build(BuildContext context) {
     final ext = _getFileExtension(widget.item.filePath);
     final iconData = AppTheme.getCategoryIcon(widget.item.shelf);
+
+    final subtitleText = widget.showShelfName
+        ? '${widget.item.shelf} • $ext'
+        : '$ext document';
 
     return AnimatedScale(
       scale: _isPressed ? 0.988 : 1.0,
@@ -62,7 +68,7 @@ class _BookRowState extends State<BookRow> {
               ),
               const SizedBox(width: 14),
 
-              // Title & Author/Metadata
+              // Title & Metadata
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -82,7 +88,7 @@ class _BookRowState extends State<BookRow> {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      '${widget.item.shelf} • $ext',
+                      subtitleText,
                       style: const TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.w400,

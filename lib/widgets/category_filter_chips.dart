@@ -16,41 +16,46 @@ class CategoryFilterChips extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-      child: Row(
-        children: categories.map((category) {
-          final bool isSelected = selectedCategory == category;
+    return SizedBox(
+      width: double.infinity,
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.start,
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: categories.map((category) {
+            final bool isSelected = selectedCategory == category;
 
-          return GestureDetector(
-            onTap: () => onCategorySelected(category),
-            behavior: HitTestBehavior.opaque,
-            child: Container(
-              margin: const EdgeInsets.only(right: 20),
-              padding: const EdgeInsets.only(bottom: 6),
-              decoration: BoxDecoration(
-                border: Border(
-                  bottom: BorderSide(
-                    color: isSelected ? AppTheme.terracottaPrimary : Colors.transparent,
-                    width: 2.5,
+            return GestureDetector(
+              onTap: () => onCategorySelected(category),
+              behavior: HitTestBehavior.opaque,
+              child: Container(
+                margin: const EdgeInsets.only(right: 20),
+                padding: const EdgeInsets.only(bottom: 6),
+                decoration: BoxDecoration(
+                  border: Border(
+                    bottom: BorderSide(
+                      color: isSelected ? AppTheme.terracottaPrimary : Colors.transparent,
+                      width: 2.5,
+                    ),
+                  ),
+                ),
+                child: Text(
+                  category,
+                  style: TextStyle(
+                    fontFamily: isSelected ? AppTheme.serifFontFamily : null,
+                    fontSize: 14,
+                    fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                    color: isSelected
+                        ? AppTheme.deepEspressoPrimaryText
+                        : AppTheme.warmRustSecondaryText,
                   ),
                 ),
               ),
-              child: Text(
-                category,
-                style: TextStyle(
-                  fontFamily: isSelected ? AppTheme.serifFontFamily : null,
-                  fontSize: 14,
-                  fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-                  color: isSelected
-                      ? AppTheme.deepEspressoPrimaryText
-                      : AppTheme.warmRustSecondaryText,
-                ),
-              ),
-            ),
-          );
-        }).toList(),
+            );
+          }).toList(),
+        ),
       ),
     );
   }

@@ -140,16 +140,6 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 }
 
-/// Shelf view with PageView-based format filtering.
-///
-/// Each format filter tab ('All Items', 'PDFs', 'EPUBs') is a separate page
-/// in a PageView. Pages are kept alive and never unmounted during transitions,
-/// eliminating the flash/reload bug from the old AnimationController approach.
-///
-/// Supports two interaction paths:
-/// - Tapping a tab: calls pageController.animateToPage (300ms, easeOutCubic)
-/// - Finger-swiping the PageView: native 1:1 gesture tracking with
-///   physics-based snap, syncing the tab indicator via onPageChanged
 class _ShelfView extends StatelessWidget {
   final String selectedCategory;
   final ValueChanged<String> onCategorySelected;
@@ -188,6 +178,7 @@ class _ShelfView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         // App header — fixed at top, outside PageView scroll
         AppHeader(
@@ -224,17 +215,6 @@ class _ShelfView extends StatelessWidget {
   }
 }
 
-/// A single page inside the PageView representing one format filter view.
-///
-/// Each page independently:
-/// - Reads shelf state from ShelfBloc
-/// - Filters items by file extension matching the format
-/// - Sorts all 17 categories populated-first
-/// - Renders as a scrollable list of ShelfCards
-///
-/// Pages are kept alive by PageView, so ShelfCard entrance animations
-/// (TweenAnimationBuilder) only fire once on initial mount, not on every
-/// page transition.
 class _FormatShelfPage extends StatelessWidget {
   final String filterName;
   final List<String> all17Categories;
