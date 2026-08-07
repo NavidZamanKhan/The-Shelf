@@ -98,7 +98,6 @@ class _HomeScreenState extends State<HomeScreen> {
             });
           },
         ),
-        // Material FAB completely removed per non-Material design specification
         floatingActionButton: null,
       ),
     );
@@ -154,7 +153,7 @@ class _ShelfView extends StatelessWidget {
 
         const SliverToBoxAdapter(child: SizedBox(height: 12)),
 
-        // Reactive Shelf Cards Content
+        // Reactive Animated Shelf Cards Content
         BlocBuilder<ShelfBloc, ShelfState>(
           builder: (context, state) {
             if (state is ShelfLoading) {
@@ -185,12 +184,15 @@ class _ShelfView extends StatelessWidget {
               // Filter category cards shown on Home Screen based on filter tab selection
               List<String> visibleCategories;
               if (selectedCategory == 'All Items') {
-                visibleCategories = all17Categories;
+                visibleCategories = List.from(all17Categories);
               } else {
                 visibleCategories = all17Categories
                     .where((cat) => cat.trim().toLowerCase() == selectedCategory.trim().toLowerCase())
                     .toList();
               }
+
+              // Apply Populated-First Stable Sorting: Populated shelves top (count desc, alpha tie-breaker), empty shelves bottom (alpha)
+              visibleCategories = _sortCategories(visibleCategories, countsMap);
 
               if (visibleCategories.isEmpty) {
                 return SliverFillRemaining(
@@ -214,28 +216,46 @@ class _ShelfView extends StatelessWidget {
                 );
               }
 
-              return SliverPadding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                sliver: SliverList(
-                  delegate: SliverChildBuilderDelegate(
-                    (context, index) {
-                      final catName = visibleCategories[index];
-                      final itemCount = countsMap[catName] ?? 0;
+              // AnimatedSwitcher for fluid tab switch transitions
+              return SliverToBoxAdapter(
+                child: AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 280),
+                  switchInCurve: Curves.easeInOutCubic,
+                  switchOutCurve: Curves.easeInOutCubic,
+                  transitionBuilder: (child, animation) {
+                    return FadeTransition(
+                      opacity: animation,
+                      child: SlideTransition(
+                        position: Tween<Offset>(
+                          begin: const Offset(0.03, 0),
+                          end: Offset.zero,
+                        ).animate(animation),
+                        child: child,
+                      ),
+                    );
+                  },
+                  child: Padding(
+                    key: ValueKey<String>(selectedCategory),
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: Column(
+                      children: List.generate(visibleCategories.length, (index) {
+                        final catName = visibleCategories[index];
+                        final itemCount = countsMap[catName] ?? 0;
 
-                      return ShelfCard(
-                        category: catName,
-                        itemCount: itemCount,
-                        cardIndex: index,
-                        onTap: () {
-                          Navigator.of(context).push(
-                            MaterialPageRoute(
-                              builder: (context) => ShelfDetailScreen(category: catName),
-                            ),
-                          );
-                        },
-                      );
-                    },
-                    childCount: visibleCategories.length,
+                        return ShelfCard(
+                          category: catName,
+                          itemCount: itemCount,
+                          cardIndex: index,
+                          onTap: () {
+                            Navigator.of(context).push(
+                              MaterialPageRoute(
+                                builder: (context) => ShelfDetailScreen(category: catName),
+                              ),
+                            );
+                          },
+                        );
+                      }),
+                    ),
                   ),
                 ),
               );
@@ -249,6 +269,30 @@ class _ShelfView extends StatelessWidget {
         const SliverToBoxAdapter(child: SizedBox(height: 24)),
       ],
     );
+  }
+
+  /// Populated-First Stable Sorting Algorithm
+  List<String> _sortCategories(List<String> categories, Map<String, int> countsMap) {
+    final List<String> sorted = List.from(categories);
+    sorted.sort((a, b) {
+      final countA = countsMap[a] ?? 0;
+      final countB = countsMap[b] ?? 0;
+
+      // 1. Primary Sort: Populated (count > 0) vs Empty (count == 0)
+      final bool aPopulated = countA > 0;
+      final bool bPopulated = countB > 0;
+      if (aPopulated && !bPopulated) return -1;
+      if (!aPopulated && bPopulated) return 1;
+
+      // 2. Secondary Sort for Populated Shelves: Item count descending
+      if (countA != countB) {
+        return countB.compareTo(countA);
+      }
+
+      // 3. Tertiary Tie-Breaker / Empty Shelves: Alphabetical (A-Z)
+      return a.compareTo(b);
+    });
+    return sorted;
   }
 
   String _findMatchingCategoryKey(String rawShelf) {

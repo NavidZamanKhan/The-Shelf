@@ -16,7 +16,7 @@ void main() {
 
     expect(find.byType(HomeScreen), findsOneWidget);
     expect(find.byType(ShelfCard), findsWidgets);
-    // Verify FAB is removed
+    // Verify FAB is removed per non-Material design specification
     expect(find.byType(FloatingActionButton), findsNothing);
   });
 
@@ -32,42 +32,65 @@ void main() {
     await tester.pumpWidget(const TheShelfApp());
     await tester.pumpAndSettle();
 
-    // Find and tap the Science Fiction shelf card
-    final scifiCard = find.widgetWithText(ShelfCard, 'Science Fiction');
-    expect(scifiCard, findsOneWidget);
+    // Find and tap the Fantasy shelf card at top of populated section
+    final fantasyCard = find.widgetWithText(ShelfCard, 'Fantasy');
+    expect(fantasyCard, findsOneWidget);
 
-    await tester.tap(scifiCard);
+    await tester.tap(fantasyCard);
     await tester.pumpAndSettle();
 
     // Verify detail screen is displayed
     expect(find.byType(ShelfDetailScreen), findsOneWidget);
-    expect(find.text('Science Fiction'), findsWidgets);
+    expect(find.text('Fantasy'), findsWidgets);
   });
 
-  testWidgets('ShelfCard item count updates live when document is added to ShelfBloc', (WidgetTester tester) async {
+  testWidgets('Populated shelves sort to top, empty shelves sort to bottom', (WidgetTester tester) async {
+    await tester.pumpWidget(const TheShelfApp());
+    await tester.pumpAndSettle();
+
+    // Collect rendered ShelfCard categories in display order
+    final cards = tester.widgetList<ShelfCard>(find.byType(ShelfCard)).toList();
+    expect(cards.isNotEmpty, true);
+
+    // Verify populated cards come before empty cards in the list
+    bool encounteredEmpty = false;
+    for (final card in cards) {
+      if (card.itemCount == 0) {
+        encounteredEmpty = true;
+      } else {
+        // Populated card should not appear after an empty card
+        expect(encounteredEmpty, false, reason: 'Populated shelf ${card.category} appeared after empty shelf');
+      }
+    }
+  });
+
+  testWidgets('Adding document to empty shelf dynamically promotes it to populated section', (WidgetTester tester) async {
     await tester.pumpWidget(const TheShelfApp());
     await tester.pumpAndSettle();
 
     final BuildContext homeContext = tester.element(find.byType(HomeScreen));
     final shelfBloc = BlocProvider.of<ShelfBloc>(homeContext);
 
-    // Verify Fantasy card exists initially
-    final fantasyCard = find.widgetWithText(ShelfCard, 'Fantasy');
-    expect(fantasyCard, findsOneWidget);
+    // Verify Romance is empty initially
+    final List<ShelfCard> initialCards = tester.widgetList<ShelfCard>(find.byType(ShelfCard)).toList();
+    final romanceInitial = initialCards.firstWhere((c) => c.category == 'Romance');
+    expect(romanceInitial.itemCount, 0);
 
-    // Dispatch a new document import event live while sitting on the home screen
+    // Dispatch document import into Romance shelf while on home screen
     shelfBloc.add(
       const AddDocumentToShelfEvent(
-        title: 'New Magical Chronicle',
-        shelf: 'Fantasy',
-        filePath: '/docs/fantasy.pdf',
+        title: 'Pride and Prejudice',
+        shelf: 'Romance',
+        filePath: '/docs/pride.pdf',
       ),
     );
 
-    // Pump frame to process BLoC emit and trigger reactive UI rebuild
+    // Pump frame and process BLoC emit + animated switcher transition
     await tester.pumpAndSettle();
 
-    // Verify Fantasy shelf card still exists and updated reactively
-    expect(find.widgetWithText(ShelfCard, 'Fantasy'), findsOneWidget);
+    // Verify Romance shelf card is now populated (itemCount == 1) and promoted to populated section
+    final List<ShelfCard> updatedCards = tester.widgetList<ShelfCard>(find.byType(ShelfCard)).toList();
+    final romanceUpdated = updatedCards.firstWhere((c) => c.category == 'Romance');
+    expect(romanceUpdated.itemCount, 1);
   });
 }
