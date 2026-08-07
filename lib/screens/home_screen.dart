@@ -27,6 +27,44 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   int _currentNavIndex = 0;
   String _selectedCategory = 'All Items';
+  late PageController _pageController;
+
+  static const List<String> _filterTabs = ['All Items', 'PDFs', 'EPUBs'];
+
+  @override
+  void initState() {
+    super.initState();
+    _pageController = PageController(initialPage: 0);
+  }
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
+  }
+
+  void _onTabTapped(String category) {
+    final targetIndex = _filterTabs.indexOf(category);
+    if (targetIndex == -1) return;
+
+    setState(() {
+      _selectedCategory = category;
+    });
+
+    _pageController.animateToPage(
+      targetIndex,
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeOutCubic,
+    );
+  }
+
+  void _onPageSwiped(int pageIndex) {
+    if (pageIndex >= 0 && pageIndex < _filterTabs.length) {
+      setState(() {
+        _selectedCategory = _filterTabs[pageIndex];
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -79,11 +117,9 @@ class _HomeScreenState extends State<HomeScreen> {
           children: [
             _ShelfView(
               selectedCategory: _selectedCategory,
-              onCategorySelected: (category) {
-                setState(() {
-                  _selectedCategory = category;
-                });
-              },
+              onCategorySelected: _onTabTapped,
+              pageController: _pageController,
+              onPageSwiped: _onPageSwiped,
             ),
             const _PlaceholderView(title: 'Collections', iconData: PhosphorIcons.bookmarkSimple),
             const _PlaceholderView(title: 'Insights', iconData: PhosphorIcons.sparkle),
@@ -104,29 +140,29 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 }
 
-/// Directional slide transition widget for tab-driven content switching.
+/// Shelf view with PageView-based format filtering.
 ///
-/// Tracks the previous tab index to determine slide direction:
-/// - Moving to a higher tab index → old content slides out LEFT, new slides in from RIGHT
-/// - Moving to a lower tab index → old content slides out RIGHT, new slides in from LEFT
+/// Each format filter tab ('All Items', 'PDFs', 'EPUBs') is a separate page
+/// in a PageView. Pages are kept alive and never unmounted during transitions,
+/// eliminating the flash/reload bug from the old AnimationController approach.
 ///
-/// Uses 350ms duration with Curves.easeOutCubic — longer than the old 280ms because
-/// a full-width slide needs more time to read clearly. easeOutCubic gives a natural
-/// deceleration (fast start, gentle landing) that feels like physical page momentum.
-class _ShelfView extends StatefulWidget {
+/// Supports two interaction paths:
+/// - Tapping a tab: calls pageController.animateToPage (300ms, easeOutCubic)
+/// - Finger-swiping the PageView: native 1:1 gesture tracking with
+///   physics-based snap, syncing the tab indicator via onPageChanged
+class _ShelfView extends StatelessWidget {
   final String selectedCategory;
   final ValueChanged<String> onCategorySelected;
+  final PageController pageController;
+  final ValueChanged<int> onPageSwiped;
 
   const _ShelfView({
     required this.selectedCategory,
     required this.onCategorySelected,
+    required this.pageController,
+    required this.onPageSwiped,
   });
 
-  @override
-  State<_ShelfView> createState() => _ShelfViewState();
-}
-
-class _ShelfViewState extends State<_ShelfView> with SingleTickerProviderStateMixin {
   static const List<String> _filterTabs = ['All Items', 'PDFs', 'EPUBs'];
 
   static const List<String> all17Categories = [
@@ -149,247 +185,125 @@ class _ShelfViewState extends State<_ShelfView> with SingleTickerProviderStateMi
     'Miscellaneous',
   ];
 
-  late AnimationController _slideController;
-  late Animation<Offset> _outgoingSlide;
-  late Animation<Offset> _incomingSlide;
-  late Animation<double> _outgoingFade;
-  late Animation<double> _incomingFade;
-
-  String _displayedCategory = 'All Items';
-  String? _previousCategory;
-  bool _isAnimating = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _displayedCategory = widget.selectedCategory;
-    _slideController = AnimationController(
-      duration: const Duration(milliseconds: 350),
-      vsync: this,
-    );
-    _setupAnimations(slideForward: true);
-  }
-
-  void _setupAnimations({required bool slideForward}) {
-    // slideForward = true means moving to a higher tab index:
-    //   outgoing slides from center → left (Offset(0,0) → Offset(-1,0))
-    //   incoming slides from right → center (Offset(1,0) → Offset(0,0))
-    // slideForward = false means moving to a lower tab index:
-    //   outgoing slides from center → right (Offset(0,0) → Offset(1,0))
-    //   incoming slides from left → center (Offset(-1,0) → Offset(0,0))
-    final double outEnd = slideForward ? -1.0 : 1.0;
-    final double inStart = slideForward ? 1.0 : -1.0;
-
-    final curved = CurvedAnimation(
-      parent: _slideController,
-      curve: Curves.easeOutCubic,
-    );
-
-    _outgoingSlide = Tween<Offset>(
-      begin: Offset.zero,
-      end: Offset(outEnd, 0),
-    ).animate(curved);
-
-    _incomingSlide = Tween<Offset>(
-      begin: Offset(inStart, 0),
-      end: Offset.zero,
-    ).animate(curved);
-
-    _outgoingFade = Tween<double>(begin: 1.0, end: 0.0).animate(
-      CurvedAnimation(
-        parent: _slideController,
-        curve: const Interval(0.0, 0.5, curve: Curves.easeOut),
-      ),
-    );
-
-    _incomingFade = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(
-        parent: _slideController,
-        curve: const Interval(0.3, 1.0, curve: Curves.easeIn),
-      ),
-    );
-  }
-
-  @override
-  void didUpdateWidget(covariant _ShelfView oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (oldWidget.selectedCategory != widget.selectedCategory) {
-      _animateToNewTab(oldWidget.selectedCategory, widget.selectedCategory);
-    }
-  }
-
-  void _animateToNewTab(String fromCategory, String toCategory) {
-    if (_isAnimating) {
-      // If mid-animation, snap to the end and start a new transition
-      _slideController.value = 1.0;
-    }
-
-    final fromIndex = _filterTabs.indexOf(fromCategory);
-    final toIndex = _filterTabs.indexOf(toCategory);
-    final slideForward = toIndex > fromIndex;
-
-    setState(() {
-      _previousCategory = fromCategory;
-      _isAnimating = true;
-    });
-
-    _slideController.reset();
-    _setupAnimations(slideForward: slideForward);
-
-    _slideController.forward().then((_) {
-      if (mounted) {
-        setState(() {
-          _displayedCategory = toCategory;
-          _previousCategory = null;
-          _isAnimating = false;
-        });
-      }
-    });
-  }
-
-  @override
-  void dispose() {
-    _slideController.dispose();
-    super.dispose();
-  }
-
   @override
   Widget build(BuildContext context) {
-    return CustomScrollView(
-      slivers: [
-        // Reusable compact app header with integrated Add Item action button
+    return Column(
+      children: [
+        // App header — fixed at top, outside PageView scroll
         AppHeader(
           title: 'The Shelf',
           onAddItemPressed: () => ImportBottomSheetModal.show(context),
+          isSliver: false,
         ),
 
-        // Category filter underline tabs row
-        SliverToBoxAdapter(
-          child: CategoryFilterChips(
-            selectedCategory: widget.selectedCategory,
-            onCategorySelected: widget.onCategorySelected,
+        // Category filter underline tabs — fixed, outside PageView scroll
+        CategoryFilterChips(
+          selectedCategory: selectedCategory,
+          onCategorySelected: onCategorySelected,
+        ),
+
+        const SizedBox(height: 12),
+
+        // PageView: each page is an independently scrollable shelf list
+        Expanded(
+          child: PageView.builder(
+            controller: pageController,
+            onPageChanged: onPageSwiped,
+            itemCount: _filterTabs.length,
+            itemBuilder: (context, pageIndex) {
+              final filterName = _filterTabs[pageIndex];
+              return _FormatShelfPage(
+                filterName: filterName,
+                all17Categories: all17Categories,
+              );
+            },
           ),
         ),
-
-        const SliverToBoxAdapter(child: SizedBox(height: 12)),
-
-        // Reactive Shelf Cards Content with directional slide transition
-        BlocBuilder<ShelfBloc, ShelfState>(
-          builder: (context, state) {
-            if (state is ShelfLoading) {
-              return const SliverFillRemaining(
-                child: Center(
-                  child: CircularProgressIndicator(color: AppTheme.terracottaPrimary),
-                ),
-              );
-            } else if (state is ShelfLoaded) {
-              // Combine real state items with gated dev mock items for visual verification
-              List<ShelfItem> effectiveItems = List.from(state.items);
-              if (showMockDataInDev) {
-                final existingIds = effectiveItems.map((e) => e.id).toSet();
-                for (final mock in devMockShelfItems) {
-                  if (!existingIds.contains(mock.id)) {
-                    effectiveItems.add(mock);
-                  }
-                }
-              }
-
-              if (_isAnimating && _previousCategory != null) {
-                // During animation: render both outgoing and incoming content in a Stack
-                return SliverToBoxAdapter(
-                  child: AnimatedBuilder(
-                    animation: _slideController,
-                    builder: (context, _) {
-                      return ClipRect(
-                        child: Stack(
-                          children: [
-                            // Outgoing content (old tab) sliding away
-                            SlideTransition(
-                              position: _outgoingSlide,
-                              child: FadeTransition(
-                                opacity: _outgoingFade,
-                                child: _buildShelfList(
-                                  effectiveItems,
-                                  _previousCategory!,
-                                ),
-                              ),
-                            ),
-                            // Incoming content (new tab) sliding in
-                            SlideTransition(
-                              position: _incomingSlide,
-                              child: FadeTransition(
-                                opacity: _incomingFade,
-                                child: _buildShelfList(
-                                  effectiveItems,
-                                  widget.selectedCategory,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      );
-                    },
-                  ),
-                );
-              }
-
-              // Static state (no animation in progress)
-              return SliverToBoxAdapter(
-                child: _buildShelfList(
-                  effectiveItems,
-                  _displayedCategory,
-                ),
-              );
-            }
-
-            return const SliverFillRemaining(
-              child: Center(child: Text('Initialize Shelf')),
-            );
-          },
-        ),
-        const SliverToBoxAdapter(child: SizedBox(height: 24)),
       ],
     );
   }
+}
 
-  /// Builds the shelf card list for a given format filter, with populated-first sorting.
-  Widget _buildShelfList(List<ShelfItem> effectiveItems, String filterCategory) {
-    // Compute category item counts filtered by selected format extension
-    final Map<String, int> countsMap = {};
-    for (final item in effectiveItems) {
-      if (_matchesFormatFilter(item, filterCategory)) {
-        final normalizedKey = _findMatchingCategoryKey(item.shelf);
-        countsMap[normalizedKey] = (countsMap[normalizedKey] ?? 0) + 1;
-      }
-    }
+/// A single page inside the PageView representing one format filter view.
+///
+/// Each page independently:
+/// - Reads shelf state from ShelfBloc
+/// - Filters items by file extension matching the format
+/// - Sorts all 17 categories populated-first
+/// - Renders as a scrollable list of ShelfCards
+///
+/// Pages are kept alive by PageView, so ShelfCard entrance animations
+/// (TweenAnimationBuilder) only fire once on initial mount, not on every
+/// page transition.
+class _FormatShelfPage extends StatelessWidget {
+  final String filterName;
+  final List<String> all17Categories;
 
-    // Sort all 17 categories populated-first based on matching format counts
-    final List<String> sortedCategories = _sortCategories(
-      List.from(all17Categories),
-      countsMap,
-    );
+  const _FormatShelfPage({
+    required this.filterName,
+    required this.all17Categories,
+  });
 
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: Column(
-        children: List.generate(sortedCategories.length, (index) {
-          final catName = sortedCategories[index];
-          final itemCount = countsMap[catName] ?? 0;
+  @override
+  Widget build(BuildContext context) {
+    return BlocBuilder<ShelfBloc, ShelfState>(
+      builder: (context, state) {
+        if (state is ShelfLoading) {
+          return const Center(
+            child: CircularProgressIndicator(color: AppTheme.terracottaPrimary),
+          );
+        } else if (state is ShelfLoaded) {
+          // Combine real state items with gated dev mock items for visual verification
+          List<ShelfItem> effectiveItems = List.from(state.items);
+          if (showMockDataInDev) {
+            final existingIds = effectiveItems.map((e) => e.id).toSet();
+            for (final mock in devMockShelfItems) {
+              if (!existingIds.contains(mock.id)) {
+                effectiveItems.add(mock);
+              }
+            }
+          }
 
-          return ShelfCard(
-            category: catName,
-            itemCount: itemCount,
-            cardIndex: index,
-            onTap: () {
-              Navigator.of(context).push(
-                MaterialPageRoute(
-                  builder: (context) => ShelfDetailScreen(category: catName),
-                ),
+          // Compute category item counts filtered by this page's format
+          final Map<String, int> countsMap = {};
+          for (final item in effectiveItems) {
+            if (_matchesFormatFilter(item, filterName)) {
+              final normalizedKey = _findMatchingCategoryKey(item.shelf);
+              countsMap[normalizedKey] = (countsMap[normalizedKey] ?? 0) + 1;
+            }
+          }
+
+          // Sort all 17 categories populated-first based on matching format counts
+          final List<String> sortedCategories = _sortCategories(
+            List.from(all17Categories),
+            countsMap,
+          );
+
+          return ListView.builder(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            itemCount: sortedCategories.length,
+            itemBuilder: (context, index) {
+              final catName = sortedCategories[index];
+              final itemCount = countsMap[catName] ?? 0;
+
+              return ShelfCard(
+                category: catName,
+                itemCount: itemCount,
+                cardIndex: index,
+                onTap: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (context) => ShelfDetailScreen(category: catName),
+                    ),
+                  );
+                },
               );
             },
           );
-        }),
-      ),
+        }
+
+        return const Center(child: Text('Initialize Shelf'));
+      },
     );
   }
 
