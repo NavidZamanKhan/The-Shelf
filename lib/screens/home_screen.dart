@@ -8,6 +8,7 @@ import 'package:the_shelf/blocs/shelf/shelf_bloc.dart';
 import 'package:the_shelf/blocs/shelf/shelf_event.dart';
 import 'package:the_shelf/blocs/shelf/shelf_state.dart';
 import 'package:the_shelf/models/mock_shelf_items.dart';
+import 'package:the_shelf/screens/search_screen.dart';
 import 'package:the_shelf/screens/shelf_detail_screen.dart';
 import 'package:the_shelf/theme/app_theme.dart';
 import 'package:the_shelf/widgets/app_bottom_navigation_bar.dart';
@@ -29,7 +30,7 @@ class _HomeScreenState extends State<HomeScreen> {
   String _selectedCategory = 'All Items';
   late PageController _pageController;
 
-  static const List<String> _filterTabs = ['All Items', 'PDFs', 'EPUBs'];
+  static const List<String> _filterTabs = ['All Items', 'Books', 'PDFs'];
 
   @override
   void initState() {
@@ -153,7 +154,7 @@ class _ShelfView extends StatelessWidget {
     required this.onPageSwiped,
   });
 
-  static const List<String> _filterTabs = ['All Items', 'PDFs', 'EPUBs'];
+  static const List<String> _filterTabs = ['All Items', 'Books', 'PDFs'];
 
   static const List<String> all17Categories = [
     'Fantasy',
@@ -184,6 +185,11 @@ class _ShelfView extends StatelessWidget {
         AppHeader(
           title: 'The Shelf',
           onAddItemPressed: () => ImportBottomSheetModal.show(context),
+          onSearchPressed: () {
+            Navigator.of(context).push(
+              MaterialPageRoute(builder: (context) => const SearchScreen()),
+            );
+          },
           isSliver: false,
         ),
 

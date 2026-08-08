@@ -7,6 +7,7 @@ import 'package:the_shelf/blocs/shelf/shelf_event.dart';
 import 'package:the_shelf/blocs/shelf/shelf_state.dart';
 import 'package:the_shelf/main.dart';
 import 'package:the_shelf/screens/home_screen.dart';
+import 'package:the_shelf/screens/search_screen.dart';
 import 'package:the_shelf/screens/shelf_detail_screen.dart';
 import 'package:the_shelf/widgets/shelf_card.dart';
 
@@ -29,6 +30,18 @@ void main() {
     expect(plusButton, findsOneWidget);
   });
 
+  testWidgets('Tapping header search icon opens SearchScreen', (WidgetTester tester) async {
+    await tester.pumpWidget(const TheShelfApp());
+    await tester.pumpAndSettle();
+
+    final searchButton = find.byIcon(PhosphorIcons.magnifyingGlass).first;
+    await tester.tap(searchButton);
+    await tester.pumpAndSettle();
+
+    expect(find.byType(SearchScreen), findsOneWidget);
+    expect(find.text('Search Your Library'), findsOneWidget);
+  });
+
   testWidgets('Tapping a ShelfCard navigates to ShelfDetailScreen without duplicate title', (WidgetTester tester) async {
     await tester.pumpWidget(const TheShelfApp());
     await tester.pumpAndSettle();
@@ -49,55 +62,53 @@ void main() {
     await tester.pumpWidget(const TheShelfApp());
     await tester.pumpAndSettle();
 
-    // Collect rendered ShelfCard categories in display order (only visible ones)
+    // Collect rendered ShelfCard categories in display order
     final cards = tester.widgetList<ShelfCard>(find.byType(ShelfCard)).toList();
     expect(cards.isNotEmpty, true);
 
-    // All visible cards at the top should be populated (count > 0)
-    // since populated-first sorting puts them first
+    // All visible cards at top should be populated (count > 0)
     for (final card in cards) {
-      // The first visible cards should all be populated
-      if (card.itemCount == 0) break; // Once we hit empty, stop checking
+      if (card.itemCount == 0) break;
       expect(card.itemCount, greaterThan(0));
     }
   });
 
-  testWidgets('PageView present and tab tap triggers page animation', (WidgetTester tester) async {
+  testWidgets('Format filter tabs show All Items -> Books -> PDFs', (WidgetTester tester) async {
     await tester.pumpWidget(const TheShelfApp());
     await tester.pumpAndSettle();
 
-    // Verify PageView is present in the widget tree
-    expect(find.byType(PageView), findsOneWidget);
+    expect(find.text('All Items'), findsOneWidget);
+    expect(find.text('Books'), findsOneWidget);
+    expect(find.text('PDFs'), findsOneWidget);
 
-    // Verify initial All Items page shows ShelfCards
-    expect(find.byType(ShelfCard), findsWidgets);
-
-    // Tap PDFs filter tab
-    final pdfTab = find.text('PDFs');
-    expect(pdfTab, findsOneWidget);
-    await tester.tap(pdfTab);
-
-    // Let the page animation complete
+    // Tap Books tab
+    await tester.tap(find.text('Books'));
     await tester.pumpAndSettle();
 
-    // After switching to PDFs page, ShelfCards are still visible
-    // (ListView.builder only renders visible items, so count may differ)
     expect(find.byType(ShelfCard), findsWidgets);
   });
 
-  testWidgets('PageView supports finger-swipe gesture to switch pages', (WidgetTester tester) async {
+  testWidgets('SearchScreen performs title and shelf name matching', (WidgetTester tester) async {
     await tester.pumpWidget(const TheShelfApp());
     await tester.pumpAndSettle();
 
-    // Verify we start on page 0 (All Items)
-    expect(find.byType(PageView), findsOneWidget);
-
-    // Simulate a left swipe (drag from right to left) to go to page 1 (PDFs)
-    await tester.drag(find.byType(PageView), const Offset(-400, 0));
+    // Open SearchScreen
+    final searchButton = find.byIcon(PhosphorIcons.magnifyingGlass).first;
+    await tester.tap(searchButton);
     await tester.pumpAndSettle();
 
-    // After swipe, ShelfCards are rendered on the PDFs page
-    expect(find.byType(ShelfCard), findsWidgets);
+    // Type query "Dune"
+    await tester.enterText(find.byType(TextField), 'Dune');
+    await tester.pumpAndSettle();
+
+    // Verify Dune document result is displayed with shelf context subtitle
+    expect(find.text('Science Fiction • PDF'), findsOneWidget);
+
+    // Enter zero results query
+    await tester.enterText(find.byType(TextField), 'xyz999nonexistent');
+    await tester.pumpAndSettle();
+
+    expect(find.text('No Documents Found'), findsOneWidget);
   });
 
   testWidgets('Adding document to empty shelf updates BLoC state reactively', (WidgetTester tester) async {
@@ -107,7 +118,6 @@ void main() {
     final BuildContext homeContext = tester.element(find.byType(HomeScreen));
     final shelfBloc = BlocProvider.of<ShelfBloc>(homeContext);
 
-    // Capture initial state item count
     final initialState = shelfBloc.state;
     expect(initialState, isA<ShelfLoaded>());
     final initialItemCount = (initialState as ShelfLoaded).items.length;
@@ -121,16 +131,13 @@ void main() {
       ),
     );
 
-    // Pump to process BLoC state emission
     await tester.pumpAndSettle();
 
-    // Verify BLoC state now contains one more item
     final updatedState = shelfBloc.state;
     expect(updatedState, isA<ShelfLoaded>());
     final updatedItems = (updatedState as ShelfLoaded).items;
     expect(updatedItems.length, initialItemCount + 1);
 
-    // Verify the new item is in the Romance shelf
     final romanceItems = updatedItems.where((item) =>
         item.shelf.toLowerCase() == 'romance').toList();
     expect(romanceItems.length, 1);
