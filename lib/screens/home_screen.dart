@@ -125,10 +125,18 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
 
                   // Tab 1: Collections placeholder screen
-                  _buildPlaceholderScreen('Collections', PhosphorIcons.bookmarkSimple, activePalette),
+                  _buildPlaceholderScreen(
+                    'Collections',
+                    PhosphorIcons.bookmarkSimple,
+                    activePalette,
+                  ),
 
                   // Tab 2: Insights placeholder screen
-                  _buildPlaceholderScreen('Insights', PhosphorIcons.sparkle, activePalette),
+                  _buildPlaceholderScreen(
+                    'Insights',
+                    PhosphorIcons.sparkle,
+                    activePalette,
+                  ),
 
                   // Tab 3: Settings screen with theme switcher
                   const SettingsScreen(),
@@ -174,10 +182,7 @@ class _HomeScreenState extends State<HomeScreen> {
           const SizedBox(height: 8),
           Text(
             'Coming Soon',
-            style: TextStyle(
-              fontSize: 14,
-              color: activePalette.secondaryText,
-            ),
+            style: TextStyle(fontSize: 14, color: activePalette.secondaryText),
           ),
         ],
       ),
@@ -243,12 +248,16 @@ class _ShelfView extends StatelessWidget {
       builder: (context, state) {
         if (state is ShelfLoading) {
           return Center(
-            child: CircularProgressIndicator(color: activePalette.primaryAccent),
+            child: CircularProgressIndicator(
+              color: activePalette.primaryAccent,
+            ),
           );
         }
 
         // Extract items safely from loaded state or default to empty
-        final List<ShelfItem> rawItems = (state is ShelfLoaded) ? state.items : [];
+        final List<ShelfItem> rawItems = (state is ShelfLoaded)
+            ? state.items
+            : [];
 
         // Combine real state items with gated dev mock items for visual verification
         List<ShelfItem> effectiveItems = List.from(rawItems);
@@ -277,7 +286,7 @@ class _ShelfView extends StatelessWidget {
         );
 
         return ListView.builder(
-          padding: const EdgeInsets.symmetric(horizontal: 16),
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
           itemCount: sortedCategories.length,
           itemBuilder: (context, index) {
             final catName = sortedCategories[index];
@@ -328,7 +337,10 @@ class _ShelfView extends StatelessWidget {
   }
 
   /// Populated-first stable sort algorithm
-  List<String> _sortCategories(List<String> categories, Map<String, int> countsMap) {
+  List<String> _sortCategories(
+    List<String> categories,
+    Map<String, int> countsMap,
+  ) {
     final List<String> populated = [];
     final List<String> empty = [];
 
