@@ -74,15 +74,16 @@ class AppHeader extends StatelessWidget {
 
   List<Widget> _buildActions(AppColorPalette palette) {
     return [
-      IconButton(
-        icon: Icon(
-          PhosphorIcons.plusCircle,
-          size: 24,
-          color: palette.primaryAccent,
+      if (onAddItemPressed != null)
+        IconButton(
+          icon: Icon(
+            PhosphorIcons.plusCircle,
+            size: 24,
+            color: palette.primaryAccent,
+          ),
+          tooltip: 'Add Document',
+          onPressed: onAddItemPressed,
         ),
-        tooltip: 'Add Document',
-        onPressed: onAddItemPressed,
-      ),
       IconButton(
         icon: Icon(
           PhosphorIcons.magnifyingGlass,

@@ -102,16 +102,14 @@ class _HomeScreenState extends State<HomeScreen> {
         bottom: false,
         child: Column(
           children: [
-            // Static App Header (contextual plus trigger, magGlass triggers SearchScreen)
+            // Static App Header (magGlass triggers SearchScreen)
             AppHeader(
               isSliver: false,
-              onAddItemPressed: () {
-                if (_selectedNavIndex == 1) {
-                  CreateCollectionModal.show(context);
-                } else {
-                  ImportBottomSheetModal.show(context);
-                }
-              },
+              onAddItemPressed: _selectedNavIndex == 1
+                  ? null
+                  : () {
+                      ImportBottomSheetModal.show(context);
+                    },
               onSearchPressed: () {
                 Navigator.of(context).push(
                   MaterialPageRoute(builder: (context) => const SearchScreen()),
@@ -434,8 +432,8 @@ class _CollectionsView extends StatelessWidget {
                       ),
                     ],
                   ),
-                  OutlinedButton.icon(
-                    onPressed: isAtCap
+                  GestureDetector(
+                    onTap: isAtCap
                         ? () {
                             ScaffoldMessenger.of(context).showSnackBar(
                               const SnackBar(
@@ -445,31 +443,27 @@ class _CollectionsView extends StatelessWidget {
                             );
                           }
                         : () => CreateCollectionModal.show(context),
-                    icon: Icon(
-                      PhosphorIcons.plus,
-                      size: 15,
-                      color: isAtCap ? activePalette.secondaryText : activePalette.primaryAccent,
-                    ),
-                    label: Text(
-                      'New Collection',
-                      style: TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
-                        color: isAtCap ? activePalette.secondaryText : activePalette.primaryAccent,
+                    behavior: HitTestBehavior.opaque,
+                    child: Container(
+                      width: 38,
+                      height: 38,
+                      decoration: BoxDecoration(
+                        color: isAtCap
+                            ? activePalette.subtleBadgeBackground
+                            : activePalette.primaryAccent.withOpacity(0.06),
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: isAtCap ? activePalette.cardBorder : activePalette.primaryAccent,
+                          width: 1.2,
+                        ),
                       ),
-                    ),
-                    style: OutlinedButton.styleFrom(
-                      backgroundColor: isAtCap
-                          ? activePalette.subtleBadgeBackground
-                          : activePalette.primaryAccent.withOpacity(0.04),
-                      side: BorderSide(
-                        color: isAtCap ? activePalette.cardBorder : activePalette.primaryAccent,
-                        width: 1.2,
+                      child: Center(
+                        child: Icon(
+                          PhosphorIcons.plus,
+                          size: 20,
+                          color: isAtCap ? activePalette.secondaryText : activePalette.primaryAccent,
+                        ),
                       ),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                     ),
                   ),
                 ],
@@ -512,7 +506,7 @@ class _CollectionsView extends StatelessWidget {
                             ),
                             const SizedBox(height: 8),
                             Text(
-                              'Tap "+ New Collection" above to create custom groupings of your documents across genre shelves.',
+                              'Tap the "+" button above to create custom groupings of your documents across genre shelves.',
                               textAlign: TextAlign.center,
                               style: TextStyle(
                                 fontSize: 14,
