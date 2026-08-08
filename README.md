@@ -1,123 +1,98 @@
-# The Shelf Mobile Application (`The-Shelf`)
+# The Shelf (`The-Shelf`)
 
-Cross-platform Flutter client for **The Shelf**, a personal library and document management application that organizes books, articles, and digital files into auto-categorized shelves using on-device machine learning.
-
----
-
-## Technical Overview
-
-The application features a lightweight, zero-dependency on-device text classification engine implemented entirely in Pure Dart:
-
-- **Pure Dart Inference Engine**: Executes sublinear TF-IDF vectorization, L2 normalization, linear transformation ($z = W \cdot v + b$), and Softmax probability computation natively in Dart without ONNX Runtime, TFLite, or native C++ FFI binaries.
-- **Sub-Millisecond Latency**: Evaluates text predictions in less than 0.1 milliseconds per document directly on the client thread.
-- **Multilingual Support**: Supports full Unicode text tokenization for English and Bengali document metadata.
-- **Thread-Safe Model Lifecycle**: Implements memoized asynchronous asset loading (`ShelfClassifierService.instance.ensureInitialized()`) to prevent race conditions during startup or document import.
-- **Document Text Extraction**: Integrates `read_pdf_text` for extracting plain text content from imported PDF documents across iOS and Android.
-- **Interactive Classifier Verification**: Includes a built-in interactive debugger screen (`ClassifierDebugScreen`) for real-time model verification against pre-set sample inputs and custom text prompts.
+A personal digital library application built with Flutter and Dart, designed to organize, search, and manage digital documents across 17 auto-categorized shelves using on-device machine learning and local SQLite persistence.
 
 ---
 
-## Repository Structure
+## Key Features
+
+- **Local SQLite Persistence**: Full document persistence using `sqflite` (`DocumentRepository` layer) with indexed queries across document titles and category shelves.
+- **Global Multi-Shelf Search**: Full-text and category matching with in-search shelf filter chips, instant query responses, and location context display.
+- **Extensible Theme System**: Multi-palette theme engine supporting Terracotta (Warm Cream) and Teal (Fresh Mint) palettes with instant live application and `shared_preferences` storage.
+- **Native Gesture Navigation**: Smooth horizontal `PageView` tab switching (`All Items` -> `Books` -> `PDFs`) supporting real-time finger swipes and tap triggers without page reload flashing.
+- **Pure Dart On-Device Machine Learning**: Zero-dependency TF-IDF vectorization and Softmax classification engine evaluating document metadata in under 0.1ms natively in Dart.
+- **Automated Shelf Organization**: Automatic classification of imported PDF and EPUB documents into 17 target shelves with populated-first shelf ordering.
+
+---
+
+## Technical Architecture
 
 ```text
-the_shelf/
-├── assets/
-│   └── models/
-│       └── tfidf_model.json           # Model parameters (vocabulary, IDF, coef, intercept)
-├── lib/
-│   ├── main.dart                      # Application root and service initialization
-│   ├── screens/
-│   │   ├── home_screen.dart           # Tab navigation, floating action button, import modal
-│   │   └── classifier_debug_screen.dart # Interactive model verification UI
-│   └── services/
-│       └── shelf_classifier_service.dart # Pure Dart TF-IDF + Logistic Regression engine
-├── test/
-│   ├── widget_test.dart               # Widget smoke tests
-│   └── classifier_service_test.dart   # Automated classifier integration tests
-└── pubspec.yaml                       # Flutter package dependencies and asset declarations
+lib/
+├── blocs/
+│   ├── document_import/     # Document picker & text extraction BLoC
+│   ├── shelf/               # Shelf items state management BLoC
+│   └── theme/               # Active theme palette Cubit with SharedPreferences
+├── models/
+│   ├── mock_shelf_items.dart # Development mock data
+│   └── shelf_state.dart      # Shelf item data models
+├── screens/
+│   ├── home_screen.dart     # PageView shelf list navigation
+│   ├── search_screen.dart   # Title & category search interface
+│   ├── settings_screen.dart # Theme selection & app preferences
+│   └── shelf_detail_screen.dart # Shelf content detail view
+├── services/
+│   ├── document_repository.dart    # SQLite persistence layer via sqflite
+│   ├── document_import_service.dart # File picking & PDF text extraction
+│   └── shelf_classifier_service.dart # Pure Dart TF-IDF classification engine
+├── theme/
+│   ├── app_color_palette.dart # Palette definitions (Terracotta, Teal)
+│   └── app_theme.dart        # Dynamic ThemeData generation
+└── widgets/                  # Reusable UI components (ShelfCard, BookRow, AppHeader)
 ```
 
 ---
 
-## Setup and Development
+## Database Schema (`documents` Table)
+
+```sql
+CREATE TABLE documents (
+  id TEXT PRIMARY KEY,
+  title TEXT NOT NULL,
+  shelf TEXT NOT NULL,
+  file_path TEXT NOT NULL,
+  added_at TEXT NOT NULL
+);
+
+CREATE INDEX idx_documents_shelf ON documents(shelf);
+CREATE INDEX idx_documents_title ON documents(title);
+```
+
+---
+
+## Development Setup
 
 ### Prerequisites
 
-- Flutter SDK version `^3.12.2` or later
+- Flutter SDK `^3.12.2` or later
 - Dart SDK included with Flutter
-- Xcode (for iOS Simulator / iOS build)
-- Android Studio / Android SDK (for Android build)
+- macOS, iOS, or Android development toolchain
 
-### 1. Dependency Resolution
+### Installation & Commands
 
-Retrieve all pub packages specified in `pubspec.yaml`:
+1. **Retrieve dependencies**:
+   ```bash
+   flutter pub get
+   ```
 
-```bash
-flutter pub get
-```
+2. **Run static analysis**:
+   ```bash
+   flutter analyze
+   ```
 
-### 2. Static Code Analysis
+3. **Run test suite**:
+   ```bash
+   flutter test
+   ```
 
-Run static analysis to verify code quality and rule compliance:
-
-```bash
-flutter analyze
-```
-
-### 3. Automated Test Suite
-
-Execute unit, widget, and classifier service integration tests:
-
-```bash
-flutter test
-```
-
-### 4. Running the Application
-
-Launch the application on your target platform:
-
-#### macOS Desktop Target (Fastest Launch)
-```bash
-flutter run -d macos
-```
-
-#### iOS Simulator Target
-```bash
-flutter emulators --launch apple_ios_simulator
-flutter run -d iphone
-```
-
-#### Android Emulator Target
-```bash
-flutter emulators --launch Pixel_9_Pro_XL
-flutter run -d android
-```
+4. **Launch on macOS Desktop**:
+   ```bash
+   flutter run -d macos
+   ```
 
 ---
 
-## Architecture & Service Layer API
-
-### Service Usage Example
-
-```dart
-import 'package:the_shelf/services/shelf_classifier_service.dart';
-
-// 1. Ensure model parameters are loaded from rootBundle asset
-await ShelfClassifierService.instance.ensureInitialized();
-
-// 2. Perform synchronous classification on text
-final ClassificationResult result = ShelfClassifierService.instance.classify(
-  'A dark wizard threatens the magical kingdom with ancient dark spells'
-);
-
-print('Predicted Shelf: ${result.label}');
-print('Confidence: ${(result.confidence * 100).toStringAsFixed(2)}%');
-print('Latency: ${result.latencyMs} ms');
-```
-
----
-
-## Target Shelf Categories (17 Shelves)
+## Supported Target Shelves (17 Categories)
 
 1. Fantasy
 2. Historical Fiction
@@ -125,14 +100,14 @@ print('Latency: ${result.latencyMs} ms');
 4. Romance
 5. Science Fiction
 6. Horror
-7. Thriller
-8. Young Adult
-9. Graphic Novels & Comics
-10. Anime & Manga
-11. Children's
-12. Poetry
-13. History
-14. Biography & Memoir
-15. Philosophy
-16. Self-Help & Personal Development
+7. Graphic Novels & Comics
+8. Anime & Manga
+9. Poetry
+10. History
+11. Biography & Memoir
+12. Philosophy
+13. Self-Help & Personal Development
+14. School/Reference
+15. Classics
+16. Religion & Spirituality
 17. Miscellaneous
