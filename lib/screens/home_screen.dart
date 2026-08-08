@@ -432,8 +432,14 @@ class _CollectionsView extends StatelessWidget {
                       ),
                     ],
                   ),
-                  GestureDetector(
-                    onTap: isAtCap
+                  IconButton(
+                    icon: Icon(
+                      PhosphorIcons.plus,
+                      size: 24,
+                      color: isAtCap ? activePalette.secondaryText : activePalette.primaryAccent,
+                    ),
+                    tooltip: 'Create Collection',
+                    onPressed: isAtCap
                         ? () {
                             ScaffoldMessenger.of(context).showSnackBar(
                               const SnackBar(
@@ -443,28 +449,6 @@ class _CollectionsView extends StatelessWidget {
                             );
                           }
                         : () => CreateCollectionModal.show(context),
-                    behavior: HitTestBehavior.opaque,
-                    child: Container(
-                      width: 38,
-                      height: 38,
-                      decoration: BoxDecoration(
-                        color: isAtCap
-                            ? activePalette.subtleBadgeBackground
-                            : activePalette.primaryAccent.withOpacity(0.06),
-                        shape: BoxShape.circle,
-                        border: Border.all(
-                          color: isAtCap ? activePalette.cardBorder : activePalette.primaryAccent,
-                          width: 1.2,
-                        ),
-                      ),
-                      child: Center(
-                        child: Icon(
-                          PhosphorIcons.plus,
-                          size: 20,
-                          color: isAtCap ? activePalette.secondaryText : activePalette.primaryAccent,
-                        ),
-                      ),
-                    ),
                   ),
                 ],
               ),

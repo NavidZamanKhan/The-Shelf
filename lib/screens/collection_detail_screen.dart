@@ -318,32 +318,6 @@ class _CollectionDetailScreenState extends State<CollectionDetailScreen> {
                                   ],
                                 ),
                               ),
-                               OutlinedButton.icon(
-                                onPressed: () {
-                                  CollectionItemPickerSheet.show(
-                                    context: context,
-                                    collectionId: _currentCollection.id,
-                                    existingDocumentIds: collectionDocIds,
-                                  );
-                                },
-                                icon: Icon(PhosphorIcons.plus, size: 15, color: accentColor),
-                                label: Text(
-                                  'Add Items',
-                                  style: TextStyle(
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w600,
-                                    color: accentColor,
-                                  ),
-                                ),
-                                style: OutlinedButton.styleFrom(
-                                  backgroundColor: accentColor.withOpacity(0.06),
-                                  side: BorderSide(color: accentColor, width: 1.2),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(20),
-                                  ),
-                                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                                ),
-                              ),
                             ],
                           ),
                         ),
@@ -385,37 +359,10 @@ class _CollectionDetailScreenState extends State<CollectionDetailScreen> {
                               ),
                               const SizedBox(height: 8),
                               Text(
-                                'Tap "+ Add Items" to organize documents here',
+                                'Tap "+" above to organize documents here',
                                 style: TextStyle(
                                   fontSize: 14,
                                   color: activePalette.secondaryText,
-                                ),
-                              ),
-                              const SizedBox(height: 20),
-                              OutlinedButton.icon(
-                                onPressed: () {
-                                  CollectionItemPickerSheet.show(
-                                    context: context,
-                                    collectionId: _currentCollection.id,
-                                    existingDocumentIds: collectionDocIds,
-                                  );
-                                },
-                                icon: Icon(PhosphorIcons.plus, size: 16, color: accentColor),
-                                label: Text(
-                                  'Add Items Now',
-                                  style: TextStyle(
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w600,
-                                    color: accentColor,
-                                  ),
-                                ),
-                                style: OutlinedButton.styleFrom(
-                                  backgroundColor: accentColor.withOpacity(0.06),
-                                  side: BorderSide(color: accentColor, width: 1.2),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(20),
-                                  ),
-                                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
                                 ),
                               ),
                             ],
