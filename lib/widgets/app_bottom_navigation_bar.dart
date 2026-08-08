@@ -39,7 +39,6 @@ class AppBottomNavigationBar extends StatelessWidget {
       child: SafeArea(
         top: false,
         child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceAround,
           children: List.generate(_items.length, (index) {
             final item = _items[index];
             final bool isSelected = selectedIndex == index;
@@ -47,43 +46,47 @@ class AppBottomNavigationBar extends StatelessWidget {
                 ? activePalette.primaryAccent
                 : activePalette.navInactiveColor;
 
-            return InkWell(
-              onTap: () => onDestinationSelected(index),
-              splashColor: Colors.transparent,
-              highlightColor: Colors.transparent,
-              child: SizedBox(
-                width: 72,
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      item.icon,
-                      size: 22,
-                      color: color,
-                    ),
-                    const SizedBox(height: 3),
-                    Text(
-                      item.label,
-                      style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
+            return Expanded(
+              child: InkWell(
+                onTap: () => onDestinationSelected(index),
+                splashColor: Colors.transparent,
+                highlightColor: Colors.transparent,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 2.0),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        item.icon,
+                        size: 22,
                         color: color,
                       ),
-                    ),
-                    const SizedBox(height: 4),
-
-                    // Active 4px circular dot indicator beneath active item
-                    Container(
-                      width: 4,
-                      height: 4,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: isSelected
-                            ? activePalette.primaryAccent
-                            : Colors.transparent,
+                      const SizedBox(height: 3),
+                      Text(
+                        item.label,
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
+                          color: color,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
-                    ),
-                  ],
+                      const SizedBox(height: 4),
+
+                      // Active 4px circular dot indicator beneath active item
+                      Container(
+                        width: 4,
+                        height: 4,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: isSelected
+                              ? activePalette.primaryAccent
+                              : Colors.transparent,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             );
