@@ -158,27 +158,31 @@ class ShelfDetailScreen extends StatelessWidget {
                           ),
                         ),
                         const SizedBox(width: 16),
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              category,
-                              style: TextStyle(
-                                fontFamily: AppTheme.serifFontFamily,
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                                color: activePalette.primaryText,
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                category,
+                                style: TextStyle(
+                                  fontFamily: AppTheme.serifFontFamily,
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                  color: activePalette.primaryText,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
                               ),
-                            ),
-                            const SizedBox(height: 2),
-                            Text(
-                              '${shelfItems.length} ${shelfItems.length == 1 ? 'item' : 'items'} total',
-                              style: TextStyle(
-                                fontSize: 13,
-                                color: activePalette.secondaryText,
+                              const SizedBox(height: 2),
+                              Text(
+                                '${shelfItems.length} ${shelfItems.length == 1 ? 'item' : 'items'} total',
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  color: activePalette.secondaryText,
+                                ),
                               ),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
                       ],
                     ),
