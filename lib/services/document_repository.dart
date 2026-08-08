@@ -7,7 +7,7 @@ import 'package:the_shelf/blocs/shelf/shelf_state.dart';
 class DocumentRepository {
   static final DocumentRepository instance = DocumentRepository._internal();
   static const String _tableName = 'documents';
-  static const int _dbVersion = 1;
+  static const int _dbVersion = 2;
 
   Database? _db;
 
@@ -35,7 +35,12 @@ class DocumentRepository {
       version: _dbVersion,
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
+      onConfigure: _onConfigure,
     );
+  }
+
+  Future<void> _onConfigure(Database db) async {
+    await db.execute('PRAGMA foreign_keys = ON;');
   }
 
   Future<void> _onCreate(Database db, int version) async {
@@ -51,13 +56,40 @@ class DocumentRepository {
 
     await db.execute('CREATE INDEX idx_documents_shelf ON $_tableName(shelf);');
     await db.execute('CREATE INDEX idx_documents_title ON $_tableName(title);');
+
+    await _createCollectionTables(db);
   }
 
   Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
-    // Version 1 schema upgrade scaffold for future non-destructive database migrations
     if (oldVersion < 2) {
-      // Future migrations (e.g. adding last_opened_at column) will go here
+      await _createCollectionTables(db);
     }
+  }
+
+  Future<void> _createCollectionTables(Database db) async {
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS collections (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        color_hex TEXT NOT NULL,
+        icon_name TEXT NOT NULL,
+        created_at TEXT NOT NULL
+      )
+    ''');
+
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS collection_documents (
+        collection_id TEXT NOT NULL,
+        document_id TEXT NOT NULL,
+        added_at TEXT NOT NULL,
+        PRIMARY KEY (collection_id, document_id),
+        FOREIGN KEY (collection_id) REFERENCES collections (id) ON DELETE CASCADE,
+        FOREIGN KEY (document_id) REFERENCES documents (id) ON DELETE CASCADE
+      )
+    ''');
+
+    await db.execute('CREATE INDEX IF NOT EXISTS idx_col_docs_collection ON collection_documents(collection_id);');
+    await db.execute('CREATE INDEX IF NOT EXISTS idx_col_docs_document ON collection_documents(document_id);');
   }
 
   /// Inserts a new document record into SQLite

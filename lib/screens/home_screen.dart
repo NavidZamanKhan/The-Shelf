@@ -1,10 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:phosphoricons_flutter/phosphoricons_flutter.dart';
+import 'package:the_shelf/blocs/collection/collection_bloc.dart';
+import 'package:the_shelf/blocs/collection/collection_state.dart';
 import 'package:the_shelf/blocs/shelf/shelf_bloc.dart';
 import 'package:the_shelf/blocs/shelf/shelf_state.dart';
 import 'package:the_shelf/blocs/theme/theme_cubit.dart';
+import 'package:the_shelf/models/collection_model.dart';
 import 'package:the_shelf/models/mock_shelf_items.dart';
+import 'package:the_shelf/screens/collection_detail_screen.dart';
 import 'package:the_shelf/screens/search_screen.dart';
 import 'package:the_shelf/screens/settings_screen.dart';
 import 'package:the_shelf/screens/shelf_detail_screen.dart';
@@ -13,6 +17,8 @@ import 'package:the_shelf/theme/app_theme.dart';
 import 'package:the_shelf/widgets/app_bottom_navigation_bar.dart';
 import 'package:the_shelf/widgets/app_header.dart';
 import 'package:the_shelf/widgets/category_filter_chips.dart';
+import 'package:the_shelf/widgets/collection_card.dart';
+import 'package:the_shelf/widgets/create_collection_modal.dart';
 import 'package:the_shelf/widgets/import_bottom_sheet_modal.dart';
 import 'package:the_shelf/widgets/shelf_card.dart';
 
@@ -96,11 +102,15 @@ class _HomeScreenState extends State<HomeScreen> {
         bottom: false,
         child: Column(
           children: [
-            // Static App Header (plus triggers ImportModal, magGlass triggers SearchScreen)
+            // Static App Header (contextual plus trigger, magGlass triggers SearchScreen)
             AppHeader(
               isSliver: false,
               onAddItemPressed: () {
-                ImportBottomSheetModal.show(context);
+                if (_selectedNavIndex == 1) {
+                  CreateCollectionModal.show(context);
+                } else {
+                  ImportBottomSheetModal.show(context);
+                }
               },
               onSearchPressed: () {
                 Navigator.of(context).push(
@@ -124,12 +134,8 @@ class _HomeScreenState extends State<HomeScreen> {
                     activePalette: activePalette,
                   ),
 
-                  // Tab 1: Collections placeholder screen
-                  _buildPlaceholderScreen(
-                    'Collections',
-                    PhosphorIcons.bookmarkSimple,
-                    activePalette,
-                  ),
+                  // Tab 1: Collections screen
+                  const _CollectionsView(),
 
                   // Tab 2: Insights placeholder screen
                   _buildPlaceholderScreen(
@@ -365,3 +371,189 @@ class _ShelfView extends StatelessWidget {
     return [...populated, ...empty];
   }
 }
+
+class _CollectionsView extends StatelessWidget {
+  const _CollectionsView();
+
+  @override
+  Widget build(BuildContext context) {
+    final activePalette = context.watch<ThemeCubit>().state;
+
+    return BlocConsumer<CollectionBloc, CollectionState>(
+      listener: (context, state) {
+        if (state is CollectionLoaded && state.notificationMessage != null) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(state.notificationMessage!),
+              behavior: SnackBarBehavior.floating,
+              duration: const Duration(seconds: 2),
+            ),
+          );
+        }
+      },
+      builder: (context, state) {
+        if (state is CollectionLoading) {
+          return Center(
+            child: CircularProgressIndicator(
+              color: activePalette.primaryAccent,
+            ),
+          );
+        }
+
+        final collections = (state is CollectionLoaded) ? state.collections : <CollectionModel>[];
+        final isAtCap = collections.length >= 20;
+
+        return Column(
+          children: [
+            // Top Section Bar: Counter & Create Button
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 16, 20, 12),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Custom Collections',
+                        style: TextStyle(
+                          fontFamily: AppTheme.serifFontFamily,
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                          color: activePalette.primaryText,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        '${collections.length} / 20 created',
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w500,
+                          color: isAtCap ? Colors.redAccent : activePalette.secondaryText,
+                        ),
+                      ),
+                    ],
+                  ),
+                  OutlinedButton.icon(
+                    onPressed: isAtCap
+                        ? () {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('Maximum limit of 20 collections reached.'),
+                                behavior: SnackBarBehavior.floating,
+                              ),
+                            );
+                          }
+                        : () => CreateCollectionModal.show(context),
+                    icon: Icon(
+                      PhosphorIcons.plus,
+                      size: 15,
+                      color: isAtCap ? activePalette.secondaryText : activePalette.primaryAccent,
+                    ),
+                    label: Text(
+                      'New Collection',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: isAtCap ? activePalette.secondaryText : activePalette.primaryAccent,
+                      ),
+                    ),
+                    style: OutlinedButton.styleFrom(
+                      backgroundColor: isAtCap
+                          ? activePalette.subtleBadgeBackground
+                          : activePalette.primaryAccent.withOpacity(0.04),
+                      side: BorderSide(
+                        color: isAtCap ? activePalette.cardBorder : activePalette.primaryAccent,
+                        width: 1.2,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            // Main Body: Empty State vs Collection Cards
+            Expanded(
+              child: collections.isEmpty
+                  ? Center(
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 32.0),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Container(
+                              width: 80,
+                              height: 80,
+                              decoration: BoxDecoration(
+                                color: activePalette.primaryAccent.withOpacity(0.12),
+                                borderRadius: AppTheme.asymmetricBadgeRadius,
+                              ),
+                              child: Center(
+                                child: Icon(
+                                  PhosphorIcons.bookmarkSimple,
+                                  size: 40,
+                                  color: activePalette.primaryAccent,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 20),
+                            Text(
+                              'No Collections Yet',
+                              style: TextStyle(
+                                fontFamily: AppTheme.serifFontFamily,
+                                fontSize: 20,
+                                fontWeight: FontWeight.bold,
+                                color: activePalette.primaryText,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              'Tap "+ New Collection" above to create custom groupings of your documents across genre shelves.',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                fontSize: 14,
+                                height: 1.4,
+                                color: activePalette.secondaryText,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    )
+                  : ListView.builder(
+                      padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
+                      itemCount: collections.length,
+                      itemBuilder: (context, index) {
+                        final collection = collections[index];
+                        return CollectionCard(
+                          collection: collection,
+                          onTap: () {
+                            Navigator.of(context).push(
+                              MaterialPageRoute(
+                                builder: (context) => CollectionDetailScreen(
+                                  collection: collection,
+                                ),
+                              ),
+                            );
+                          },
+                          onMoreTap: () {
+                            CreateCollectionModal.show(
+                              context,
+                              initialCollection: collection,
+                            );
+                          },
+                        );
+                      },
+                    ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+}
+

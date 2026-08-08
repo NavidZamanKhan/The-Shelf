@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:the_shelf/blocs/collection/collection_bloc.dart';
+import 'package:the_shelf/blocs/collection/collection_event.dart';
 import 'package:the_shelf/blocs/document_import/document_import_bloc.dart';
 import 'package:the_shelf/blocs/shelf/shelf_bloc.dart';
 import 'package:the_shelf/blocs/shelf/shelf_event.dart';
@@ -29,6 +31,9 @@ class TheShelfApp extends StatelessWidget {
         ),
         BlocProvider<ShelfBloc>(
           create: (context) => ShelfBloc()..add(const LoadShelfItemsEvent()),
+        ),
+        BlocProvider<CollectionBloc>(
+          create: (context) => CollectionBloc()..add(const LoadCollections()),
         ),
         BlocProvider<ThemeCubit>(
           create: (context) => ThemeCubit()..loadTheme(),
