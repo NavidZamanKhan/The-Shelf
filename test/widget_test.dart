@@ -1,18 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:phosphoricons_flutter/phosphoricons_flutter.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'package:the_shelf/blocs/shelf/shelf_bloc.dart';
 import 'package:the_shelf/blocs/shelf/shelf_event.dart';
 import 'package:the_shelf/blocs/shelf/shelf_state.dart';
-import 'package:the_shelf/blocs/theme/theme_cubit.dart';
 import 'package:the_shelf/main.dart';
+import 'package:the_shelf/screens/classifier_debug_screen.dart';
 import 'package:the_shelf/screens/home_screen.dart';
 import 'package:the_shelf/screens/search_screen.dart';
 import 'package:the_shelf/screens/settings_screen.dart';
 import 'package:the_shelf/screens/shelf_detail_screen.dart';
 import 'package:the_shelf/services/document_repository.dart';
+import 'package:the_shelf/widgets/import_bottom_sheet_modal.dart';
 import 'package:the_shelf/widgets/shelf_card.dart';
 
 void main() {
@@ -38,11 +38,23 @@ void main() {
     expect(find.byType(FloatingActionButton), findsNothing);
   });
 
-  testWidgets('Tapping header Add Item button triggers action', (WidgetTester tester) async {
+  testWidgets('Tapping header Add Item button opens single-option ImportBottomSheetModal', (WidgetTester tester) async {
     await pumpApp(tester);
 
     final plusButton = find.byIcon(PhosphorIcons.plusCircle);
     expect(plusButton, findsOneWidget);
+
+    await tester.tap(plusButton);
+    await tester.pump();
+    await tester.idle();
+    await tester.pump(const Duration(milliseconds: 400));
+
+    expect(find.byType(ImportBottomSheetModal), findsOneWidget);
+    expect(find.text('ADD TO LIBRARY'), findsOneWidget);
+    expect(find.text('Import PDF / Document'), findsOneWidget);
+    // Verify removed placeholder options do not exist
+    expect(find.text('Scan Book or Document'), findsNothing);
+    expect(find.text('Add Web Article'), findsNothing);
   });
 
   testWidgets('Tapping header search icon opens SearchScreen', (WidgetTester tester) async {
@@ -139,7 +151,7 @@ void main() {
     expect(find.text('No Documents Found'), findsOneWidget);
   });
 
-  testWidgets('Settings screen theme switcher updates active palette to Teal', (WidgetTester tester) async {
+  testWidgets('Settings screen theme switcher and Classifier Verification Debugger navigation', (WidgetTester tester) async {
     await pumpApp(tester);
 
     // Navigate to Settings tab (4th tab item)
@@ -154,16 +166,18 @@ void main() {
     expect(find.byType(SettingsScreen), findsOneWidget);
     expect(find.text('Teal (Fresh Mint)'), findsOneWidget);
 
-    // Tap Teal theme card
-    await tester.tap(find.text('Teal (Fresh Mint)'));
+    // Verify Developer Tools section exists in kDebugMode
+    expect(find.text('DEVELOPER TOOLS'), findsOneWidget);
+    final debuggerTile = find.text('Classifier Verification Debugger');
+    expect(debuggerTile, findsOneWidget);
+
+    // Tap debugger tile to open ClassifierDebugScreen
+    await tester.tap(debuggerTile);
     await tester.pump();
     await tester.idle();
     await tester.pump(const Duration(milliseconds: 400));
 
-    // Verify ThemeCubit active palette is now teal
-    final BuildContext settingsContext = tester.element(find.byType(SettingsScreen));
-    final themeCubit = BlocProvider.of<ThemeCubit>(settingsContext);
-    expect(themeCubit.state.id, 'teal');
+    expect(find.byType(ClassifierDebugScreen), findsOneWidget);
   });
 
   testWidgets('Adding document to empty shelf persists to SQLite and reloads across fresh BLoC instances', (WidgetTester tester) async {

@@ -1,20 +1,24 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:phosphoricons_flutter/phosphoricons_flutter.dart';
 import 'package:the_shelf/blocs/document_import/document_import_bloc.dart';
 import 'package:the_shelf/blocs/document_import/document_import_event.dart';
-import 'package:the_shelf/screens/classifier_debug_screen.dart';
-import 'package:the_shelf/services/shelf_classifier_service.dart';
+import 'package:the_shelf/blocs/theme/theme_cubit.dart';
+import 'package:the_shelf/theme/app_theme.dart';
 
-/// Reusable import bottom sheet modal widget.
+/// Bespoke compact single-option bottom sheet modal for document import.
 class ImportBottomSheetModal extends StatelessWidget {
   const ImportBottomSheetModal({super.key});
 
   static Future<void> show(BuildContext context) {
+    final activePalette = context.read<ThemeCubit>().state;
+
     return showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
+      backgroundColor: activePalette.cardBackground,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
       builder: (modalContext) {
         return BlocProvider.value(
@@ -27,90 +31,113 @@ class ImportBottomSheetModal extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+    final activePalette = context.watch<ThemeCubit>().state;
 
     return SafeArea(
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
-        child: FutureBuilder<void>(
-          future: ShelfClassifierService.instance.ensureInitialized(),
-          builder: (context, snapshot) {
-            final bool isReady = snapshot.connectionState == ConnectionState.done;
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Top Drag Handle Indicator
+            Center(
+              child: Container(
+                width: 36,
+                height: 4,
+                margin: const EdgeInsets.only(bottom: 20),
+                decoration: BoxDecoration(
+                  color: activePalette.cardBorder,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
 
-            return Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  width: 40,
-                  height: 4,
-                  margin: const EdgeInsets.only(bottom: 20),
-                  decoration: BoxDecoration(
-                    color: theme.colorScheme.outlineVariant,
-                    borderRadius: BorderRadius.circular(2),
+            // Section Label
+            Text(
+              'ADD TO LIBRARY',
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.bold,
+                letterSpacing: 1.2,
+                color: activePalette.secondaryText,
+              ),
+            ),
+            const SizedBox(height: 12),
+
+            // Tailored Single-Option Card
+            InkWell(
+              onTap: () {
+                Navigator.pop(context);
+                context.read<DocumentImportBloc>().add(const PickAndExtractPdfEvent());
+              },
+              borderRadius: AppTheme.asymmetricCardRadius,
+              child: Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: activePalette.background,
+                  borderRadius: AppTheme.asymmetricCardRadius,
+                  border: Border.all(
+                    color: activePalette.cardBorder,
+                    width: 1.0,
                   ),
                 ),
-                if (!isReady)
-                  const Padding(
-                    padding: EdgeInsets.symmetric(vertical: 8.0),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        SizedBox(
-                          width: 16,
-                          height: 16,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        ),
-                        SizedBox(width: 8),
-                        Text('Loading classifier model...'),
-                      ],
-                    ),
-                  ),
-                ListTile(
-                  leading: const Icon(Icons.picture_as_pdf_outlined),
-                  title: const Text('Import PDF / Document'),
-                  subtitle: const Text('Add files from your device storage'),
-                  onTap: () {
-                    Navigator.pop(context);
-                    context.read<DocumentImportBloc>().add(const PickAndExtractPdfEvent());
-                  },
-                ),
-                ListTile(
-                  leading: const Icon(Icons.center_focus_weak_outlined),
-                  title: const Text('Scan Book or Document'),
-                  subtitle: const Text('Use camera to scan physical pages'),
-                  onTap: () => Navigator.pop(context),
-                ),
-                ListTile(
-                  leading: const Icon(Icons.link_outlined),
-                  title: const Text('Add Web Article'),
-                  subtitle: const Text('Save articles or URL documents'),
-                  onTap: () => Navigator.pop(context),
-                ),
-                const Divider(),
-                ListTile(
-                  leading: const Icon(Icons.bug_report_outlined),
-                  title: const Text('Classifier Verification Debugger'),
-                  subtitle: const Text('Test on-device text classifier predictions'),
-                  trailing: isReady
-                      ? const Icon(Icons.check_circle, color: Colors.green, size: 18)
-                      : const SizedBox(
-                          width: 14,
-                          height: 14,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        ),
-                  onTap: () {
-                    Navigator.pop(context);
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => const ClassifierDebugScreen(),
+                child: Row(
+                  children: [
+                    // Icon Badge
+                    Container(
+                      width: 44,
+                      height: 44,
+                      decoration: BoxDecoration(
+                        gradient: activePalette.badgeGradient,
+                        borderRadius: AppTheme.asymmetricBadgeRadius,
                       ),
-                    );
-                  },
+                      child: Center(
+                        child: Icon(
+                          PhosphorIcons.filePlus,
+                          color: activePalette.primaryText,
+                          size: 22,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 14),
+
+                    // Option Titles
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Import PDF / Document',
+                            style: TextStyle(
+                              fontFamily: AppTheme.serifFontFamily,
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              color: activePalette.primaryText,
+                            ),
+                          ),
+                          const SizedBox(height: 3),
+                          Text(
+                            'Add PDF or digital files from device storage',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: activePalette.secondaryText,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    Icon(
+                      PhosphorIcons.caretRightBold,
+                      size: 16,
+                      color: activePalette.secondaryText,
+                    ),
+                  ],
                 ),
-              ],
-            );
-          },
+              ),
+            ),
+          ],
         ),
       ),
     );

@@ -1,7 +1,9 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:phosphoricons_flutter/phosphoricons_flutter.dart';
 import 'package:the_shelf/blocs/theme/theme_cubit.dart';
+import 'package:the_shelf/screens/classifier_debug_screen.dart';
 import 'package:the_shelf/theme/app_color_palette.dart';
 import 'package:the_shelf/theme/app_theme.dart';
 
@@ -199,6 +201,88 @@ class SettingsScreen extends StatelessWidget {
                   ],
                 ),
               ),
+
+              // Developer Tools Section (Gated in kDebugMode)
+              if (kDebugMode) ...[
+                const SizedBox(height: 24),
+                Text(
+                  'DEVELOPER TOOLS',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 1.2,
+                    color: activePalette.secondaryText,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                GestureDetector(
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const ClassifierDebugScreen(),
+                      ),
+                    );
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: activePalette.cardBackground,
+                      borderRadius: AppTheme.asymmetricCardRadius,
+                      border: Border.all(color: activePalette.cardBorder, width: 1.0),
+                    ),
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 44,
+                          height: 44,
+                          decoration: BoxDecoration(
+                            gradient: activePalette.badgeGradient,
+                            borderRadius: AppTheme.asymmetricBadgeRadius,
+                          ),
+                          child: Center(
+                            child: Icon(
+                              PhosphorIcons.bug,
+                              color: activePalette.primaryText,
+                              size: 22,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 14),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Classifier Verification Debugger',
+                                style: TextStyle(
+                                  fontFamily: AppTheme.serifFontFamily,
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                  color: activePalette.primaryText,
+                                ),
+                              ),
+                              const SizedBox(height: 3),
+                              Text(
+                                'Test on-device text classifier predictions',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: activePalette.secondaryText,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        Icon(
+                          PhosphorIcons.caretRightBold,
+                          size: 16,
+                          color: activePalette.secondaryText,
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
             ],
           ),
         );
