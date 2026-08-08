@@ -59,16 +59,21 @@ class _CollectionDetailScreenState extends State<CollectionDetailScreen> {
                 CreateCollectionModal.show(context, initialCollection: _currentCollection);
               },
               child: Container(
-                margin: const EdgeInsets.only(bottom: 8),
+                margin: const EdgeInsets.only(bottom: 12),
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                 decoration: BoxDecoration(
-                  color: activePalette.subtleBadgeBackground,
+                  color: Colors.transparent,
                   borderRadius: AppTheme.asymmetricCardRadius,
+                  border: Border.all(
+                    color: activePalette.cardBorder,
+                    width: 1.2,
+                  ),
                 ),
                 child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Icon(PhosphorIcons.pencil, color: activePalette.primaryText, size: 20),
-                    const SizedBox(width: 12),
+                    const SizedBox(width: 10),
                     Text(
                       'Edit Collection',
                       style: TextStyle(
@@ -90,13 +95,18 @@ class _CollectionDetailScreenState extends State<CollectionDetailScreen> {
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                 decoration: BoxDecoration(
-                  color: Colors.redAccent.withOpacity(0.1),
+                  color: Colors.transparent,
                   borderRadius: AppTheme.asymmetricCardRadius,
+                  border: Border.all(
+                    color: Colors.redAccent.withOpacity(0.8),
+                    width: 1.2,
+                  ),
                 ),
                 child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     const Icon(PhosphorIcons.trash, color: Colors.redAccent, size: 20),
-                    const SizedBox(width: 12),
+                    const SizedBox(width: 10),
                     const Text(
                       'Delete Collection',
                       style: TextStyle(
