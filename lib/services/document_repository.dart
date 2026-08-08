@@ -21,8 +21,8 @@ class DocumentRepository {
   }
 
   Future<Database> _initDatabase() async {
-    // Initialize FFI for desktop platforms (Windows, Linux, macOS dev FFI)
-    if (Platform.isWindows || Platform.isLinux) {
+    // Initialize FFI for desktop platforms (macOS, Windows, Linux)
+    if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
       sqfliteFfiInit();
       databaseFactory = databaseFactoryFfi;
     }

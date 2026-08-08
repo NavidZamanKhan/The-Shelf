@@ -175,7 +175,7 @@ void main() {
     await tester.tap(debuggerTile);
     await tester.pump();
     await tester.idle();
-    await tester.pump(const Duration(milliseconds: 400));
+    await tester.pump(const Duration(milliseconds: 600));
 
     expect(find.byType(ClassifierDebugScreen), findsOneWidget);
   });

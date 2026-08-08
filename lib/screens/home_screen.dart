@@ -1,23 +1,41 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:phosphoricons_flutter/phosphoricons_flutter.dart';
-import 'package:the_shelf/blocs/document_import/document_import_bloc.dart';
-import 'package:the_shelf/blocs/document_import/document_import_event.dart';
-import 'package:the_shelf/blocs/document_import/document_import_state.dart';
 import 'package:the_shelf/blocs/shelf/shelf_bloc.dart';
-import 'package:the_shelf/blocs/shelf/shelf_event.dart';
 import 'package:the_shelf/blocs/shelf/shelf_state.dart';
 import 'package:the_shelf/blocs/theme/theme_cubit.dart';
 import 'package:the_shelf/models/mock_shelf_items.dart';
 import 'package:the_shelf/screens/search_screen.dart';
 import 'package:the_shelf/screens/settings_screen.dart';
 import 'package:the_shelf/screens/shelf_detail_screen.dart';
+import 'package:the_shelf/theme/app_color_palette.dart';
+import 'package:the_shelf/theme/app_theme.dart';
 import 'package:the_shelf/widgets/app_bottom_navigation_bar.dart';
 import 'package:the_shelf/widgets/app_header.dart';
 import 'package:the_shelf/widgets/category_filter_chips.dart';
 import 'package:the_shelf/widgets/import_bottom_sheet_modal.dart';
-import 'package:the_shelf/widgets/import_confirmation_sheet.dart';
 import 'package:the_shelf/widgets/shelf_card.dart';
+
+/// All 17 target shelf categories specified in design requirements
+const List<String> all17Categories = [
+  'Fantasy',
+  'Historical Fiction',
+  'Mystery',
+  'Romance',
+  'Science Fiction',
+  'Horror',
+  'Thriller',
+  'Young Adult',
+  'Graphic Novels & Comics',
+  'Anime & Manga',
+  'Children\'s',
+  'Poetry',
+  'History',
+  'Biography & Memoir',
+  'Philosophy',
+  'Self-Help & Personal Development',
+  'Miscellaneous',
+];
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -27,16 +45,16 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  int _currentNavIndex = 0;
-  String _selectedCategory = 'All Items';
-  late PageController _pageController;
+  int _selectedNavIndex = 0;
+  int _selectedFilterIndex = 0;
+  late final PageController _pageController;
 
-  static const List<String> _filterTabs = ['All Items', 'Books', 'PDFs'];
+  static const List<String> _formatTabs = ['All Items', 'Books', 'PDFs'];
 
   @override
   void initState() {
     super.initState();
-    _pageController = PageController(initialPage: 0);
+    _pageController = PageController(initialPage: _selectedFilterIndex);
   }
 
   @override
@@ -45,256 +63,240 @@ class _HomeScreenState extends State<HomeScreen> {
     super.dispose();
   }
 
-  void _onTabTapped(String category) {
-    final targetIndex = _filterTabs.indexOf(category);
-    if (targetIndex == -1) return;
-
+  void _onFilterTabSelected(int index) {
     setState(() {
-      _selectedCategory = category;
+      _selectedFilterIndex = index;
     });
-
     _pageController.animateToPage(
-      targetIndex,
+      index,
       duration: const Duration(milliseconds: 300),
-      curve: Curves.easeOutCubic,
+      curve: Curves.easeInOut,
     );
   }
 
-  void _onPageSwiped(int pageIndex) {
-    if (pageIndex >= 0 && pageIndex < _filterTabs.length) {
-      setState(() {
-        _selectedCategory = _filterTabs[pageIndex];
-      });
-    }
+  void _onPageChanged(int index) {
+    setState(() {
+      _selectedFilterIndex = index;
+    });
+  }
+
+  void _onBottomNavSelected(int index) {
+    setState(() {
+      _selectedNavIndex = index;
+    });
   }
 
   @override
   Widget build(BuildContext context) {
     final activePalette = context.watch<ThemeCubit>().state;
 
-    return BlocListener<DocumentImportBloc, DocumentImportState>(
-      listener: (context, state) async {
-        if (state is DocumentImportSuccess) {
-          final summary = state.summary;
-          final result = await showModalBottomSheet<Map<String, dynamic>>(
-            context: context,
-            isScrollControlled: true,
-            shape: const RoundedRectangleBorder(
-              borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-            ),
-            builder: (modalContext) => ImportConfirmationSheet(summary: summary),
-          );
-
-          if (!context.mounted) return;
-
-          if (result != null && result['confirmed'] == true) {
-            final String title = result['title'];
-            final String shelf = result['shelf'];
-            context.read<ShelfBloc>().add(
-                  AddDocumentToShelfEvent(
-                    title: title,
-                    shelf: shelf,
-                    filePath: summary.filePath,
-                  ),
-                );
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text('Added "$title" to [$shelf] shelf!'),
-                backgroundColor: activePalette.primaryAccent,
-              ),
-            );
-          }
-          context.read<DocumentImportBloc>().add(const ResetImportEvent());
-        } else if (state is DocumentImportFailure) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Error importing document: ${state.errorMessage}'),
-              backgroundColor: Colors.redAccent,
-            ),
-          );
-          context.read<DocumentImportBloc>().add(const ResetImportEvent());
-        }
-      },
-      child: Scaffold(
-        backgroundColor: activePalette.background,
-        body: IndexedStack(
-          index: _currentNavIndex,
+    return Scaffold(
+      backgroundColor: activePalette.background,
+      body: SafeArea(
+        bottom: false,
+        child: Column(
           children: [
-            _ShelfView(
-              selectedCategory: _selectedCategory,
-              onCategorySelected: _onTabTapped,
-              pageController: _pageController,
-              onPageSwiped: _onPageSwiped,
+            // Static App Header (plus triggers ImportModal, magGlass triggers SearchScreen)
+            AppHeader(
+              isSliver: false,
+              onAddItemPressed: () {
+                ImportBottomSheetModal.show(context);
+              },
+              onSearchPressed: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(builder: (context) => const SearchScreen()),
+                );
+              },
             ),
-            const _PlaceholderView(title: 'Collections', iconData: PhosphorIcons.bookmarkSimple),
-            const _PlaceholderView(title: 'Insights', iconData: PhosphorIcons.sparkle),
-            const SettingsScreen(),
+
+            // Tab navigation body or Settings tab
+            Expanded(
+              child: IndexedStack(
+                index: _selectedNavIndex,
+                children: [
+                  // Tab 0: Main Shelf PageView navigation
+                  _ShelfView(
+                    selectedFilterIndex: _selectedFilterIndex,
+                    formatTabs: _formatTabs,
+                    pageController: _pageController,
+                    onFilterTabSelected: _onFilterTabSelected,
+                    onPageChanged: _onPageChanged,
+                    activePalette: activePalette,
+                  ),
+
+                  // Tab 1: Collections placeholder screen
+                  _buildPlaceholderScreen('Collections', PhosphorIcons.bookmarkSimple, activePalette),
+
+                  // Tab 2: Insights placeholder screen
+                  _buildPlaceholderScreen('Insights', PhosphorIcons.sparkle, activePalette),
+
+                  // Tab 3: Settings screen with theme switcher
+                  const SettingsScreen(),
+                ],
+              ),
+            ),
           ],
         ),
-        bottomNavigationBar: AppBottomNavigationBar(
-          selectedIndex: _currentNavIndex,
-          onDestinationSelected: (index) {
-            setState(() {
-              _currentNavIndex = index;
-            });
-          },
-        ),
-        floatingActionButton: null,
+      ),
+
+      // Custom non-Material bottom navigation footer bar
+      bottomNavigationBar: AppBottomNavigationBar(
+        selectedIndex: _selectedNavIndex,
+        onDestinationSelected: _onBottomNavSelected,
+      ),
+    );
+  }
+
+  Widget _buildPlaceholderScreen(
+    String title,
+    IconData icon,
+    AppColorPalette activePalette,
+  ) {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            icon,
+            size: 48,
+            color: activePalette.primaryAccent.withOpacity(0.5),
+          ),
+          const SizedBox(height: 16),
+          Text(
+            title,
+            style: TextStyle(
+              fontFamily: AppTheme.serifFontFamily,
+              fontSize: 22,
+              fontWeight: FontWeight.bold,
+              color: activePalette.primaryText,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Coming Soon',
+            style: TextStyle(
+              fontSize: 14,
+              color: activePalette.secondaryText,
+            ),
+          ),
+        ],
       ),
     );
   }
 }
 
 class _ShelfView extends StatelessWidget {
-  final String selectedCategory;
-  final ValueChanged<String> onCategorySelected;
+  final int selectedFilterIndex;
+  final List<String> formatTabs;
   final PageController pageController;
-  final ValueChanged<int> onPageSwiped;
+  final ValueChanged<int> onFilterTabSelected;
+  final ValueChanged<int> onPageChanged;
+  final AppColorPalette activePalette;
 
   const _ShelfView({
-    required this.selectedCategory,
-    required this.onCategorySelected,
+    required this.selectedFilterIndex,
+    required this.formatTabs,
     required this.pageController,
-    required this.onPageSwiped,
+    required this.onFilterTabSelected,
+    required this.onPageChanged,
+    required this.activePalette,
   });
-
-  static const List<String> _filterTabs = ['All Items', 'Books', 'PDFs'];
-
-  static const List<String> all17Categories = [
-    'Fantasy',
-    'Historical Fiction',
-    'Mystery',
-    'Romance',
-    'Science Fiction',
-    'Horror',
-    'Graphic Novels & Comics',
-    'Anime & Manga',
-    'Poetry',
-    'History',
-    'Biography & Memoir',
-    'Philosophy',
-    'Self-Help & Personal Development',
-    'School/Reference',
-    'Classics',
-    'Religion & Spirituality',
-    'Miscellaneous',
-  ];
 
   @override
   Widget build(BuildContext context) {
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // App header — fixed at top, outside PageView scroll
-        AppHeader(
-          title: 'The Shelf',
-          onAddItemPressed: () => ImportBottomSheetModal.show(context),
-          onSearchPressed: () {
-            Navigator.of(context).push(
-              MaterialPageRoute(builder: (context) => const SearchScreen()),
-            );
-          },
-          isSliver: false,
-        ),
-
-        // Category filter underline tabs — fixed, outside PageView scroll
+        // Underline Category Filter Tabs
         CategoryFilterChips(
-          selectedCategory: selectedCategory,
-          onCategorySelected: onCategorySelected,
+          categories: formatTabs,
+          selectedCategory: formatTabs[selectedFilterIndex],
+          onCategorySelected: (category) {
+            final idx = formatTabs.indexOf(category);
+            if (idx != -1) {
+              onFilterTabSelected(idx);
+            }
+          },
         ),
-
-        const SizedBox(height: 12),
 
         // PageView: each page is an independently scrollable shelf list
         Expanded(
           child: PageView.builder(
             controller: pageController,
-            onPageChanged: onPageSwiped,
-            itemCount: _filterTabs.length,
+            onPageChanged: onPageChanged,
+            itemCount: formatTabs.length,
             itemBuilder: (context, pageIndex) {
-              final filterName = _filterTabs[pageIndex];
-              return _FormatShelfPage(
-                filterName: filterName,
-                all17Categories: all17Categories,
-              );
+              final filterName = formatTabs[pageIndex];
+              return _buildShelfList(context, activePalette, filterName);
             },
           ),
         ),
       ],
     );
   }
-}
 
-class _FormatShelfPage extends StatelessWidget {
-  final String filterName;
-  final List<String> all17Categories;
-
-  const _FormatShelfPage({
-    required this.filterName,
-    required this.all17Categories,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final activePalette = context.watch<ThemeCubit>().state;
-
+  Widget _buildShelfList(
+    BuildContext context,
+    AppColorPalette activePalette,
+    String filterName,
+  ) {
     return BlocBuilder<ShelfBloc, ShelfState>(
       builder: (context, state) {
         if (state is ShelfLoading) {
           return Center(
             child: CircularProgressIndicator(color: activePalette.primaryAccent),
           );
-        } else if (state is ShelfLoaded) {
-          // Combine real state items with gated dev mock items for visual verification
-          List<ShelfItem> effectiveItems = List.from(state.items);
-          if (showMockDataInDev) {
-            final existingIds = effectiveItems.map((e) => e.id).toSet();
-            for (final mock in devMockShelfItems) {
-              if (!existingIds.contains(mock.id)) {
-                effectiveItems.add(mock);
-              }
-            }
-          }
-
-          // Compute category item counts filtered by this page's format
-          final Map<String, int> countsMap = {};
-          for (final item in effectiveItems) {
-            if (_matchesFormatFilter(item, filterName)) {
-              final normalizedKey = _findMatchingCategoryKey(item.shelf);
-              countsMap[normalizedKey] = (countsMap[normalizedKey] ?? 0) + 1;
-            }
-          }
-
-          // Sort all 17 categories populated-first based on matching format counts
-          final List<String> sortedCategories = _sortCategories(
-            List.from(all17Categories),
-            countsMap,
-          );
-
-          return ListView.builder(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            itemCount: sortedCategories.length,
-            itemBuilder: (context, index) {
-              final catName = sortedCategories[index];
-              final itemCount = countsMap[catName] ?? 0;
-
-              return ShelfCard(
-                category: catName,
-                itemCount: itemCount,
-                cardIndex: index,
-                onTap: () {
-                  Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (context) => ShelfDetailScreen(category: catName),
-                    ),
-                  );
-                },
-              );
-            },
-          );
         }
 
-        return const Center(child: Text('Initialize Shelf'));
+        // Extract items safely from loaded state or default to empty
+        final List<ShelfItem> rawItems = (state is ShelfLoaded) ? state.items : [];
+
+        // Combine real state items with gated dev mock items for visual verification
+        List<ShelfItem> effectiveItems = List.from(rawItems);
+        if (showMockDataInDev) {
+          final existingIds = effectiveItems.map((e) => e.id).toSet();
+          for (final mock in devMockShelfItems) {
+            if (!existingIds.contains(mock.id)) {
+              effectiveItems.add(mock);
+            }
+          }
+        }
+
+        // Compute category item counts filtered by this page's format
+        final Map<String, int> countsMap = {};
+        for (final item in effectiveItems) {
+          if (_matchesFormatFilter(item, filterName)) {
+            final normalizedKey = _findMatchingCategoryKey(item.shelf);
+            countsMap[normalizedKey] = (countsMap[normalizedKey] ?? 0) + 1;
+          }
+        }
+
+        // Sort all 17 categories populated-first based on matching format counts
+        final List<String> sortedCategories = _sortCategories(
+          List.from(all17Categories),
+          countsMap,
+        );
+
+        return ListView.builder(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          itemCount: sortedCategories.length,
+          itemBuilder: (context, index) {
+            final catName = sortedCategories[index];
+            final itemCount = countsMap[catName] ?? 0;
+
+            return ShelfCard(
+              category: catName,
+              itemCount: itemCount,
+              cardIndex: index,
+              onTap: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (context) => ShelfDetailScreen(category: catName),
+                  ),
+                );
+              },
+            );
+          },
+        );
       },
     );
   }
@@ -314,80 +316,40 @@ class _FormatShelfPage extends StatelessWidget {
     }
   }
 
-  /// Populated-First Stable Sorting Algorithm
+  /// Normalizes incoming shelf category strings
+  String _findMatchingCategoryKey(String shelfName) {
+    final trimmed = shelfName.trim();
+    for (final cat in all17Categories) {
+      if (cat.toLowerCase() == trimmed.toLowerCase()) {
+        return cat;
+      }
+    }
+    return 'Miscellaneous';
+  }
+
+  /// Populated-first stable sort algorithm
   List<String> _sortCategories(List<String> categories, Map<String, int> countsMap) {
-    final List<String> sorted = List.from(categories);
-    sorted.sort((a, b) {
+    final List<String> populated = [];
+    final List<String> empty = [];
+
+    for (final cat in categories) {
+      final count = countsMap[cat] ?? 0;
+      if (count > 0) {
+        populated.add(cat);
+      } else {
+        empty.add(cat);
+      }
+    }
+
+    populated.sort((a, b) {
       final countA = countsMap[a] ?? 0;
       final countB = countsMap[b] ?? 0;
-
-      // 1. Primary Sort: Populated (count > 0) vs Empty (count == 0)
-      final bool aPopulated = countA > 0;
-      final bool bPopulated = countB > 0;
-      if (aPopulated && !bPopulated) return -1;
-      if (!aPopulated && bPopulated) return 1;
-
-      // 2. Secondary Sort for Populated Shelves: Item count descending
-      if (countA != countB) {
-        return countB.compareTo(countA);
-      }
-
-      // 3. Tertiary Tie-Breaker / Empty Shelves: Alphabetical (A-Z)
+      final countCompare = countB.compareTo(countA);
+      if (countCompare != 0) return countCompare;
       return a.compareTo(b);
     });
-    return sorted;
-  }
 
-  String _findMatchingCategoryKey(String rawShelf) {
-    final lowerRaw = rawShelf.trim().toLowerCase();
-    for (final cat in all17Categories) {
-      if (cat.trim().toLowerCase() == lowerRaw) return cat;
-    }
-    return rawShelf;
-  }
-}
-
-class _PlaceholderView extends StatelessWidget {
-  final String title;
-  final IconData iconData;
-
-  const _PlaceholderView({
-    required this.title,
-    required this.iconData,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final activePalette = context.watch<ThemeCubit>().state;
-
-    return Scaffold(
-      backgroundColor: activePalette.background,
-      appBar: AppBar(
-        backgroundColor: activePalette.background,
-        title: Text(
-          title,
-          style: TextStyle(color: activePalette.primaryText),
-        ),
-      ),
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              iconData,
-              size: 64,
-              color: activePalette.lightAccent,
-            ),
-            const SizedBox(height: 16),
-            Text(
-              '$title Feature Coming Soon',
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    color: activePalette.primaryText,
-                  ),
-            ),
-          ],
-        ),
-      ),
-    );
+    empty.sort((a, b) => a.compareTo(b));
+    return [...populated, ...empty];
   }
 }
