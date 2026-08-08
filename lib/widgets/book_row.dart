@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:the_shelf/blocs/shelf/shelf_state.dart';
+import 'package:the_shelf/blocs/theme/theme_cubit.dart';
 import 'package:the_shelf/theme/app_theme.dart';
 
 class BookRow extends StatefulWidget {
@@ -29,6 +31,7 @@ class _BookRowState extends State<BookRow> {
 
   @override
   Widget build(BuildContext context) {
+    final activePalette = context.watch<ThemeCubit>().state;
     final ext = _getFileExtension(widget.item.filePath);
     final iconData = AppTheme.getCategoryIcon(widget.item.shelf);
 
@@ -54,14 +57,14 @@ class _BookRowState extends State<BookRow> {
               Container(
                 width: 44,
                 height: 44,
-                decoration: const BoxDecoration(
-                  gradient: AppTheme.badgeGradient,
+                decoration: BoxDecoration(
+                  gradient: activePalette.badgeGradient,
                   borderRadius: AppTheme.asymmetricBadgeRadius,
                 ),
                 child: Center(
                   child: Icon(
                     iconData,
-                    color: AppTheme.deepEspressoPrimaryText,
+                    color: activePalette.primaryText,
                     size: 22,
                   ),
                 ),
@@ -76,11 +79,11 @@ class _BookRowState extends State<BookRow> {
                   children: [
                     Text(
                       widget.item.title,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontFamily: AppTheme.serifFontFamily,
                         fontSize: 16,
                         fontWeight: FontWeight.w600,
-                        color: AppTheme.deepEspressoPrimaryText,
+                        color: activePalette.primaryText,
                         height: 1.25,
                       ),
                       maxLines: 1,
@@ -89,10 +92,10 @@ class _BookRowState extends State<BookRow> {
                     const SizedBox(height: 4),
                     Text(
                       subtitleText,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.w400,
-                        color: AppTheme.warmRustSecondaryText,
+                        color: activePalette.secondaryText,
                       ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
@@ -106,20 +109,20 @@ class _BookRowState extends State<BookRow> {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
-                  color: AppTheme.subtleBadgeBackground,
+                  color: activePalette.subtleBadgeBackground,
                   borderRadius: BorderRadius.circular(4),
                   border: Border.all(
-                    color: AppTheme.softWarmBorder,
+                    color: activePalette.cardBorder,
                     width: 1,
                   ),
                 ),
                 child: Text(
                   ext,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 11,
                     fontWeight: FontWeight.bold,
                     letterSpacing: 0.5,
-                    color: AppTheme.deepEspressoPrimaryText,
+                    color: activePalette.primaryText,
                   ),
                 ),
               ),

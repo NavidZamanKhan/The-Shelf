@@ -1,6 +1,8 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:phosphoricons_flutter/phosphoricons_flutter.dart';
+import 'package:the_shelf/blocs/theme/theme_cubit.dart';
 import 'package:the_shelf/theme/app_theme.dart';
 
 class ShelfCard extends StatefulWidget {
@@ -26,6 +28,7 @@ class _ShelfCardState extends State<ShelfCard> {
 
   @override
   Widget build(BuildContext context) {
+    final activePalette = context.watch<ThemeCubit>().state;
     final bool isEmpty = widget.itemCount == 0;
     final iconData = AppTheme.getCategoryIcon(widget.category);
     final countText = isEmpty
@@ -53,14 +56,14 @@ class _ShelfCardState extends State<ShelfCard> {
           curve: Curves.easeInOutCubic,
           child: Container(
             decoration: BoxDecoration(
-              color: isEmpty ? AppTheme.softParchmentBackground : AppTheme.pureWhiteCard,
+              color: isEmpty ? activePalette.background : activePalette.cardBackground,
               borderRadius: AppTheme.asymmetricCardRadius,
               border: isEmpty
                   ? null
-                  : Border.all(color: AppTheme.softWarmBorder, width: 1.0),
+                  : Border.all(color: activePalette.cardBorder, width: 1.0),
             ),
             child: CustomPaint(
-              painter: isEmpty ? _DashedBorderPainter() : null,
+              painter: isEmpty ? _DashedBorderPainter(color: activePalette.dashedBorderColor) : null,
               child: Material(
                 color: Colors.transparent,
                 borderRadius: AppTheme.asymmetricCardRadius,
@@ -70,8 +73,8 @@ class _ShelfCardState extends State<ShelfCard> {
                   onTapUp: (_) => setState(() => _isPressed = false),
                   onTapCancel: () => setState(() => _isPressed = false),
                   onTap: widget.onTap,
-                  splashColor: AppTheme.terracottaLightAccent.withValues(alpha: 0.12),
-                  highlightColor: AppTheme.terracottaLightAccent.withValues(alpha: 0.06),
+                  splashColor: activePalette.lightAccent.withValues(alpha: 0.12),
+                  highlightColor: activePalette.lightAccent.withValues(alpha: 0.06),
                   child: Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                     child: Row(
@@ -81,16 +84,16 @@ class _ShelfCardState extends State<ShelfCard> {
                           width: 44,
                           height: 44,
                           decoration: BoxDecoration(
-                            gradient: isEmpty ? null : AppTheme.badgeGradient,
-                            color: isEmpty ? AppTheme.desaturatedEmptyBadge : null,
+                            gradient: isEmpty ? null : activePalette.badgeGradient,
+                            color: isEmpty ? activePalette.desaturatedEmptyBadge : null,
                             borderRadius: AppTheme.asymmetricBadgeRadius,
                           ),
                           child: Center(
                             child: Icon(
                               iconData,
                               color: isEmpty
-                                  ? AppTheme.desaturatedEmptyText
-                                  : AppTheme.deepEspressoPrimaryText,
+                                  ? activePalette.desaturatedEmptyText
+                                  : activePalette.primaryText,
                               size: 22,
                             ),
                           ),
@@ -110,8 +113,8 @@ class _ShelfCardState extends State<ShelfCard> {
                                   fontSize: 17,
                                   fontWeight: FontWeight.w600,
                                   color: isEmpty
-                                      ? AppTheme.desaturatedEmptyText
-                                      : AppTheme.deepEspressoPrimaryText,
+                                      ? activePalette.desaturatedEmptyText
+                                      : activePalette.primaryText,
                                   height: 1.2,
                                 ),
                                 maxLines: 1,
@@ -124,8 +127,8 @@ class _ShelfCardState extends State<ShelfCard> {
                                   fontSize: 13,
                                   fontWeight: FontWeight.w400,
                                   color: isEmpty
-                                      ? AppTheme.desaturatedEmptyText
-                                      : AppTheme.warmRustSecondaryText,
+                                      ? activePalette.desaturatedEmptyText
+                                      : activePalette.secondaryText,
                                 ),
                               ),
                             ],
@@ -140,13 +143,13 @@ class _ShelfCardState extends State<ShelfCard> {
                               padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
                               decoration: BoxDecoration(
                                 color: isEmpty
-                                    ? AppTheme.desaturatedEmptyBadge
-                                    : AppTheme.subtleBadgeBackground,
+                                    ? activePalette.desaturatedEmptyBadge
+                                    : activePalette.subtleBadgeBackground,
                                 borderRadius: BorderRadius.circular(10),
                                 border: Border.all(
                                   color: isEmpty
-                                      ? AppTheme.dashedBorderColor
-                                      : AppTheme.softWarmBorder,
+                                      ? activePalette.dashedBorderColor
+                                      : activePalette.cardBorder,
                                   width: 1,
                                 ),
                               ),
@@ -156,8 +159,8 @@ class _ShelfCardState extends State<ShelfCard> {
                                   fontSize: 12,
                                   fontWeight: FontWeight.bold,
                                   color: isEmpty
-                                      ? AppTheme.desaturatedEmptyText
-                                      : AppTheme.deepEspressoPrimaryText,
+                                      ? activePalette.desaturatedEmptyText
+                                      : activePalette.primaryText,
                                 ),
                               ),
                             ),
@@ -166,8 +169,8 @@ class _ShelfCardState extends State<ShelfCard> {
                               PhosphorIcons.caretRight,
                               size: 16,
                               color: isEmpty
-                                  ? AppTheme.desaturatedEmptyText
-                                  : AppTheme.warmRustSecondaryText,
+                                  ? activePalette.desaturatedEmptyText
+                                  : activePalette.secondaryText,
                             ),
                           ],
                         ),
@@ -186,10 +189,14 @@ class _ShelfCardState extends State<ShelfCard> {
 
 /// CustomPainter for drawing dashed borders on empty shelf cards
 class _DashedBorderPainter extends CustomPainter {
+  final Color color;
+
+  _DashedBorderPainter({required this.color});
+
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint()
-      ..color = AppTheme.dashedBorderColor
+      ..color = color
       ..strokeWidth = 1.2
       ..style = PaintingStyle.stroke;
 

@@ -3,8 +3,10 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:the_shelf/blocs/document_import/document_import_bloc.dart';
 import 'package:the_shelf/blocs/shelf/shelf_bloc.dart';
 import 'package:the_shelf/blocs/shelf/shelf_event.dart';
+import 'package:the_shelf/blocs/theme/theme_cubit.dart';
 import 'package:the_shelf/screens/home_screen.dart';
 import 'package:the_shelf/services/shelf_classifier_service.dart';
+import 'package:the_shelf/theme/app_color_palette.dart';
 import 'package:the_shelf/theme/app_theme.dart';
 
 void main() {
@@ -28,12 +30,19 @@ class TheShelfApp extends StatelessWidget {
         BlocProvider<ShelfBloc>(
           create: (context) => ShelfBloc()..add(const LoadShelfItemsEvent()),
         ),
+        BlocProvider<ThemeCubit>(
+          create: (context) => ThemeCubit()..loadTheme(),
+        ),
       ],
-      child: MaterialApp(
-        title: 'The Shelf',
-        debugShowCheckedModeBanner: false,
-        theme: AppTheme.warmTerracottaTheme,
-        home: const HomeScreen(),
+      child: BlocBuilder<ThemeCubit, AppColorPalette>(
+        builder: (context, activePalette) {
+          return MaterialApp(
+            title: 'The Shelf',
+            debugShowCheckedModeBanner: false,
+            theme: AppTheme.getThemeData(activePalette),
+            home: const HomeScreen(),
+          );
+        },
       ),
     );
   }

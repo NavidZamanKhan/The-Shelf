@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:phosphoricons_flutter/phosphoricons_flutter.dart';
 import 'package:the_shelf/blocs/shelf/shelf_bloc.dart';
 import 'package:the_shelf/blocs/shelf/shelf_state.dart';
+import 'package:the_shelf/blocs/theme/theme_cubit.dart';
 import 'package:the_shelf/models/mock_shelf_items.dart';
 import 'package:the_shelf/screens/shelf_detail_screen.dart';
 import 'package:the_shelf/theme/app_theme.dart';
@@ -39,15 +40,18 @@ class _SearchScreenState extends State<SearchScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final activePalette = context.watch<ThemeCubit>().state;
+
     return Scaffold(
+      backgroundColor: activePalette.background,
       appBar: AppBar(
         toolbarHeight: 68.0,
-        backgroundColor: AppTheme.softParchmentBackground,
+        backgroundColor: activePalette.background,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(
+          icon: Icon(
             PhosphorIcons.arrowLeft,
-            color: AppTheme.deepEspressoPrimaryText,
+            color: activePalette.primaryText,
           ),
           onPressed: () => Navigator.of(context).pop(),
         ),
@@ -57,35 +61,35 @@ class _SearchScreenState extends State<SearchScreen> {
           child: Container(
             height: 44.0,
             decoration: BoxDecoration(
-              color: AppTheme.pureWhiteCard,
+              color: activePalette.cardBackground,
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: AppTheme.softWarmBorder, width: 1.0),
+              border: Border.all(color: activePalette.cardBorder, width: 1.0),
             ),
             child: TextField(
               controller: _searchController,
               focusNode: _searchFocusNode,
               autofocus: true,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 15,
-                color: AppTheme.deepEspressoPrimaryText,
+                color: activePalette.primaryText,
               ),
               decoration: InputDecoration(
                 hintText: 'Search documents or shelves...',
-                hintStyle: const TextStyle(
+                hintStyle: TextStyle(
                   fontSize: 14,
-                  color: AppTheme.warmRustSecondaryText,
+                  color: activePalette.secondaryText,
                 ),
-                prefixIcon: const Icon(
+                prefixIcon: Icon(
                   PhosphorIcons.magnifyingGlass,
                   size: 20,
-                  color: AppTheme.terracottaPrimary,
+                  color: activePalette.primaryAccent,
                 ),
                 suffixIcon: _query.isNotEmpty
                     ? IconButton(
-                        icon: const Icon(
+                        icon: Icon(
                           PhosphorIcons.x,
                           size: 18,
-                          color: AppTheme.warmRustSecondaryText,
+                          color: activePalette.secondaryText,
                         ),
                         onPressed: () {
                           _searchController.clear();
@@ -102,8 +106,8 @@ class _SearchScreenState extends State<SearchScreen> {
       body: BlocBuilder<ShelfBloc, ShelfState>(
         builder: (context, state) {
           if (state is ShelfLoading) {
-            return const Center(
-              child: CircularProgressIndicator(color: AppTheme.terracottaPrimary),
+            return Center(
+              child: CircularProgressIndicator(color: activePalette.primaryAccent),
             );
           } else if (state is ShelfLoaded) {
             // Combine real state items with gated dev mock items for visual verification
@@ -159,13 +163,13 @@ class _SearchScreenState extends State<SearchScreen> {
                           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                           decoration: BoxDecoration(
                             color: isSelected
-                                ? AppTheme.terracottaPrimary
-                                : AppTheme.pureWhiteCard,
+                                ? activePalette.primaryAccent
+                                : activePalette.cardBackground,
                             borderRadius: BorderRadius.circular(20),
                             border: Border.all(
                               color: isSelected
-                                  ? AppTheme.terracottaPrimary
-                                  : AppTheme.softWarmBorder,
+                                  ? activePalette.primaryAccent
+                                  : activePalette.cardBorder,
                               width: 1,
                             ),
                           ),
@@ -176,7 +180,7 @@ class _SearchScreenState extends State<SearchScreen> {
                               fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
                               color: isSelected
                                   ? Colors.white
-                                  : AppTheme.deepEspressoPrimaryText,
+                                  : activePalette.primaryText,
                             ),
                           ),
                         ),
@@ -184,7 +188,7 @@ class _SearchScreenState extends State<SearchScreen> {
                     }).toList(),
                   ),
                 ),
-                const Divider(height: 1, color: AppTheme.softWarmBorder),
+                Divider(height: 1, color: activePalette.cardBorder),
 
                 // Results Content Area
                 Expanded(
@@ -205,6 +209,8 @@ class _SearchScreenState extends State<SearchScreen> {
     String query,
     List<ShelfItem> items,
   ) {
+    final activePalette = context.watch<ThemeCubit>().state;
+
     // Initial Empty State (Query is empty)
     if (query.isEmpty && _selectedShelfFilter == 'All Shelves') {
       return Center(
@@ -216,15 +222,15 @@ class _SearchScreenState extends State<SearchScreen> {
               Container(
                 width: 64,
                 height: 64,
-                decoration: const BoxDecoration(
-                  color: AppTheme.subtleBadgeBackground,
+                decoration: BoxDecoration(
+                  color: activePalette.subtleBadgeBackground,
                   shape: BoxShape.circle,
                 ),
-                child: const Center(
+                child: Center(
                   child: Icon(
                     PhosphorIcons.magnifyingGlass,
                     size: 32,
-                    color: AppTheme.terracottaPrimary,
+                    color: activePalette.primaryAccent,
                   ),
                 ),
               ),
@@ -233,16 +239,16 @@ class _SearchScreenState extends State<SearchScreen> {
                 'Search Your Library',
                 style: Theme.of(context).textTheme.titleLarge?.copyWith(
                       fontFamily: AppTheme.serifFontFamily,
-                      color: AppTheme.deepEspressoPrimaryText,
+                      color: activePalette.primaryText,
                     ),
               ),
               const SizedBox(height: 8),
-              const Text(
+              Text(
                 'Type a book title or shelf category name to instantly search across all 17 shelves.',
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   fontSize: 14,
-                  color: AppTheme.warmRustSecondaryText,
+                  color: activePalette.secondaryText,
                 ),
               ),
               const SizedBox(height: 24),
@@ -258,11 +264,11 @@ class _SearchScreenState extends State<SearchScreen> {
                 ].map((suggestion) {
                   return ActionChip(
                     label: Text(suggestion),
-                    backgroundColor: AppTheme.pureWhiteCard,
-                    side: const BorderSide(color: AppTheme.softWarmBorder),
-                    labelStyle: const TextStyle(
+                    backgroundColor: activePalette.cardBackground,
+                    side: BorderSide(color: activePalette.cardBorder),
+                    labelStyle: TextStyle(
                       fontSize: 12,
-                      color: AppTheme.deepEspressoPrimaryText,
+                      color: activePalette.primaryText,
                     ),
                     onPressed: () {
                       _searchController.text = suggestion;
@@ -290,15 +296,15 @@ class _SearchScreenState extends State<SearchScreen> {
               Container(
                 width: 64,
                 height: 64,
-                decoration: const BoxDecoration(
-                  color: AppTheme.desaturatedEmptyBadge,
+                decoration: BoxDecoration(
+                  color: activePalette.desaturatedEmptyBadge,
                   shape: BoxShape.circle,
                 ),
-                child: const Center(
+                child: Center(
                   child: Icon(
                     PhosphorIcons.magnifyingGlass,
                     size: 32,
-                    color: AppTheme.desaturatedEmptyText,
+                    color: activePalette.desaturatedEmptyText,
                   ),
                 ),
               ),
@@ -307,7 +313,7 @@ class _SearchScreenState extends State<SearchScreen> {
                 query.isNotEmpty ? 'No Documents Found' : 'No Items in Shelf',
                 style: Theme.of(context).textTheme.titleLarge?.copyWith(
                       fontFamily: AppTheme.serifFontFamily,
-                      color: AppTheme.deepEspressoPrimaryText,
+                      color: activePalette.primaryText,
                     ),
               ),
               const SizedBox(height: 8),
@@ -316,9 +322,9 @@ class _SearchScreenState extends State<SearchScreen> {
                     ? 'No documents matched "$query". Try checking for typos or searching with a different keyword.'
                     : 'No documents found matching the selected shelf filter.',
                 textAlign: TextAlign.center,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 14,
-                  color: AppTheme.warmRustSecondaryText,
+                  color: activePalette.secondaryText,
                 ),
               ),
             ],
@@ -366,6 +372,7 @@ class _SearchResultTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final activePalette = context.watch<ThemeCubit>().state;
     final ext = _getFileExtension(item.filePath);
     final iconData = AppTheme.getCategoryIcon(item.shelf);
 
@@ -375,9 +382,9 @@ class _SearchResultTile extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: AppTheme.pureWhiteCard,
+          color: activePalette.cardBackground,
           borderRadius: AppTheme.asymmetricCardRadius,
-          border: Border.all(color: AppTheme.softWarmBorder, width: 1.0),
+          border: Border.all(color: activePalette.cardBorder, width: 1.0),
         ),
         child: Row(
           children: [
@@ -385,14 +392,14 @@ class _SearchResultTile extends StatelessWidget {
             Container(
               width: 44,
               height: 44,
-              decoration: const BoxDecoration(
-                gradient: AppTheme.badgeGradient,
+              decoration: BoxDecoration(
+                gradient: activePalette.badgeGradient,
                 borderRadius: AppTheme.asymmetricBadgeRadius,
               ),
               child: Center(
                 child: Icon(
                   iconData,
-                  color: AppTheme.deepEspressoPrimaryText,
+                  color: activePalette.primaryText,
                   size: 22,
                 ),
               ),
@@ -406,11 +413,11 @@ class _SearchResultTile extends StatelessWidget {
                 children: [
                   Text(
                     item.title,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontFamily: AppTheme.serifFontFamily,
                       fontSize: 15,
                       fontWeight: FontWeight.w600,
-                      color: AppTheme.deepEspressoPrimaryText,
+                      color: activePalette.primaryText,
                     ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
@@ -418,9 +425,9 @@ class _SearchResultTile extends StatelessWidget {
                   const SizedBox(height: 2),
                   Text(
                     '${item.shelf} • $ext',
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 12,
-                      color: AppTheme.warmRustSecondaryText,
+                      color: activePalette.secondaryText,
                     ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
@@ -434,16 +441,16 @@ class _SearchResultTile extends StatelessWidget {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
               decoration: BoxDecoration(
-                color: AppTheme.subtleBadgeBackground,
+                color: activePalette.subtleBadgeBackground,
                 borderRadius: BorderRadius.circular(4),
-                border: Border.all(color: AppTheme.softWarmBorder, width: 1),
+                border: Border.all(color: activePalette.cardBorder, width: 1),
               ),
               child: Text(
                 ext,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 10,
                   fontWeight: FontWeight.bold,
-                  color: AppTheme.deepEspressoPrimaryText,
+                  color: activePalette.primaryText,
                 ),
               ),
             ),

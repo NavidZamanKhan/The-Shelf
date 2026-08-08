@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:the_shelf/blocs/theme/theme_cubit.dart';
 import 'package:the_shelf/theme/app_theme.dart';
 
 /// Underline-style category filter tabs row widget.
@@ -16,6 +18,8 @@ class CategoryFilterChips extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final activePalette = context.watch<ThemeCubit>().state;
+
     return SizedBox(
       width: double.infinity,
       child: SingleChildScrollView(
@@ -36,7 +40,9 @@ class CategoryFilterChips extends StatelessWidget {
                 decoration: BoxDecoration(
                   border: Border(
                     bottom: BorderSide(
-                      color: isSelected ? AppTheme.terracottaPrimary : Colors.transparent,
+                      color: isSelected
+                          ? activePalette.primaryAccent
+                          : Colors.transparent,
                       width: 2.5,
                     ),
                   ),
@@ -48,8 +54,8 @@ class CategoryFilterChips extends StatelessWidget {
                     fontSize: 14,
                     fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
                     color: isSelected
-                        ? AppTheme.deepEspressoPrimaryText
-                        : AppTheme.warmRustSecondaryText,
+                        ? activePalette.primaryText
+                        : activePalette.secondaryText,
                   ),
                 ),
               ),

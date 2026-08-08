@@ -7,10 +7,11 @@ import 'package:the_shelf/blocs/document_import/document_import_state.dart';
 import 'package:the_shelf/blocs/shelf/shelf_bloc.dart';
 import 'package:the_shelf/blocs/shelf/shelf_event.dart';
 import 'package:the_shelf/blocs/shelf/shelf_state.dart';
+import 'package:the_shelf/blocs/theme/theme_cubit.dart';
 import 'package:the_shelf/models/mock_shelf_items.dart';
 import 'package:the_shelf/screens/search_screen.dart';
+import 'package:the_shelf/screens/settings_screen.dart';
 import 'package:the_shelf/screens/shelf_detail_screen.dart';
-import 'package:the_shelf/theme/app_theme.dart';
 import 'package:the_shelf/widgets/app_bottom_navigation_bar.dart';
 import 'package:the_shelf/widgets/app_header.dart';
 import 'package:the_shelf/widgets/category_filter_chips.dart';
@@ -69,6 +70,8 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final activePalette = context.watch<ThemeCubit>().state;
+
     return BlocListener<DocumentImportBloc, DocumentImportState>(
       listener: (context, state) async {
         if (state is DocumentImportSuccess) {
@@ -97,7 +100,7 @@ class _HomeScreenState extends State<HomeScreen> {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
                 content: Text('Added "$title" to [$shelf] shelf!'),
-                backgroundColor: AppTheme.terracottaPrimary,
+                backgroundColor: activePalette.primaryAccent,
               ),
             );
           }
@@ -113,6 +116,7 @@ class _HomeScreenState extends State<HomeScreen> {
         }
       },
       child: Scaffold(
+        backgroundColor: activePalette.background,
         body: IndexedStack(
           index: _currentNavIndex,
           children: [
@@ -124,7 +128,7 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
             const _PlaceholderView(title: 'Collections', iconData: PhosphorIcons.bookmarkSimple),
             const _PlaceholderView(title: 'Insights', iconData: PhosphorIcons.sparkle),
-            const _PlaceholderView(title: 'Settings', iconData: PhosphorIcons.gear),
+            const SettingsScreen(),
           ],
         ),
         bottomNavigationBar: AppBottomNavigationBar(
@@ -232,11 +236,13 @@ class _FormatShelfPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final activePalette = context.watch<ThemeCubit>().state;
+
     return BlocBuilder<ShelfBloc, ShelfState>(
       builder: (context, state) {
         if (state is ShelfLoading) {
-          return const Center(
-            child: CircularProgressIndicator(color: AppTheme.terracottaPrimary),
+          return Center(
+            child: CircularProgressIndicator(color: activePalette.primaryAccent),
           );
         } else if (state is ShelfLoaded) {
           // Combine real state items with gated dev mock items for visual verification
@@ -352,8 +358,17 @@ class _PlaceholderView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final activePalette = context.watch<ThemeCubit>().state;
+
     return Scaffold(
-      appBar: AppBar(title: Text(title)),
+      backgroundColor: activePalette.background,
+      appBar: AppBar(
+        backgroundColor: activePalette.background,
+        title: Text(
+          title,
+          style: TextStyle(color: activePalette.primaryText),
+        ),
+      ),
       body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -361,12 +376,14 @@ class _PlaceholderView extends StatelessWidget {
             Icon(
               iconData,
               size: 64,
-              color: AppTheme.terracottaLightAccent,
+              color: activePalette.lightAccent,
             ),
             const SizedBox(height: 16),
             Text(
               '$title Feature Coming Soon',
-              style: Theme.of(context).textTheme.titleMedium,
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    color: activePalette.primaryText,
+                  ),
             ),
           ],
         ),

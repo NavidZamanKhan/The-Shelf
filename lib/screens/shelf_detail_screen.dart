@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:phosphoricons_flutter/phosphoricons_flutter.dart';
 import 'package:the_shelf/blocs/shelf/shelf_bloc.dart';
 import 'package:the_shelf/blocs/shelf/shelf_state.dart';
+import 'package:the_shelf/blocs/theme/theme_cubit.dart';
 import 'package:the_shelf/models/mock_shelf_items.dart';
 import 'package:the_shelf/theme/app_theme.dart';
 import 'package:the_shelf/widgets/book_row.dart';
@@ -14,29 +15,32 @@ class ShelfDetailScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final activePalette = context.watch<ThemeCubit>().state;
     final iconData = AppTheme.getCategoryIcon(category);
 
     return Scaffold(
+      backgroundColor: activePalette.background,
       appBar: AppBar(
+        backgroundColor: activePalette.background,
         leading: IconButton(
-          icon: const Icon(
+          icon: Icon(
             PhosphorIcons.arrowLeft,
-            color: AppTheme.deepEspressoPrimaryText,
+            color: activePalette.primaryText,
           ),
           onPressed: () => Navigator.of(context).pop(),
         ),
         title: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(iconData, size: 22, color: AppTheme.terracottaPrimary),
+            Icon(iconData, size: 22, color: activePalette.primaryAccent),
             const SizedBox(width: 8),
             Text(
               category,
-              style: const TextStyle(
+              style: TextStyle(
                 fontFamily: AppTheme.serifFontFamily,
                 fontSize: 20,
                 fontWeight: FontWeight.bold,
-                color: AppTheme.deepEspressoPrimaryText,
+                color: activePalette.primaryText,
               ),
             ),
           ],
@@ -45,9 +49,9 @@ class ShelfDetailScreen extends StatelessWidget {
       body: BlocBuilder<ShelfBloc, ShelfState>(
         builder: (context, state) {
           if (state is ShelfLoading) {
-            return const Center(
+            return Center(
               child: CircularProgressIndicator(
-                color: AppTheme.terracottaPrimary,
+                color: activePalette.primaryAccent,
               ),
             );
           } else if (state is ShelfLoaded) {
@@ -79,32 +83,34 @@ class ShelfDetailScreen extends StatelessWidget {
                     Container(
                       width: 72,
                       height: 72,
-                      decoration: const BoxDecoration(
-                        color: AppTheme.desaturatedEmptyBadge,
+                      decoration: BoxDecoration(
+                        color: activePalette.desaturatedEmptyBadge,
                         borderRadius: AppTheme.asymmetricBadgeRadius,
                       ),
                       child: Center(
                         child: Icon(
                           iconData,
                           size: 36,
-                          color: AppTheme.desaturatedEmptyText,
+                          color: activePalette.desaturatedEmptyText,
                         ),
                       ),
                     ),
                     const SizedBox(height: 16),
                     Text(
                       'No Documents in $category',
-                      style: Theme.of(context).textTheme.titleLarge,
+                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                            color: activePalette.primaryText,
+                          ),
                     ),
                     const SizedBox(height: 8),
-                    const Padding(
-                      padding: EdgeInsets.symmetric(horizontal: 32),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 32),
                       child: Text(
                         'Tap the "+" icon in the top header to import documents into this shelf.',
                         textAlign: TextAlign.center,
                         style: TextStyle(
                           fontSize: 13,
-                          color: AppTheme.warmRustSecondaryText,
+                          color: activePalette.secondaryText,
                         ),
                       ),
                     ),
@@ -121,10 +127,10 @@ class ShelfDetailScreen extends StatelessWidget {
                     padding: const EdgeInsets.all(16.0),
                     child: Container(
                       decoration: BoxDecoration(
-                        color: AppTheme.pureWhiteCard,
+                        color: activePalette.cardBackground,
                         borderRadius: AppTheme.asymmetricCardRadius,
                         border: Border.all(
-                          color: AppTheme.softWarmBorder,
+                          color: activePalette.cardBorder,
                           width: 1.0,
                         ),
                       ),
@@ -134,14 +140,14 @@ class ShelfDetailScreen extends StatelessWidget {
                           Container(
                             width: 48,
                             height: 48,
-                            decoration: const BoxDecoration(
-                              gradient: AppTheme.badgeGradient,
+                            decoration: BoxDecoration(
+                              gradient: activePalette.badgeGradient,
                               borderRadius: AppTheme.asymmetricBadgeRadius,
                             ),
                             child: Center(
                               child: Icon(
                                 iconData,
-                                color: AppTheme.deepEspressoPrimaryText,
+                                color: activePalette.primaryText,
                                 size: 24,
                               ),
                             ),
@@ -153,19 +159,19 @@ class ShelfDetailScreen extends StatelessWidget {
                               children: [
                                 Text(
                                   '${shelfItems.length} ${shelfItems.length == 1 ? 'document' : 'documents'} stored in this shelf',
-                                  style: const TextStyle(
+                                  style: TextStyle(
                                     fontFamily: AppTheme.serifFontFamily,
                                     fontSize: 16,
                                     fontWeight: FontWeight.w600,
-                                    color: AppTheme.deepEspressoPrimaryText,
+                                    color: activePalette.primaryText,
                                   ),
                                 ),
                                 const SizedBox(height: 2),
-                                const Text(
+                                Text(
                                   'Tap any item to view document details',
                                   style: TextStyle(
                                     fontSize: 13,
-                                    color: AppTheme.warmRustSecondaryText,
+                                    color: activePalette.secondaryText,
                                   ),
                                 ),
                               ],
@@ -183,10 +189,10 @@ class ShelfDetailScreen extends StatelessWidget {
                   sliver: SliverToBoxAdapter(
                     child: Container(
                       decoration: BoxDecoration(
-                        color: AppTheme.pureWhiteCard,
+                        color: activePalette.cardBackground,
                         borderRadius: AppTheme.asymmetricCardRadius,
                         border: Border.all(
-                          color: AppTheme.softWarmBorder,
+                          color: activePalette.cardBorder,
                           width: 1.0,
                         ),
                       ),
@@ -196,10 +202,10 @@ class ShelfDetailScreen extends StatelessWidget {
                         physics: const NeverScrollableScrollPhysics(),
                         padding: EdgeInsets.zero,
                         itemCount: shelfItems.length,
-                        separatorBuilder: (context, index) => const Divider(
+                        separatorBuilder: (context, index) => Divider(
                           height: 1,
                           thickness: 1,
-                          color: AppTheme.softWarmBorder,
+                          color: activePalette.cardBorder,
                           indent: 16,
                           endIndent: 16,
                         ),
@@ -227,7 +233,7 @@ class ShelfDetailScreen extends StatelessWidget {
                                   SnackBar(
                                     content: Text('Opening "${item.title}"...'),
                                     duration: const Duration(seconds: 1),
-                                    backgroundColor: AppTheme.terracottaPrimary,
+                                    backgroundColor: activePalette.primaryAccent,
                                   ),
                                 );
                               },

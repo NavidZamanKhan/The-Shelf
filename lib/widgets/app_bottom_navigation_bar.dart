@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:phosphoricons_flutter/phosphoricons_flutter.dart';
-import 'package:the_shelf/theme/app_theme.dart';
+import 'package:the_shelf/blocs/theme/theme_cubit.dart';
 
 /// Bespoke non-Material bottom navigation footer widget with dot active indicators.
 class AppBottomNavigationBar extends StatelessWidget {
@@ -22,12 +23,14 @@ class AppBottomNavigationBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final activePalette = context.watch<ThemeCubit>().state;
+
     return Container(
-      decoration: const BoxDecoration(
-        color: AppTheme.pureWhiteCard,
+      decoration: BoxDecoration(
+        color: activePalette.cardBackground,
         border: Border(
           top: BorderSide(
-            color: AppTheme.softWarmBorder,
+            color: activePalette.cardBorder,
             width: 1.0,
           ),
         ),
@@ -40,7 +43,9 @@ class AppBottomNavigationBar extends StatelessWidget {
           children: List.generate(_items.length, (index) {
             final item = _items[index];
             final bool isSelected = selectedIndex == index;
-            final color = isSelected ? AppTheme.terracottaPrimary : AppTheme.navInactiveColor;
+            final color = isSelected
+                ? activePalette.primaryAccent
+                : activePalette.navInactiveColor;
 
             return InkWell(
               onTap: () => onDestinationSelected(index),
@@ -73,7 +78,9 @@ class AppBottomNavigationBar extends StatelessWidget {
                       height: 4,
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
-                        color: isSelected ? AppTheme.terracottaPrimary : Colors.transparent,
+                        color: isSelected
+                            ? activePalette.primaryAccent
+                            : Colors.transparent,
                       ),
                     ),
                   ],

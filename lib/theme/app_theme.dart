@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:phosphoricons_flutter/phosphoricons_flutter.dart';
+import 'package:the_shelf/theme/app_color_palette.dart';
 
-/// Design System for The Shelf — Bespoke Non-Material Terracotta Aesthetics
-abstract class AppTheme {
-  // Brand Color Palette Tokens
+class AppTheme {
+  // Legacy terracotta fallback constants
   static const Color terracottaPrimary = Color(0xFFC85A30);
   static const Color terracottaLightAccent = Color(0xFFF0997B);
   static const Color gradientStartApricot = Color(0xFFF7C5B2);
@@ -18,170 +18,119 @@ abstract class AppTheme {
   static const Color dashedBorderColor = Color(0xFFE5D0C0);
   static const Color navInactiveColor = Color(0xFFA08575);
 
-  // Typography Family
+  static const LinearGradient badgeGradient = LinearGradient(
+    colors: [gradientStartApricot, terracottaLightAccent],
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+  );
+
   static const String serifFontFamily = 'Georgia';
 
-  // Asymmetric Shape Geometry Tokens
   static const BorderRadius asymmetricCardRadius = BorderRadius.only(
-    topLeft: Radius.circular(20),
-    topRight: Radius.circular(20),
-    bottomRight: Radius.circular(20),
-    bottomLeft: Radius.circular(6),
+    topLeft: Radius.circular(16),
+    topRight: Radius.circular(6),
+    bottomLeft: Radius.circular(16),
+    bottomRight: Radius.circular(16),
   );
 
   static const BorderRadius asymmetricBadgeRadius = BorderRadius.only(
     topLeft: Radius.circular(14),
-    topRight: Radius.circular(14),
+    topRight: Radius.circular(4),
+    bottomLeft: Radius.circular(14),
     bottomRight: Radius.circular(14),
-    bottomLeft: Radius.circular(4),
   );
 
-  // Subtle Gradient Token for Badges
-  static const LinearGradient badgeGradient = LinearGradient(
-    begin: Alignment.topLeft,
-    end: Alignment.bottomRight,
-    colors: [
-      gradientStartApricot,
-      terracottaLightAccent,
-    ],
-  );
-
-  /// Primary Theme Data Configuration
-  static ThemeData get warmTerracottaTheme {
+  /// Dynamically builds ThemeData tailored to an active AppColorPalette
+  static ThemeData getThemeData(AppColorPalette palette) {
     return ThemeData(
       useMaterial3: true,
-      scaffoldBackgroundColor: softParchmentBackground,
-      colorScheme: const ColorScheme(
+      scaffoldBackgroundColor: palette.background,
+      fontFamily: null,
+      colorScheme: ColorScheme(
         brightness: Brightness.light,
-        primary: terracottaPrimary,
+        primary: palette.primaryAccent,
         onPrimary: Colors.white,
-        primaryContainer: terracottaLightAccent,
-        onPrimaryContainer: deepEspressoPrimaryText,
-        secondary: warmRustSecondaryText,
+        secondary: palette.secondaryText,
         onSecondary: Colors.white,
-        error: Color(0xFFB00020),
+        error: const Color(0xFFB00020),
         onError: Colors.white,
-        surface: pureWhiteCard,
-        onSurface: deepEspressoPrimaryText,
-        onSurfaceVariant: warmRustSecondaryText,
-        outline: softWarmBorder,
-        outlineVariant: Color(0xFFF4E4D9),
+        surface: palette.cardBackground,
+        onSurface: palette.primaryText,
+        outline: palette.cardBorder,
+        outlineVariant: palette.dashedBorderColor,
       ),
-      appBarTheme: const AppBarTheme(
-        backgroundColor: softParchmentBackground,
+      appBarTheme: AppBarTheme(
+        backgroundColor: palette.background,
         elevation: 0,
         scrolledUnderElevation: 0,
-        centerTitle: false,
-        iconTheme: IconThemeData(color: deepEspressoPrimaryText),
+        iconTheme: IconThemeData(color: palette.primaryText),
         titleTextStyle: TextStyle(
           fontFamily: serifFontFamily,
           fontSize: 22,
           fontWeight: FontWeight.bold,
-          color: deepEspressoPrimaryText,
+          color: palette.primaryText,
         ),
       ),
-      cardTheme: const CardThemeData(
-        color: pureWhiteCard,
-        elevation: 0,
-        margin: EdgeInsets.zero,
-        shape: RoundedRectangleBorder(
-          borderRadius: asymmetricCardRadius,
-          side: BorderSide(color: softWarmBorder, width: 1.0),
-        ),
-      ),
-      bottomNavigationBarTheme: const BottomNavigationBarThemeData(
-        backgroundColor: pureWhiteCard,
-        selectedItemColor: terracottaPrimary,
-        unselectedItemColor: navInactiveColor,
-        type: BottomNavigationBarType.fixed,
-        elevation: 0,
-      ),
-      textTheme: const TextTheme(
-        headlineMedium: TextStyle(
-          fontFamily: serifFontFamily,
-          fontSize: 26,
-          fontWeight: FontWeight.bold,
-          color: deepEspressoPrimaryText,
-        ),
+      textTheme: TextTheme(
+        displayLarge: TextStyle(fontFamily: serifFontFamily, color: palette.primaryText),
+        displayMedium: TextStyle(fontFamily: serifFontFamily, color: palette.primaryText),
+        headlineMedium: TextStyle(fontFamily: serifFontFamily, color: palette.primaryText),
         titleLarge: TextStyle(
           fontFamily: serifFontFamily,
           fontSize: 20,
           fontWeight: FontWeight.bold,
-          color: deepEspressoPrimaryText,
+          color: palette.primaryText,
         ),
         titleMedium: TextStyle(
-          fontFamily: serifFontFamily,
           fontSize: 16,
           fontWeight: FontWeight.w600,
-          color: deepEspressoPrimaryText,
+          color: palette.primaryText,
         ),
-        bodyLarge: TextStyle(
-          fontSize: 15,
-          color: deepEspressoPrimaryText,
-        ),
-        bodyMedium: TextStyle(
-          fontSize: 13,
-          color: warmRustSecondaryText,
-        ),
-        labelMedium: TextStyle(
-          fontSize: 12,
-          fontWeight: FontWeight.w600,
-          color: warmRustSecondaryText,
-        ),
+        bodyLarge: TextStyle(fontSize: 15, color: palette.primaryText),
+        bodyMedium: TextStyle(fontSize: 14, color: palette.secondaryText),
       ),
     );
   }
 
-  /// Maps each of the 17 Shelf categories to a specific Phosphor Icon
+  /// Category icon mapping helper
   static IconData getCategoryIcon(String category) {
-    switch (category.trim().toLowerCase()) {
+    final key = category.trim().toLowerCase();
+    switch (key) {
       case 'fantasy':
-        return PhosphorIcons.magicWand;
+        return PhosphorIcons.sparkle;
       case 'historical fiction':
-        return PhosphorIcons.castleTurret;
+        return PhosphorIcons.scroll;
       case 'mystery':
         return PhosphorIcons.magnifyingGlass;
       case 'romance':
         return PhosphorIcons.heart;
       case 'science fiction':
-      case 'sci-fi':
-        return PhosphorIcons.rocketLaunch;
+        return PhosphorIcons.planet;
       case 'horror':
         return PhosphorIcons.ghost;
       case 'graphic novels & comics':
-      case 'graphic novels':
-      case 'comics':
-        return PhosphorIcons.chatTeardropText;
+        return PhosphorIcons.bookOpen;
       case 'anime & manga':
-      case 'manga':
-      case 'anime':
-        return PhosphorIcons.sparkle;
+        return PhosphorIcons.lightning;
       case 'poetry':
         return PhosphorIcons.feather;
       case 'history':
         return PhosphorIcons.hourglass;
       case 'biography & memoir':
-      case 'biography':
-      case 'memoir':
-        return PhosphorIcons.userList;
+        return PhosphorIcons.identificationCard;
       case 'philosophy':
         return PhosphorIcons.brain;
       case 'self-help & personal development':
-      case 'self-help':
-        return PhosphorIcons.trendUp;
+        return PhosphorIcons.compass;
       case 'school/reference':
-      case 'reference':
-      case 'school':
         return PhosphorIcons.graduationCap;
       case 'classics':
-        return PhosphorIcons.columns;
+        return PhosphorIcons.bookOpenText;
       case 'religion & spirituality':
-      case 'spirituality':
-      case 'religion':
         return PhosphorIcons.sun;
       case 'miscellaneous':
       default:
-        return PhosphorIcons.folders;
+        return PhosphorIcons.folderSimple;
     }
   }
 }

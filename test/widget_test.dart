@@ -5,9 +5,11 @@ import 'package:phosphoricons_flutter/phosphoricons_flutter.dart';
 import 'package:the_shelf/blocs/shelf/shelf_bloc.dart';
 import 'package:the_shelf/blocs/shelf/shelf_event.dart';
 import 'package:the_shelf/blocs/shelf/shelf_state.dart';
+import 'package:the_shelf/blocs/theme/theme_cubit.dart';
 import 'package:the_shelf/main.dart';
 import 'package:the_shelf/screens/home_screen.dart';
 import 'package:the_shelf/screens/search_screen.dart';
+import 'package:the_shelf/screens/settings_screen.dart';
 import 'package:the_shelf/screens/shelf_detail_screen.dart';
 import 'package:the_shelf/widgets/shelf_card.dart';
 
@@ -109,6 +111,30 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('No Documents Found'), findsOneWidget);
+  });
+
+  testWidgets('Settings screen theme switcher updates active palette to Teal', (WidgetTester tester) async {
+    await tester.pumpWidget(const TheShelfApp());
+    await tester.pumpAndSettle();
+
+    // Navigate to Settings tab (4th tab item)
+    final settingsNav = find.byIcon(PhosphorIcons.gear);
+    expect(settingsNav, findsOneWidget);
+
+    await tester.tap(settingsNav);
+    await tester.pumpAndSettle();
+
+    expect(find.byType(SettingsScreen), findsOneWidget);
+    expect(find.text('Teal (Fresh Mint)'), findsOneWidget);
+
+    // Tap Teal theme card
+    await tester.tap(find.text('Teal (Fresh Mint)'));
+    await tester.pumpAndSettle();
+
+    // Verify ThemeCubit active palette is now teal
+    final BuildContext settingsContext = tester.element(find.byType(SettingsScreen));
+    final themeCubit = BlocProvider.of<ThemeCubit>(settingsContext);
+    expect(themeCubit.state.id, 'teal');
   });
 
   testWidgets('Adding document to empty shelf updates BLoC state reactively', (WidgetTester tester) async {

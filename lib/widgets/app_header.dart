@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:phosphoricons_flutter/phosphoricons_flutter.dart';
+import 'package:the_shelf/blocs/theme/theme_cubit.dart';
+import 'package:the_shelf/theme/app_color_palette.dart';
 import 'package:the_shelf/theme/app_theme.dart';
 
 /// Reusable compact top app header widget.
@@ -24,6 +27,8 @@ class AppHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final activePalette = context.watch<ThemeCubit>().state;
+
     if (isSliver) {
       return SliverAppBar(
         pinned: true,
@@ -31,9 +36,9 @@ class AppHeader extends StatelessWidget {
         centerTitle: false,
         titleSpacing: 16.0,
         toolbarHeight: 56.0,
-        backgroundColor: AppTheme.softParchmentBackground,
-        title: _buildTitle(),
-        actions: _buildActions(),
+        backgroundColor: activePalette.background,
+        title: _buildTitle(activePalette),
+        actions: _buildActions(activePalette),
       );
     }
 
@@ -42,56 +47,56 @@ class AppHeader extends StatelessWidget {
       bottom: false,
       child: Container(
         height: 56.0,
-        color: AppTheme.softParchmentBackground,
+        color: activePalette.background,
         padding: const EdgeInsets.symmetric(horizontal: 16.0),
         child: Row(
           children: [
-            Expanded(child: _buildTitle()),
-            ..._buildActions(),
+            Expanded(child: _buildTitle(activePalette)),
+            ..._buildActions(activePalette),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildTitle() {
+  Widget _buildTitle(AppColorPalette palette) {
     return Text(
       title,
-      style: const TextStyle(
+      style: TextStyle(
         fontFamily: AppTheme.serifFontFamily,
         fontSize: 24,
         fontWeight: FontWeight.bold,
-        color: AppTheme.deepEspressoPrimaryText,
+        color: palette.primaryText,
         letterSpacing: -0.3,
       ),
     );
   }
 
-  List<Widget> _buildActions() {
+  List<Widget> _buildActions(AppColorPalette palette) {
     return [
       IconButton(
-        icon: const Icon(
+        icon: Icon(
           PhosphorIcons.plusCircle,
           size: 24,
-          color: AppTheme.terracottaPrimary,
+          color: palette.primaryAccent,
         ),
         tooltip: 'Add Document',
         onPressed: onAddItemPressed,
       ),
       IconButton(
-        icon: const Icon(
+        icon: Icon(
           PhosphorIcons.magnifyingGlass,
           size: 22,
-          color: AppTheme.deepEspressoPrimaryText,
+          color: palette.primaryText,
         ),
         tooltip: 'Search Library',
         onPressed: onSearchPressed ?? () {},
       ),
       IconButton(
-        icon: const Icon(
+        icon: Icon(
           PhosphorIcons.funnel,
           size: 22,
-          color: AppTheme.deepEspressoPrimaryText,
+          color: palette.primaryText,
         ),
         tooltip: 'Filter Shelves',
         onPressed: onFilterPressed ?? () {},
