@@ -1,3 +1,4 @@
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:the_shelf/blocs/collection/collection_bloc.dart';
@@ -11,8 +12,9 @@ import 'package:the_shelf/services/shelf_classifier_service.dart';
 import 'package:the_shelf/theme/app_color_palette.dart';
 import 'package:the_shelf/theme/app_theme.dart';
 
-void main() {
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp();
   // Kick off asynchronous asset loading for on-device classifier
   ShelfClassifierService.instance.ensureInitialized();
 
