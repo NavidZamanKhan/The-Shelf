@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "66090868553",
+    "project_id": "the-shelf-39f9d",
+    "storage_bucket": "the-shelf-39f9d.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:66090868553:android:bf73986937838d7f7ec498",
+        "android_client_info": {
+          "package_name": "com.navidzamankhan.theshelf"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyASoOVbusHgTTcvxi1I2vN-WyfUQ0HVMKU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
