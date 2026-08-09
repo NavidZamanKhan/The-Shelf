@@ -163,4 +163,17 @@ class DocumentRepository {
     final db = await database;
     await db.delete(_tableName);
   }
+
+  /// Returns genre distribution as `Map<shelfName, count>` for the Profile donut chart.
+  /// Uses real SQLite data grouped by the `shelf` column.
+  Future<Map<String, int>> getGenreDistribution() async {
+    final db = await database;
+    final results = await db.rawQuery(
+      'SELECT shelf, COUNT(*) as count FROM $_tableName GROUP BY shelf ORDER BY count DESC',
+    );
+    return {
+      for (var row in results)
+        row['shelf'] as String: row['count'] as int,
+    };
+  }
 }

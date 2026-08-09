@@ -14,7 +14,15 @@ import 'package:the_shelf/theme/app_theme.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await Firebase.initializeApp();
+
+  // Firebase may not be configured on all platforms yet (e.g. macOS).
+  // Wrap in try-catch so the app still launches; auth features will be
+  // unavailable until platform-specific config files are added.
+  try {
+    await Firebase.initializeApp();
+  } catch (e) {
+    debugPrint('⚠️ Firebase init skipped: $e');
+  }
   // Kick off asynchronous asset loading for on-device classifier
   ShelfClassifierService.instance.ensureInitialized();
 

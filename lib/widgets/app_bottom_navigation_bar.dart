@@ -17,7 +17,7 @@ class AppBottomNavigationBar extends StatelessWidget {
   static const List<_NavItemData> _items = [
     _NavItemData('Shelf', PhosphorIcons.books),
     _NavItemData('Collections', PhosphorIcons.bookmarkSimple),
-    _NavItemData('Insights', PhosphorIcons.sparkle),
+    _NavItemData('Profile', PhosphorIcons.user),
     _NavItemData('Settings', PhosphorIcons.gear),
   ];
 

@@ -9,6 +9,7 @@ import 'package:the_shelf/blocs/theme/theme_cubit.dart';
 import 'package:the_shelf/models/collection_model.dart';
 import 'package:the_shelf/models/mock_shelf_items.dart';
 import 'package:the_shelf/screens/collection_detail_screen.dart';
+import 'package:the_shelf/screens/profile_screen.dart';
 import 'package:the_shelf/screens/search_screen.dart';
 import 'package:the_shelf/screens/settings_screen.dart';
 import 'package:the_shelf/screens/shelf_detail_screen.dart';
@@ -135,12 +136,8 @@ class _HomeScreenState extends State<HomeScreen> {
                   // Tab 1: Collections screen
                   const _CollectionsView(),
 
-                  // Tab 2: Insights placeholder screen
-                  _buildPlaceholderScreen(
-                    'Insights',
-                    PhosphorIcons.sparkle,
-                    activePalette,
-                  ),
+                  // Tab 2: Profile screen (real genre chart, mock auth fields)
+                  const ProfileScreen(),
 
                   // Tab 3: Settings screen with theme switcher
                   const SettingsScreen(),
@@ -159,39 +156,6 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildPlaceholderScreen(
-    String title,
-    IconData icon,
-    AppColorPalette activePalette,
-  ) {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(
-            icon,
-            size: 48,
-            color: activePalette.primaryAccent.withOpacity(0.5),
-          ),
-          const SizedBox(height: 16),
-          Text(
-            title,
-            style: TextStyle(
-              fontFamily: AppTheme.serifFontFamily,
-              fontSize: 22,
-              fontWeight: FontWeight.bold,
-              color: activePalette.primaryText,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'Coming Soon',
-            style: TextStyle(fontSize: 14, color: activePalette.secondaryText),
-          ),
-        ],
-      ),
-    );
-  }
 }
 
 class _ShelfView extends StatelessWidget {
