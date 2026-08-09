@@ -21,6 +21,11 @@ dependencies:
   sqflite: ^2.4.1
   sqflite_common_ffi: ^2.3.4
   path: ^1.9.0
+  firebase_core: ^4.13.0
+  firebase_auth: ^6.5.7
+  google_sign_in: ^7.2.0
+  fl_chart: ^1.2.0
+  app_links: ^7.2.1
 
 dev_dependencies:
   flutter_test:
