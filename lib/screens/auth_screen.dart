@@ -170,7 +170,7 @@ class _AuthScreenState extends State<AuthScreen> {
 
               // Skip / Guest Mode CTA
               TextButton(
-                onTap: () => Navigator.of(context).pop(),
+                onPressed: () => Navigator.of(context).pop(),
                 child: Text(
                   'Continue as Guest',
                   style: TextStyle(
