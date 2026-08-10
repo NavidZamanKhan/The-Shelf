@@ -2,9 +2,13 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:phosphoricons_flutter/phosphoricons_flutter.dart';
+import 'package:the_shelf/blocs/auth/auth_bloc.dart';
+import 'package:the_shelf/blocs/auth/auth_event.dart';
+import 'package:the_shelf/blocs/auth/auth_state.dart';
 import 'package:the_shelf/blocs/collection/collection_bloc.dart';
 import 'package:the_shelf/blocs/collection/collection_state.dart';
 import 'package:the_shelf/blocs/theme/theme_cubit.dart';
+import 'package:the_shelf/screens/auth_screen.dart';
 import 'package:the_shelf/services/document_repository.dart';
 import 'package:the_shelf/theme/app_color_palette.dart';
 import 'package:the_shelf/theme/app_theme.dart';
@@ -147,6 +151,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
   // ================================================================
 
   Widget _buildBannerHeader(AppColorPalette activePalette) {
+    final authState = context.watch<AuthBloc>().state;
+    String initial = 'G';
+    if (authState is Authenticated) {
+      final name = authState.user.displayName;
+      final email = authState.user.email;
+      if (name != null && name.isNotEmpty) {
+        initial = name[0].toUpperCase();
+      } else if (email != null && email.isNotEmpty) {
+        initial = email[0].toUpperCase();
+      } else {
+        initial = 'U';
+      }
+    }
+
     return Container(
       height: 130,
       width: double.infinity,
@@ -185,11 +203,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   ),
                 ],
               ),
-              child: const Center(
-                // TODO(auth): Replace with user initials from FirebaseAuth.instance.currentUser.displayName
+              child: Center(
                 child: Text(
-                  'G',
-                  style: TextStyle(
+                  initial,
+                  style: const TextStyle(
                     fontFamily: AppTheme.serifFontFamily,
                     fontSize: 30,
                     fontWeight: FontWeight.w700,
@@ -205,7 +222,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
             right: 16,
             top: 16,
             child: GestureDetector(
-              onTap: () => _showAuthRequiredToast('edit your photo'),
+              onTap: authState is Authenticated
+                  ? () => _showAuthRequiredToast('edit photo features coming soon')
+                  : () => AuthScreen.show(context),
               child: Container(
                 width: 36,
                 height: 36,
@@ -231,6 +250,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
   // ================================================================
 
   Widget _buildIdentitySection(AppColorPalette activePalette) {
+    final authState = context.watch<AuthBloc>().state;
+    final bool isAuthenticated = authState is Authenticated;
+    final user = isAuthenticated ? authState.user : null;
+
+    final displayName = isAuthenticated
+        ? (user?.displayName ?? 'Account User')
+        : 'Guest User';
+    final email = isAuthenticated
+        ? (user?.email ?? 'Signed in')
+        : 'Sign in to sync your library';
+
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 40, 20, 0),
       child: Row(
@@ -241,9 +271,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // TODO(auth): Replace with FirebaseAuth.instance.currentUser?.displayName
                 Text(
-                  'Guest User',
+                  displayName,
                   style: TextStyle(
                     fontFamily: AppTheme.serifFontFamily,
                     fontSize: 22,
@@ -252,9 +281,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   ),
                 ),
                 const SizedBox(height: 3),
-                // TODO(auth): Replace with FirebaseAuth.instance.currentUser?.email
                 Text(
-                  'Sign in to see your profile',
+                  email,
                   style: TextStyle(
                     fontSize: 13,
                     color: activePalette.secondaryText,
@@ -264,16 +292,26 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ),
           ),
 
-          // Edit profile button
+          // Action button (Sign In if guest, Edit Profile if authenticated)
           GestureDetector(
-            onTap: () => _showAuthRequiredToast('edit your profile'),
+            onTap: () {
+              if (isAuthenticated) {
+                _showAuthRequiredToast('edit profile features coming soon');
+              } else {
+                AuthScreen.show(context);
+              }
+            },
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
               decoration: BoxDecoration(
-                color: Colors.transparent,
+                color: isAuthenticated
+                    ? Colors.transparent
+                    : activePalette.primaryAccent,
                 borderRadius: AppTheme.asymmetricBadgeRadius,
                 border: Border.all(
-                  color: activePalette.cardBorder,
+                  color: isAuthenticated
+                      ? activePalette.cardBorder
+                      : activePalette.primaryAccent,
                   width: 1.2,
                 ),
               ),
@@ -281,18 +319,24 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Icon(
-                    PhosphorIcons.pencilSimple,
+                    isAuthenticated
+                        ? PhosphorIcons.pencilSimple
+                        : PhosphorIcons.signIn,
                     size: 15,
-                    color: activePalette.primaryText,
+                    color: isAuthenticated
+                        ? activePalette.primaryText
+                        : Colors.white,
                   ),
                   const SizedBox(width: 6),
                   Text(
-                    'Edit profile',
+                    isAuthenticated ? 'Edit profile' : 'Sign in',
                     style: TextStyle(
                       fontFamily: AppTheme.serifFontFamily,
                       fontSize: 13,
                       fontWeight: FontWeight.w600,
-                      color: activePalette.primaryText,
+                      color: isAuthenticated
+                          ? activePalette.primaryText
+                          : Colors.white,
                     ),
                   ),
                 ],
@@ -500,6 +544,29 @@ class _ProfileScreenState extends State<ProfileScreen> {
         ? collectionCount.collections.length
         : 0;
 
+    final authState = context.watch<AuthBloc>().state;
+    final bool isAuthenticated = authState is Authenticated;
+    final user = isAuthenticated ? authState.user : null;
+
+    String memberSince = '—';
+    if (isAuthenticated && user?.metadata.creationTime != null) {
+      final dt = user!.metadata.creationTime!;
+      const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+      memberSince = '${months[dt.month - 1]} ${dt.year}';
+    }
+
+    String provider = 'Not signed in';
+    if (isAuthenticated && user != null && user.providerData.isNotEmpty) {
+      final pId = user.providerData.first.providerId;
+      if (pId.contains('google')) {
+        provider = 'Google';
+      } else if (pId.contains('password') || pId.contains('email')) {
+        provider = 'Email Link';
+      } else {
+        provider = pId;
+      }
+    }
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20),
       child: Container(
@@ -521,9 +588,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 thickness: 1,
                 color: activePalette.cardBorder,
               ),
-              // TODO(auth): Replace with FirebaseAuth.instance.currentUser?.metadata.creationTime
               _buildStatCell(
-                '—',
+                memberSince,
                 'Member since',
                 activePalette,
               ),
@@ -532,9 +598,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 thickness: 1,
                 color: activePalette.cardBorder,
               ),
-              // TODO(auth): Replace with user.providerData[0].providerId
               _buildStatCell(
-                'Not signed in',
+                provider,
                 'Signed in via',
                 activePalette,
               ),
@@ -584,15 +649,23 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   // ================================================================
-  // LOG OUT BUTTON
+  // LOG OUT / SIGN IN BUTTON
   // ================================================================
 
   Widget _buildLogOutButton(AppColorPalette activePalette) {
+    final authState = context.watch<AuthBloc>().state;
+    final bool isAuthenticated = authState is Authenticated;
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20),
       child: GestureDetector(
-        // TODO(auth): Wire real FirebaseAuth.instance.signOut() + GoogleSignIn().signOut()
-        onTap: () => _showAuthRequiredToast('log out'),
+        onTap: () {
+          if (isAuthenticated) {
+            context.read<AuthBloc>().add(const SignOutRequested());
+          } else {
+            AuthScreen.show(context);
+          }
+        },
         child: AnimatedScale(
           scale: 1.0,
           duration: const Duration(milliseconds: 120),
@@ -600,29 +673,31 @@ class _ProfileScreenState extends State<ProfileScreen> {
             width: double.infinity,
             padding: const EdgeInsets.symmetric(vertical: 14),
             decoration: BoxDecoration(
-              color: Colors.transparent,
+              color: isAuthenticated ? Colors.transparent : activePalette.primaryAccent,
               borderRadius: AppTheme.asymmetricCardRadius,
               border: Border.all(
-                color: Colors.redAccent.withValues(alpha: 0.6),
+                color: isAuthenticated
+                    ? Colors.redAccent.withValues(alpha: 0.6)
+                    : activePalette.primaryAccent,
                 width: 1.2,
               ),
             ),
-            child: const Row(
+            child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Icon(
-                  PhosphorIcons.signOut,
+                  isAuthenticated ? PhosphorIcons.signOut : PhosphorIcons.signIn,
                   size: 18,
-                  color: Colors.redAccent,
+                  color: isAuthenticated ? Colors.redAccent : Colors.white,
                 ),
-                SizedBox(width: 8),
+                const SizedBox(width: 8),
                 Text(
-                  'Log out',
+                  isAuthenticated ? 'Log out' : 'Sign in / Create account',
                   style: TextStyle(
                     fontFamily: AppTheme.serifFontFamily,
                     fontSize: 15,
                     fontWeight: FontWeight.w600,
-                    color: Colors.redAccent,
+                    color: isAuthenticated ? Colors.redAccent : Colors.white,
                   ),
                 ),
               ],

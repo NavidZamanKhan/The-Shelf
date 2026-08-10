@@ -1,6 +1,8 @@
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:the_shelf/blocs/auth/auth_bloc.dart';
+import 'package:the_shelf/blocs/auth/auth_event.dart';
 import 'package:the_shelf/blocs/collection/collection_bloc.dart';
 import 'package:the_shelf/blocs/collection/collection_event.dart';
 import 'package:the_shelf/blocs/document_import/document_import_bloc.dart';
@@ -36,6 +38,9 @@ class TheShelfApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MultiBlocProvider(
       providers: [
+        BlocProvider<AuthBloc>(
+          create: (context) => AuthBloc()..add(const AuthStarted()),
+        ),
         BlocProvider<DocumentImportBloc>(
           create: (context) => DocumentImportBloc(),
         ),

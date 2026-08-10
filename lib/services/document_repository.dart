@@ -7,7 +7,7 @@ import 'package:the_shelf/blocs/shelf/shelf_state.dart';
 class DocumentRepository {
   static final DocumentRepository instance = DocumentRepository._internal();
   static const String _tableName = 'documents';
-  static const int _dbVersion = 2;
+  static const int _dbVersion = 3;
 
   Database? _db;
 
@@ -50,12 +50,14 @@ class DocumentRepository {
         title TEXT NOT NULL,
         shelf TEXT NOT NULL,
         file_path TEXT NOT NULL,
-        added_at TEXT NOT NULL
+        added_at TEXT NOT NULL,
+        user_id TEXT DEFAULT 'guest_local'
       )
     ''');
 
     await db.execute('CREATE INDEX idx_documents_shelf ON $_tableName(shelf);');
     await db.execute('CREATE INDEX idx_documents_title ON $_tableName(title);');
+    await db.execute('CREATE INDEX idx_documents_user ON $_tableName(user_id);');
 
     await _createCollectionTables(db);
   }
@@ -63,6 +65,11 @@ class DocumentRepository {
   Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
     if (oldVersion < 2) {
       await _createCollectionTables(db);
+    }
+    if (oldVersion < 3) {
+      await db.execute("ALTER TABLE $_tableName ADD COLUMN user_id TEXT DEFAULT 'guest_local';");
+      await db.execute("ALTER TABLE collections ADD COLUMN user_id TEXT DEFAULT 'guest_local';");
+      await db.execute("CREATE INDEX IF NOT EXISTS idx_documents_user ON $_tableName(user_id);");
     }
   }
 
@@ -175,5 +182,23 @@ class DocumentRepository {
       for (var row in results)
         row['shelf'] as String: row['count'] as int,
     };
+  }
+
+  /// Claims all `guest_local` documents and collections for a newly authenticated user.
+  Future<void> claimGuestData(String userId) async {
+    if (userId.isEmpty || userId == 'guest_local') return;
+    final db = await database;
+    await db.transaction((txn) async {
+      await txn.update(
+        _tableName,
+        {'user_id': userId},
+        where: "user_id = 'guest_local'",
+      );
+      await txn.update(
+        'collections',
+        {'user_id': userId},
+        where: "user_id = 'guest_local'",
+      );
+    });
   }
 }
