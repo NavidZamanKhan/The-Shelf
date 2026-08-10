@@ -7,6 +7,7 @@ import 'package:the_shelf/blocs/auth/auth_state.dart';
 import 'package:the_shelf/blocs/theme/theme_cubit.dart';
 import 'package:the_shelf/theme/app_color_palette.dart';
 import 'package:the_shelf/theme/app_theme.dart';
+import 'package:the_shelf/widgets/google_logo_icon.dart';
 
 enum AuthTab { signIn, signUp }
 
@@ -379,11 +380,7 @@ class _AuthScreenState extends State<AuthScreen> {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(
-                  PhosphorIcons.googleLogo,
-                  size: 18,
-                  color: activePalette.primaryAccent,
-                ),
+                const GoogleLogoIcon(size: 20),
                 const SizedBox(width: 10),
                 Text(
                   _selectedTab == AuthTab.signIn
