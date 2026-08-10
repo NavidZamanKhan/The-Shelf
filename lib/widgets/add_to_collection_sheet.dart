@@ -65,10 +65,12 @@ class _AddToCollectionSheetState extends State<AddToCollectionSheet> {
           }
 
           final collections = (state is CollectionLoaded) ? state.collections : [];
-          final docMap = (state is CollectionLoaded) ? state.documentCollectionMap : {};
+          final docMap = (state is CollectionLoaded)
+              ? state.documentCollectionMap
+              : <String, Set<String>>{};
 
           if (!_isInitialized) {
-            final initialMemberships = docMap[widget.item.id] ?? {};
+            final initialMemberships = docMap[widget.item.id] ?? <String>{};
             _selectedCollectionIds.addAll(initialMemberships);
             _isInitialized = true;
           }

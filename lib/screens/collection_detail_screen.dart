@@ -209,7 +209,7 @@ class _CollectionDetailScreenState extends State<CollectionDetailScreen> {
 
               // Filter documents that belong to this collection in docMap
               final collectionDocs = effectiveDocs.where((doc) {
-                final colIds = docMap[doc.id] ?? {};
+                final colIds = docMap[doc.id] ?? <String>{};
                 return colIds.contains(_currentCollection.id);
               }).toList();
 
