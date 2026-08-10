@@ -198,43 +198,50 @@ class _ProfileScreenState extends State<ProfileScreen> {
           Positioned(
             left: 20,
             bottom: -32,
-            child: Container(
-              width: 76,
-              height: 76,
-              decoration: BoxDecoration(
-                color: activePalette.primaryAccent,
-                borderRadius: AppTheme.asymmetricBadgeRadius,
-                border: Border.all(
-                  color: activePalette.cardBackground,
-                  width: 3.5,
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: activePalette.primaryAccent.withValues(alpha: 0.25),
-                    blurRadius: 8,
-                    offset: const Offset(0, 3),
+            child: GestureDetector(
+              onTap: () {
+                if (profile != null) {
+                  EditProfileModal.show(context, profile: profile);
+                }
+              },
+              child: Container(
+                width: 76,
+                height: 76,
+                decoration: BoxDecoration(
+                  color: activePalette.primaryAccent,
+                  borderRadius: AppTheme.asymmetricBadgeRadius,
+                  border: Border.all(
+                    color: activePalette.cardBackground,
+                    width: 3.5,
                   ),
-                ],
-                image: avatarImage != null
-                    ? DecorationImage(
-                        image: avatarImage,
-                        fit: BoxFit.cover,
+                  boxShadow: [
+                    BoxShadow(
+                      color: activePalette.primaryAccent.withValues(alpha: 0.25),
+                      blurRadius: 8,
+                      offset: const Offset(0, 3),
+                    ),
+                  ],
+                  image: avatarImage != null
+                      ? DecorationImage(
+                          image: avatarImage,
+                          fit: BoxFit.cover,
+                        )
+                      : null,
+                ),
+                child: avatarImage == null
+                    ? Center(
+                        child: Text(
+                          initial,
+                          style: const TextStyle(
+                            fontFamily: AppTheme.serifFontFamily,
+                            fontSize: 32,
+                            fontWeight: FontWeight.w700,
+                            color: Colors.white,
+                          ),
+                        ),
                       )
                     : null,
               ),
-              child: avatarImage == null
-                  ? Center(
-                      child: Text(
-                        initial,
-                        style: const TextStyle(
-                          fontFamily: AppTheme.serifFontFamily,
-                          fontSize: 32,
-                          fontWeight: FontWeight.w700,
-                          color: Colors.white,
-                        ),
-                      ),
-                    )
-                  : null,
             ),
           ),
 
@@ -600,6 +607,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
         ? collectionCount.collections.length
         : 0;
 
+    final totalBooks = _genreDistribution.values.fold(0, (a, b) => a + b);
+
     final authState = context.watch<AuthBloc>().state;
     final profile = authState is Authenticated ? authState.profile : null;
 
@@ -635,6 +644,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
           child: Row(
             children: [
               _buildStatCell(
+                '$totalBooks',
+                'Total Books',
+                activePalette,
+              ),
+              VerticalDivider(
+                width: 1,
+                thickness: 1,
+                color: activePalette.cardBorder,
+              ),
+              _buildStatCell(
                 '$count',
                 'Collections',
                 activePalette,
@@ -647,16 +666,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
               _buildStatCell(
                 memberSince,
                 'Member since',
-                activePalette,
-              ),
-              VerticalDivider(
-                width: 1,
-                thickness: 1,
-                color: activePalette.cardBorder,
-              ),
-              _buildStatCell(
-                profile != null ? 'Firebase' : '—',
-                'Signed in via',
                 activePalette,
               ),
             ],

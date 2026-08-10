@@ -80,5 +80,9 @@
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Select your avatar profile picture and banner cover photo.</string>
+	<key>NSCameraUsageDescription</key>
+	<string>Take a photo for your avatar profile picture and banner cover photo.</string>
 </dict>
 </plist>

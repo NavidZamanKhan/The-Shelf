@@ -74,9 +74,29 @@ class _EditProfileModalState extends State<EditProfileModal> {
             _selectedPhotoPath = pickedFile.path;
           }
         });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              isBanner
+                  ? 'Cover photo selected! Tap "Save Changes" to update.'
+                  : 'Profile picture selected! Tap "Save Changes" to update.',
+            ),
+            behavior: SnackBarBehavior.floating,
+            duration: const Duration(seconds: 2),
+          ),
+        );
       }
     } catch (e) {
       debugPrint('Error picking image: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Could not open photo gallery: $e'),
+            behavior: SnackBarBehavior.floating,
+            backgroundColor: Colors.redAccent,
+          ),
+        );
+      }
     }
   }
 
