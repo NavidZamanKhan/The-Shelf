@@ -1,3 +1,4 @@
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:the_shelf/blocs/auth/auth_bloc.dart';
@@ -17,6 +18,13 @@ import 'package:the_shelf/theme/app_theme.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Firebase initialization if configured
+  try {
+    await Firebase.initializeApp();
+  } catch (e) {
+    debugPrint('⚠️ Firebase init skipped: $e');
+  }
 
   // Kick off asynchronous asset loading for on-device classifier
   ShelfClassifierService.instance.ensureInitialized();

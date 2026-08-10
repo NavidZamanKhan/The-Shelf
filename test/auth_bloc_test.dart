@@ -53,6 +53,17 @@ class FakeAuthRepository extends AuthRepository {
   }
 
   @override
+  Future<LocalUser> signInWithGoogle() async {
+    _currentUser = LocalUser(
+      email: 'googleuser@example.com',
+      displayName: 'Google User',
+      createdAt: DateTime.now(),
+    );
+    _loggedIn = true;
+    return _currentUser!;
+  }
+
+  @override
   Future<LocalUser?> updateDisplayName(String displayName) async {
     if (_currentUser != null) {
       _currentUser = LocalUser(
@@ -104,6 +115,20 @@ void main() {
         password: 'password123',
         displayName: 'Test User',
       ));
+
+      await expectLater(
+        bloc.stream,
+        emitsInOrder([
+          const AuthLoading(),
+          isA<Authenticated>(),
+        ]),
+      );
+    });
+
+    test('emits Authenticated after Google Sign-In', () async {
+      final bloc = AuthBloc(authRepository: fakeAuthRepository);
+
+      bloc.add(const SignInWithGoogleRequested());
 
       await expectLater(
         bloc.stream,

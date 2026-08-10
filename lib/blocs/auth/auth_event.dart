@@ -39,6 +39,11 @@ class SignUpRequested extends AuthEvent {
   List<Object?> get props => [email, password, displayName];
 }
 
+/// Sign in or Sign up with Google.
+class SignInWithGoogleRequested extends AuthEvent {
+  const SignInWithGoogleRequested();
+}
+
 /// Update display name.
 class UpdateDisplayNameRequested extends AuthEvent {
   final String displayName;

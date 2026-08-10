@@ -225,7 +225,32 @@ class _AuthScreenState extends State<AuthScreen> {
 
                   // --- Submit Button ---
                   _buildSubmitButton(activePalette),
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 18),
+
+                  // --- Divider ---
+                  Row(
+                    children: [
+                      Expanded(child: Divider(color: activePalette.cardBorder)),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 12),
+                        child: Text(
+                          'OR CONTINUE WITH',
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w600,
+                            letterSpacing: 0.8,
+                            color: activePalette.desaturatedEmptyText,
+                          ),
+                        ),
+                      ),
+                      Expanded(child: Divider(color: activePalette.cardBorder)),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+
+                  // --- Google Sign-In / Sign-Up Button ---
+                  _buildGoogleSignInButton(activePalette),
+                  const SizedBox(height: 24),
 
                   // --- Switch tab hint ---
                   _buildSwitchTabHint(activePalette),
@@ -321,6 +346,58 @@ class _AuthScreenState extends State<AuthScreen> {
                       color: Colors.white,
                     ),
                   ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildGoogleSignInButton(AppColorPalette activePalette) {
+    return BlocBuilder<AuthBloc, AuthState>(
+      builder: (context, state) {
+        final isLoading = state is AuthLoading;
+
+        return GestureDetector(
+          onTap: isLoading
+              ? null
+              : () {
+                  context
+                      .read<AuthBloc>()
+                      .add(const SignInWithGoogleRequested());
+                },
+          child: Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(vertical: 13),
+            decoration: BoxDecoration(
+              color: activePalette.cardBackground,
+              borderRadius: AppTheme.asymmetricCardRadius,
+              border: Border.all(
+                color: activePalette.cardBorder,
+                width: 1.2,
+              ),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  PhosphorIcons.googleLogo,
+                  size: 18,
+                  color: activePalette.primaryAccent,
+                ),
+                const SizedBox(width: 10),
+                Text(
+                  _selectedTab == AuthTab.signIn
+                      ? 'Sign in with Google'
+                      : 'Sign up with Google',
+                  style: TextStyle(
+                    fontFamily: AppTheme.serifFontFamily,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: activePalette.primaryText,
+                  ),
+                ),
+              ],
+            ),
           ),
         );
       },

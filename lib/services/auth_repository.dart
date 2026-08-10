@@ -1,9 +1,10 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:the_shelf/models/local_user.dart';
 
-/// Frontend-only authentication repository using SharedPreferences.
-/// Stores user credentials locally — no backend required.
+/// Authentication repository supporting email/password and Google Sign-In.
 class AuthRepository {
   static const _keyEmail = 'auth_email';
   static const _keyPassword = 'auth_password';
@@ -62,7 +63,7 @@ class AuthRepository {
     );
   }
 
-  /// Create a new local account and sign in.
+  /// Create a new account and sign in.
   Future<LocalUser> signUpWithEmailAndPassword({
     required String email,
     required String password,
@@ -97,6 +98,51 @@ class AuthRepository {
     );
   }
 
+  /// Sign in or Sign up using Google account.
+  Future<LocalUser> signInWithGoogle() async {
+    try {
+      final googleUser = await GoogleSignIn.instance.authenticate();
+
+      String email = googleUser.email;
+      String displayName = googleUser.displayName ?? 'Google User';
+
+      // Attempt Firebase authentication if configured
+      try {
+        final googleAuth = googleUser.authentication;
+        final credential = GoogleAuthProvider.credential(
+          idToken: googleAuth.idToken,
+        );
+        final userCredential =
+            await FirebaseAuth.instance.signInWithCredential(credential);
+        final fbUser = userCredential.user;
+        if (fbUser != null) {
+          if (fbUser.email != null) email = fbUser.email!;
+          if (fbUser.displayName != null) displayName = fbUser.displayName!;
+        }
+      } catch (e) {
+        debugPrint('Firebase Auth not available, using Google account details: $e');
+      }
+
+      final now = DateTime.now();
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(_keyEmail, email);
+      await prefs.setString(_keyDisplayName, displayName);
+      await prefs.setInt(_keyCreatedAt, now.millisecondsSinceEpoch);
+      await prefs.setBool(_keyLoggedIn, true);
+
+      return LocalUser(
+        email: email,
+        displayName: displayName,
+        createdAt: now,
+      );
+    } on AuthException {
+      rethrow;
+    } catch (e) {
+      debugPrint('Google Sign-In error: $e');
+      throw AuthException('Google Sign-In failed: $e');
+    }
+  }
+
   /// Update the display name of the current user.
   Future<LocalUser?> updateDisplayName(String displayName) async {
     final prefs = await SharedPreferences.getInstance();
@@ -104,10 +150,16 @@ class AuthRepository {
     return getCurrentUser();
   }
 
-  /// Sign out (clear the session flag).
+  /// Sign out (clear session & Google/Firebase sign in).
   Future<void> signOut() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(_keyLoggedIn, false);
+    try {
+      await GoogleSignIn.instance.signOut();
+    } catch (_) {}
+    try {
+      await FirebaseAuth.instance.signOut();
+    } catch (_) {}
     debugPrint('User signed out.');
   }
 }
