@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:phosphoricons_flutter/phosphoricons_flutter.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:the_shelf/blocs/collection/collection_bloc.dart';
 import 'package:the_shelf/blocs/collection/collection_state.dart';
 import 'package:the_shelf/blocs/shelf/shelf_bloc.dart';
@@ -64,6 +65,33 @@ class _HomeScreenState extends State<HomeScreen> {
   void initState() {
     super.initState();
     _pageController = PageController(initialPage: _selectedFilterIndex);
+    _loadSavedSortOption();
+  }
+
+  Future<void> _loadSavedSortOption() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final savedName = prefs.getString('shelf_sort_option');
+      if (savedName != null && mounted) {
+        setState(() {
+          _currentSortOption = SortOption.fromName(savedName);
+        });
+      }
+    } catch (e) {
+      debugPrint('Error loading saved sort option: $e');
+    }
+  }
+
+  Future<void> _updateSortOption(SortOption option) async {
+    setState(() {
+      _currentSortOption = option;
+    });
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('shelf_sort_option', option.name);
+    } catch (e) {
+      debugPrint('Error saving sort option: $e');
+    }
   }
 
   @override
@@ -123,9 +151,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   context: context,
                   currentOption: _currentSortOption,
                   onOptionSelected: (newOption) {
-                    setState(() {
-                      _currentSortOption = newOption;
-                    });
+                    _updateSortOption(newOption);
                   },
                 );
               },
@@ -406,9 +432,6 @@ class _CollectionsView extends StatelessWidget {
         final collections = (state is CollectionLoaded)
             ? state.collections
             : [];
-        final docMap = (state is CollectionLoaded)
-            ? state.documentCollectionMap
-            : <String, Set<String>>{};
 
         return Column(
           children: [

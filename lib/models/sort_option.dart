@@ -10,4 +10,12 @@ enum SortOption {
   final String description;
 
   const SortOption(this.label, this.description);
+
+  static SortOption fromName(String? name) {
+    if (name == null) return SortOption.populatedFirst;
+    return SortOption.values.firstWhere(
+      (e) => e.name == name,
+      orElse: () => SortOption.populatedFirst,
+    );
+  }
 }
