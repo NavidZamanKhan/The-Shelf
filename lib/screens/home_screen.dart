@@ -463,8 +463,8 @@ class _CollectionsView extends StatelessWidget {
                       ),
                     ],
                   ),
-                  OutlinedButton.icon(
-                    onPressed: collections.length >= 20
+                  GestureDetector(
+                    onTap: collections.length >= 20
                         ? () {
                             ScaffoldMessenger.of(context).showSnackBar(
                               const SnackBar(
@@ -474,37 +474,31 @@ class _CollectionsView extends StatelessWidget {
                             );
                           }
                         : () => CreateCollectionModal.show(context),
-                    icon: Icon(
-                      PhosphorIcons.plus,
-                      size: 15,
-                      color: collections.length >= 20
-                          ? activePalette.secondaryText
-                          : activePalette.primaryAccent,
-                    ),
-                    label: Text(
-                      'New Collection',
-                      style: TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
+                    behavior: HitTestBehavior.opaque,
+                    child: Container(
+                      width: 38,
+                      height: 38,
+                      decoration: BoxDecoration(
                         color: collections.length >= 20
-                            ? activePalette.secondaryText
-                            : activePalette.primaryAccent,
+                            ? activePalette.subtleBadgeBackground
+                            : activePalette.primaryAccent.withValues(alpha: 0.08),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: collections.length >= 20
+                              ? activePalette.cardBorder
+                              : activePalette.primaryAccent.withValues(alpha: 0.5),
+                          width: 1.2,
+                        ),
                       ),
-                    ),
-                    style: OutlinedButton.styleFrom(
-                      backgroundColor: collections.length >= 20
-                          ? activePalette.subtleBadgeBackground
-                          : activePalette.primaryAccent.withValues(alpha: 0.08),
-                      side: BorderSide(
-                        color: collections.length >= 20
-                            ? activePalette.cardBorder
-                            : activePalette.primaryAccent.withValues(alpha: 0.5),
-                        width: 1.2,
+                      child: Center(
+                        child: Icon(
+                          PhosphorIcons.plus,
+                          size: 20,
+                          color: collections.length >= 20
+                              ? activePalette.secondaryText
+                              : activePalette.primaryAccent,
+                        ),
                       ),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(14),
-                      ),
-                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                     ),
                   ),
                 ],
@@ -542,34 +536,6 @@ class _CollectionsView extends StatelessWidget {
                               style: TextStyle(
                                 fontSize: 13,
                                 color: activePalette.secondaryText,
-                              ),
-                            ),
-                            const SizedBox(height: 16),
-                            OutlinedButton.icon(
-                              onPressed: () => CreateCollectionModal.show(context),
-                              icon: Icon(
-                                PhosphorIcons.plus,
-                                size: 18,
-                                color: activePalette.primaryAccent,
-                              ),
-                              label: Text(
-                                'Create Collection',
-                                style: TextStyle(
-                                  fontSize: 15,
-                                  fontWeight: FontWeight.w600,
-                                  color: activePalette.primaryAccent,
-                                ),
-                              ),
-                              style: OutlinedButton.styleFrom(
-                                backgroundColor: activePalette.primaryAccent.withValues(alpha: 0.08),
-                                side: BorderSide(
-                                  color: activePalette.primaryAccent.withValues(alpha: 0.5),
-                                  width: 1.2,
-                                ),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: AppTheme.asymmetricCardRadius,
-                                ),
-                                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
                               ),
                             ),
                           ],
