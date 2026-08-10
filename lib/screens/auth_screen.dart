@@ -8,16 +8,23 @@ import 'package:the_shelf/blocs/theme/theme_cubit.dart';
 import 'package:the_shelf/theme/app_color_palette.dart';
 import 'package:the_shelf/theme/app_theme.dart';
 
-/// Screen/modal presenting sign-in options: Google Sign-In & Email Magic Link placeholder.
-class AuthScreen extends StatefulWidget {
-  const AuthScreen({super.key});
+enum AuthTab { signIn, signUp }
 
-  static Future<void> show(BuildContext context) {
+/// Screen/modal presenting Minimalist Sign In / Sign Up tabs + Google Sign-In options.
+class AuthScreen extends StatefulWidget {
+  final AuthTab initialTab;
+
+  const AuthScreen({
+    super.key,
+    this.initialTab = AuthTab.signIn,
+  });
+
+  static Future<void> show(BuildContext context, {AuthTab initialTab = AuthTab.signIn}) {
     return showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (context) => const AuthScreen(),
+      builder: (context) => AuthScreen(initialTab: initialTab),
     );
   }
 
@@ -26,28 +33,57 @@ class AuthScreen extends StatefulWidget {
 }
 
 class _AuthScreenState extends State<AuthScreen> {
+  late AuthTab _selectedTab;
+  final TextEditingController _nameController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();
+  final TextEditingController _passwordController = TextEditingController();
+  bool _obscurePassword = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _selectedTab = widget.initialTab;
+  }
 
   @override
   void dispose() {
+    _nameController.dispose();
     _emailController.dispose();
+    _passwordController.dispose();
     super.dispose();
   }
 
-  void _showStage3Toast() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text(
-          'Email Magic Link sign-in will be available in Stage 3!',
-          style: TextStyle(
-            fontFamily: AppTheme.serifFontFamily,
-            fontSize: 14,
-          ),
+  void _onSubmit() {
+    final email = _emailController.text.trim();
+    final password = _passwordController.text.trim();
+
+    if (email.isEmpty || password.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please fill in all fields'),
+          behavior: SnackBarBehavior.floating,
         ),
-        behavior: SnackBarBehavior.floating,
-        duration: Duration(seconds: 2),
-      ),
-    );
+      );
+      return;
+    }
+
+    if (_selectedTab == AuthTab.signIn) {
+      context.read<AuthBloc>().add(
+            SignInWithEmailPasswordRequested(
+              email: email,
+              password: password,
+            ),
+          );
+    } else {
+      final name = _nameController.text.trim();
+      context.read<AuthBloc>().add(
+            SignUpWithEmailPasswordRequested(
+              email: email,
+              password: password,
+              displayName: name,
+            ),
+          );
+    }
   }
 
   @override
@@ -98,12 +134,12 @@ class _AuthScreenState extends State<AuthScreen> {
                   ),
                 ),
               ),
-              const SizedBox(height: 24),
+              const SizedBox(height: 20),
 
               // --- Book Header Icon Badge ---
               Container(
-                width: 72,
-                height: 72,
+                width: 64,
+                height: 64,
                 decoration: BoxDecoration(
                   color: activePalette.subtleBadgeBackground,
                   borderRadius: AppTheme.asymmetricBadgeRadius,
@@ -111,15 +147,15 @@ class _AuthScreenState extends State<AuthScreen> {
                 ),
                 child: Icon(
                   PhosphorIcons.books,
-                  size: 36,
+                  size: 32,
                   color: activePalette.primaryAccent,
                 ),
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 12),
 
-              // Headline & Subtitle
+              // Title & Subtitle
               Text(
-                'Welcome to The Shelf',
+                'The Shelf',
                 style: TextStyle(
                   fontFamily: AppTheme.serifFontFamily,
                   fontSize: 24,
@@ -128,29 +164,74 @@ class _AuthScreenState extends State<AuthScreen> {
                 ),
                 textAlign: TextAlign.center,
               ),
-              const SizedBox(height: 6),
+              const SizedBox(height: 4),
               Text(
-                'Sign in to sync your library across devices',
+                'Your personal reading companion',
                 style: TextStyle(
-                  fontSize: 14,
+                  fontSize: 13,
                   color: activePalette.secondaryText,
                 ),
                 textAlign: TextAlign.center,
               ),
-              const SizedBox(height: 28),
+              const SizedBox(height: 20),
 
-              // --- Custom Google Sign-In Button ---
-              _buildGoogleSignInButton(context, activePalette),
-              const SizedBox(height: 24),
+              // --- Minimalist Tab Switcher ---
+              _buildTabSwitcher(activePalette),
+              const SizedBox(height: 20),
 
-              // Divider
+              // --- Form Fields ---
+              if (_selectedTab == AuthTab.signUp) ...[
+                _buildInputField(
+                  controller: _nameController,
+                  icon: PhosphorIcons.user,
+                  hintText: 'Full Name',
+                  activePalette: activePalette,
+                ),
+                const SizedBox(height: 12),
+              ],
+
+              _buildInputField(
+                controller: _emailController,
+                icon: PhosphorIcons.envelopeSimple,
+                hintText: 'Email address',
+                keyboardType: TextInputType.emailAddress,
+                activePalette: activePalette,
+              ),
+              const SizedBox(height: 12),
+
+              _buildInputField(
+                controller: _passwordController,
+                icon: PhosphorIcons.lockSimple,
+                hintText: 'Password',
+                obscureText: _obscurePassword,
+                suffixIcon: IconButton(
+                  icon: Icon(
+                    _obscurePassword ? PhosphorIcons.eyeClosed : PhosphorIcons.eye,
+                    size: 18,
+                    color: activePalette.secondaryText,
+                  ),
+                  onPressed: () {
+                    setState(() {
+                      _obscurePassword = !_obscurePassword;
+                    });
+                  },
+                ),
+                activePalette: activePalette,
+              ),
+              const SizedBox(height: 20),
+
+              // --- Submit CTA Button ---
+              _buildSubmitButton(activePalette),
+              const SizedBox(height: 20),
+
+              // --- Divider ---
               Row(
                 children: [
                   Expanded(child: Divider(color: activePalette.cardBorder)),
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 12),
                     child: Text(
-                      'OR EMAIL MAGIC LINK',
+                      'OR CONTINUE WITH',
                       style: TextStyle(
                         fontSize: 11,
                         fontWeight: FontWeight.w600,
@@ -162,13 +243,13 @@ class _AuthScreenState extends State<AuthScreen> {
                   Expanded(child: Divider(color: activePalette.cardBorder)),
                 ],
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: 16),
 
-              // --- Stage 3 Email Input Shell ---
-              _buildEmailSection(activePalette),
-              const SizedBox(height: 20),
+              // --- Google Sign-In Button ---
+              _buildGoogleSignInButton(activePalette),
+              const SizedBox(height: 16),
 
-              // Skip / Guest Mode CTA
+              // Continue as Guest CTA
               TextButton(
                 onPressed: () => Navigator.of(context).pop(),
                 child: Text(
@@ -187,10 +268,197 @@ class _AuthScreenState extends State<AuthScreen> {
     );
   }
 
-  Widget _buildGoogleSignInButton(
-    BuildContext context,
-    AppColorPalette activePalette,
-  ) {
+  Widget _buildTabSwitcher(AppColorPalette activePalette) {
+    return Container(
+      decoration: BoxDecoration(
+        color: activePalette.background,
+        borderRadius: AppTheme.asymmetricBadgeRadius,
+        border: Border.all(color: activePalette.cardBorder, width: 1),
+      ),
+      padding: const EdgeInsets.all(4),
+      child: Row(
+        children: [
+          Expanded(
+            child: GestureDetector(
+              onTap: () {
+                setState(() {
+                  _selectedTab = AuthTab.signIn;
+                });
+              },
+              child: Container(
+                padding: const EdgeInsets.symmetric(vertical: 10),
+                decoration: BoxDecoration(
+                  color: _selectedTab == AuthTab.signIn
+                      ? activePalette.cardBackground
+                      : Colors.transparent,
+                  borderRadius: AppTheme.asymmetricBadgeRadius,
+                  boxShadow: _selectedTab == AuthTab.signIn
+                      ? [
+                          BoxShadow(
+                            color: activePalette.primaryText.withValues(alpha: 0.05),
+                            blurRadius: 4,
+                            offset: const Offset(0, 1),
+                          ),
+                        ]
+                      : [],
+                ),
+                child: Text(
+                  'Sign In',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontFamily: AppTheme.serifFontFamily,
+                    fontSize: 14,
+                    fontWeight: _selectedTab == AuthTab.signIn
+                        ? FontWeight.w700
+                        : FontWeight.w500,
+                    color: _selectedTab == AuthTab.signIn
+                        ? activePalette.primaryText
+                        : activePalette.secondaryText,
+                  ),
+                ),
+              ),
+            ),
+          ),
+          Expanded(
+            child: GestureDetector(
+              onTap: () {
+                setState(() {
+                  _selectedTab = AuthTab.signUp;
+                });
+              },
+              child: Container(
+                padding: const EdgeInsets.symmetric(vertical: 10),
+                decoration: BoxDecoration(
+                  color: _selectedTab == AuthTab.signUp
+                      ? activePalette.cardBackground
+                      : Colors.transparent,
+                  borderRadius: AppTheme.asymmetricBadgeRadius,
+                  boxShadow: _selectedTab == AuthTab.signUp
+                      ? [
+                          BoxShadow(
+                            color: activePalette.primaryText.withValues(alpha: 0.05),
+                            blurRadius: 4,
+                            offset: const Offset(0, 1),
+                          ),
+                        ]
+                      : [],
+                ),
+                child: Text(
+                  'Create Account',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontFamily: AppTheme.serifFontFamily,
+                    fontSize: 14,
+                    fontWeight: _selectedTab == AuthTab.signUp
+                        ? FontWeight.w700
+                        : FontWeight.w500,
+                    color: _selectedTab == AuthTab.signUp
+                        ? activePalette.primaryText
+                        : activePalette.secondaryText,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildInputField({
+    required TextEditingController controller,
+    required IconData icon,
+    required String hintText,
+    required AppColorPalette activePalette,
+    TextInputType keyboardType = TextInputType.text,
+    bool obscureText = false,
+    Widget? suffixIcon,
+  }) {
+    return Container(
+      decoration: BoxDecoration(
+        color: activePalette.background,
+        borderRadius: AppTheme.asymmetricBadgeRadius,
+        border: Border.all(color: activePalette.cardBorder, width: 1),
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 2),
+      child: Row(
+        children: [
+          Icon(
+            icon,
+            size: 18,
+            color: activePalette.secondaryText,
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: TextField(
+              controller: controller,
+              keyboardType: keyboardType,
+              obscureText: obscureText,
+              style: TextStyle(
+                fontSize: 14,
+                color: activePalette.primaryText,
+              ),
+              decoration: InputDecoration(
+                hintText: hintText,
+                hintStyle: TextStyle(
+                  fontSize: 14,
+                  color: activePalette.desaturatedEmptyText,
+                ),
+                border: InputBorder.none,
+                suffixIcon: suffixIcon,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSubmitButton(AppColorPalette activePalette) {
+    return BlocBuilder<AuthBloc, AuthState>(
+      builder: (context, state) {
+        final isLoading = state is AuthLoading;
+
+        return GestureDetector(
+          onTap: isLoading ? null : _onSubmit,
+          child: AnimatedScale(
+            scale: 1.0,
+            duration: const Duration(milliseconds: 120),
+            child: Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(vertical: 14),
+              decoration: BoxDecoration(
+                color: activePalette.primaryAccent,
+                borderRadius: AppTheme.asymmetricCardRadius,
+              ),
+              child: isLoading
+                  ? const SizedBox(
+                      height: 20,
+                      child: Center(
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
+                      ),
+                    )
+                  : Text(
+                      _selectedTab == AuthTab.signIn ? 'Sign In' : 'Create Account',
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        fontFamily: AppTheme.serifFontFamily,
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.white,
+                      ),
+                    ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildGoogleSignInButton(AppColorPalette activePalette) {
     return BlocBuilder<AuthBloc, AuthState>(
       builder: (context, state) {
         final isLoading = state is AuthLoading;
@@ -201,153 +469,40 @@ class _AuthScreenState extends State<AuthScreen> {
               : () {
                   context.read<AuthBloc>().add(const SignInWithGoogleRequested());
                 },
-          child: AnimatedScale(
-            scale: 1.0,
-            duration: const Duration(milliseconds: 120),
-            child: Container(
-              width: double.infinity,
-              padding: const EdgeInsets.symmetric(vertical: 14),
-              decoration: BoxDecoration(
-                color: activePalette.cardBackground,
-                borderRadius: AppTheme.asymmetricCardRadius,
-                border: Border.all(
-                  color: activePalette.cardBorder,
-                  width: 1.2,
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: activePalette.primaryText.withValues(alpha: 0.05),
-                    blurRadius: 6,
-                    offset: const Offset(0, 2),
-                  ),
-                ],
-              ),
-              child: isLoading
-                  ? SizedBox(
-                      height: 20,
-                      child: Center(
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: activePalette.primaryAccent,
-                        ),
-                      ),
-                    )
-                  : Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          PhosphorIcons.googleLogo,
-                          size: 20,
-                          color: activePalette.primaryAccent,
-                        ),
-                        const SizedBox(width: 10),
-                        Text(
-                          'Continue with Google',
-                          style: TextStyle(
-                            fontFamily: AppTheme.serifFontFamily,
-                            fontSize: 15,
-                            fontWeight: FontWeight.w600,
-                            color: activePalette.primaryText,
-                          ),
-                        ),
-                      ],
-                    ),
-            ),
-          ),
-        );
-      },
-    );
-  }
-
-  Widget _buildEmailSection(AppColorPalette activePalette) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Container(
-          decoration: BoxDecoration(
-            color: activePalette.background,
-            borderRadius: AppTheme.asymmetricBadgeRadius,
-            border: Border.all(color: activePalette.cardBorder, width: 1),
-          ),
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
-          child: Row(
-            children: [
-              Icon(
-                PhosphorIcons.envelopeSimple,
-                size: 18,
-                color: activePalette.secondaryText,
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: TextField(
-                  controller: _emailController,
-                  keyboardType: TextInputType.emailAddress,
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: activePalette.primaryText,
-                  ),
-                  decoration: InputDecoration(
-                    hintText: 'Enter your email',
-                    hintStyle: TextStyle(
-                      fontSize: 14,
-                      color: activePalette.desaturatedEmptyText,
-                    ),
-                    border: InputBorder.none,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 10),
-
-        // Send Link Button (Stage 3 Toast)
-        GestureDetector(
-          onTap: _showStage3Toast,
           child: Container(
             width: double.infinity,
-            padding: const EdgeInsets.symmetric(vertical: 12),
+            padding: const EdgeInsets.symmetric(vertical: 13),
             decoration: BoxDecoration(
-              color: activePalette.subtleBadgeBackground,
+              color: activePalette.cardBackground,
               borderRadius: AppTheme.asymmetricCardRadius,
               border: Border.all(
                 color: activePalette.cardBorder,
-                width: 1,
+                width: 1.2,
               ),
             ),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
+                Icon(
+                  PhosphorIcons.googleLogo,
+                  size: 18,
+                  color: activePalette.primaryAccent,
+                ),
+                const SizedBox(width: 10),
                 Text(
-                  'Send Magic Link',
+                  'Continue with Google',
                   style: TextStyle(
                     fontFamily: AppTheme.serifFontFamily,
                     fontSize: 14,
                     fontWeight: FontWeight.w600,
-                    color: activePalette.secondaryText,
-                  ),
-                ),
-                const SizedBox(width: 6),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                  decoration: BoxDecoration(
-                    color: activePalette.primaryAccent.withValues(alpha: 0.15),
-                    borderRadius: BorderRadius.circular(4),
-                  ),
-                  child: Text(
-                    'Stage 3',
-                    style: TextStyle(
-                      fontSize: 10,
-                      fontWeight: FontWeight.w700,
-                      color: activePalette.primaryAccent,
-                    ),
+                    color: activePalette.primaryText,
                   ),
                 ),
               ],
             ),
           ),
-        ),
-      ],
+        );
+      },
     );
   }
 }

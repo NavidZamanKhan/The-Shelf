@@ -2,7 +2,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 
-/// Repository encapsulating Firebase Authentication and Google Sign-In operations.
+/// Repository encapsulating Firebase Authentication (Email/Password & Google Sign-In) operations.
 class AuthRepository {
   final FirebaseAuth _firebaseAuth;
   final GoogleSignIn _googleSignIn;
@@ -18,6 +18,55 @@ class AuthRepository {
 
   /// Currently authenticated Firebase user (or null if signed out/guest).
   User? get currentUser => _firebaseAuth.currentUser;
+
+  /// Signs in with Email and Password.
+  Future<UserCredential> signInWithEmailAndPassword({
+    required String email,
+    required String password,
+  }) async {
+    try {
+      return await _firebaseAuth.signInWithEmailAndPassword(
+        email: email.trim(),
+        password: password,
+      );
+    } catch (e) {
+      debugPrint('Error signing in with Email/Password: $e');
+      rethrow;
+    }
+  }
+
+  /// Creates a new user with Email, Password, and Display Name.
+  Future<UserCredential> signUpWithEmailAndPassword({
+    required String email,
+    required String password,
+    required String displayName,
+  }) async {
+    try {
+      final credential = await _firebaseAuth.createUserWithEmailAndPassword(
+        email: email.trim(),
+        password: password,
+      );
+
+      if (displayName.trim().isNotEmpty && credential.user != null) {
+        await credential.user!.updateDisplayName(displayName.trim());
+        await credential.user!.reload();
+      }
+
+      return credential;
+    } catch (e) {
+      debugPrint('Error signing up with Email/Password: $e');
+      rethrow;
+    }
+  }
+
+  /// Updates the display name of the current authenticated user.
+  Future<void> updateDisplayName(String displayName) async {
+    final user = _firebaseAuth.currentUser;
+    if (user != null && displayName.trim().isNotEmpty) {
+      await user.updateDisplayName(displayName.trim());
+      await user.reload();
+    }
+  }
 
   /// Signs in with Google using native GoogleSignIn account selection and Firebase credential.
   Future<UserCredential?> signInWithGoogle() async {

@@ -12,6 +12,7 @@ import 'package:the_shelf/screens/auth_screen.dart';
 import 'package:the_shelf/services/document_repository.dart';
 import 'package:the_shelf/theme/app_color_palette.dart';
 import 'package:the_shelf/theme/app_theme.dart';
+import 'package:the_shelf/widgets/edit_profile_modal.dart';
 
 /// Profile screen showing user identity, genre distribution donut chart,
 /// account stats, and sign-out action.
@@ -292,11 +293,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ),
           ),
 
-          // Action button (Sign In if guest, Edit Profile if authenticated)
+          // Always display "Edit profile" button
           GestureDetector(
             onTap: () {
               if (isAuthenticated) {
-                _showAuthRequiredToast('edit profile features coming soon');
+                EditProfileModal.show(context, currentName: displayName);
               } else {
                 AuthScreen.show(context);
               }
@@ -304,14 +305,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
               decoration: BoxDecoration(
-                color: isAuthenticated
-                    ? Colors.transparent
-                    : activePalette.primaryAccent,
+                color: Colors.transparent,
                 borderRadius: AppTheme.asymmetricBadgeRadius,
                 border: Border.all(
-                  color: isAuthenticated
-                      ? activePalette.cardBorder
-                      : activePalette.primaryAccent,
+                  color: activePalette.cardBorder,
                   width: 1.2,
                 ),
               ),
@@ -319,24 +316,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Icon(
-                    isAuthenticated
-                        ? PhosphorIcons.pencilSimple
-                        : PhosphorIcons.signIn,
+                    PhosphorIcons.pencilSimple,
                     size: 15,
-                    color: isAuthenticated
-                        ? activePalette.primaryText
-                        : Colors.white,
+                    color: activePalette.primaryText,
                   ),
                   const SizedBox(width: 6),
                   Text(
-                    isAuthenticated ? 'Edit profile' : 'Sign in',
+                    'Edit profile',
                     style: TextStyle(
                       fontFamily: AppTheme.serifFontFamily,
                       fontSize: 13,
                       fontWeight: FontWeight.w600,
-                      color: isAuthenticated
-                          ? activePalette.primaryText
-                          : Colors.white,
+                      color: activePalette.primaryText,
                     ),
                   ),
                 ],
@@ -662,9 +653,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
         onTap: () {
           if (isAuthenticated) {
             context.read<AuthBloc>().add(const SignOutRequested());
-          } else {
-            AuthScreen.show(context);
           }
+          AuthScreen.show(context);
         },
         child: AnimatedScale(
           scale: 1.0,
@@ -673,31 +663,29 @@ class _ProfileScreenState extends State<ProfileScreen> {
             width: double.infinity,
             padding: const EdgeInsets.symmetric(vertical: 14),
             decoration: BoxDecoration(
-              color: isAuthenticated ? Colors.transparent : activePalette.primaryAccent,
+              color: Colors.transparent,
               borderRadius: AppTheme.asymmetricCardRadius,
               border: Border.all(
-                color: isAuthenticated
-                    ? Colors.redAccent.withValues(alpha: 0.6)
-                    : activePalette.primaryAccent,
+                color: Colors.redAccent.withValues(alpha: 0.6),
                 width: 1.2,
               ),
             ),
-            child: Row(
+            child: const Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Icon(
-                  isAuthenticated ? PhosphorIcons.signOut : PhosphorIcons.signIn,
+                  PhosphorIcons.signOut,
                   size: 18,
-                  color: isAuthenticated ? Colors.redAccent : Colors.white,
+                  color: Colors.redAccent,
                 ),
-                const SizedBox(width: 8),
+                SizedBox(width: 8),
                 Text(
-                  isAuthenticated ? 'Log out' : 'Sign in / Create account',
+                  'Log out',
                   style: TextStyle(
                     fontFamily: AppTheme.serifFontFamily,
                     fontSize: 15,
                     fontWeight: FontWeight.w600,
-                    color: isAuthenticated ? Colors.redAccent : Colors.white,
+                    color: Colors.redAccent,
                   ),
                 ),
               ],
