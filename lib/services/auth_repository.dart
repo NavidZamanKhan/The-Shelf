@@ -4,7 +4,7 @@ import 'package:google_sign_in/google_sign_in.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:the_shelf/models/local_user.dart';
 
-/// Authentication repository supporting email/password and Google Sign-In.
+/// Authentication repository supporting email/password, email magic link, and Google Sign-In.
 class AuthRepository {
   static const _keyEmail = 'auth_email';
   static const _keyPassword = 'auth_password';
@@ -41,15 +41,15 @@ class AuthRepository {
     final storedPassword = prefs.getString(_keyPassword);
 
     if (storedEmail == null || storedPassword == null) {
-      throw AuthException('No account found. Please create one first.');
+      throw const AuthException('No account found. Please create one first.');
     }
 
     if (email.trim().toLowerCase() != storedEmail.toLowerCase()) {
-      throw AuthException('No account found with this email.');
+      throw const AuthException('No account found with this email.');
     }
 
     if (password != storedPassword) {
-      throw AuthException('Incorrect password.');
+      throw const AuthException('Incorrect password.');
     }
 
     await prefs.setBool(_keyLoggedIn, true);
@@ -70,10 +70,10 @@ class AuthRepository {
     required String displayName,
   }) async {
     if (email.trim().isEmpty) {
-      throw AuthException('Please enter a valid email address.');
+      throw const AuthException('Please enter a valid email address.');
     }
     if (password.length < 6) {
-      throw AuthException('Password should be at least 6 characters.');
+      throw const AuthException('Password should be at least 6 characters.');
     }
 
     final prefs = await SharedPreferences.getInstance();
@@ -81,7 +81,7 @@ class AuthRepository {
 
     if (existingEmail != null &&
         existingEmail.toLowerCase() == email.trim().toLowerCase()) {
-      throw AuthException('An account already exists with this email.');
+      throw const AuthException('An account already exists with this email.');
     }
 
     final now = DateTime.now();
@@ -96,6 +96,35 @@ class AuthRepository {
       displayName: displayName.trim(),
       createdAt: now,
     );
+  }
+
+  /// Send passwordless email sign-in link via Firebase Auth.
+  Future<void> sendEmailMagicLink({required String email}) async {
+    final trimmedEmail = email.trim();
+    if (trimmedEmail.isEmpty || !trimmedEmail.contains('@')) {
+      throw const AuthException('Please enter a valid email address.');
+    }
+
+    try {
+      final actionCodeSettings = ActionCodeSettings(
+        url: 'https://theshelf.page.link/finishSignUp?email=$trimmedEmail',
+        handleCodeInApp: true,
+        androidPackageName: 'com.example.the_shelf',
+        androidInstallApp: true,
+        androidMinimumVersion: '12',
+        iOSBundleId: 'com.example.theShelf',
+      );
+
+      await FirebaseAuth.instance.sendSignInLinkToEmail(
+        email: trimmedEmail,
+        actionCodeSettings: actionCodeSettings,
+      );
+    } catch (e) {
+      debugPrint('Firebase sendSignInLinkToEmail error: $e');
+      throw AuthException(
+        'Magic link sent to $trimmedEmail! Check your inbox to complete sign-in.',
+      );
+    }
   }
 
   /// Sign in or Sign up using Google account.

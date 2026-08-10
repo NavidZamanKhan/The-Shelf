@@ -33,6 +33,17 @@ class Unauthenticated extends AuthState {
   const Unauthenticated();
 }
 
+/// State emitted when a passwordless email magic link has been sent.
+class MagicLinkSent extends AuthState {
+  final String email;
+  final String message;
+
+  const MagicLinkSent({required this.email, required this.message});
+
+  @override
+  List<Object?> get props => [email, message];
+}
+
 /// Error state when a sign-in or sign-up attempt fails.
 class AuthError extends AuthState {
   final String message;

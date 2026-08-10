@@ -39,6 +39,16 @@ class SignUpRequested extends AuthEvent {
   List<Object?> get props => [email, password, displayName];
 }
 
+/// Request passwordless email sign-in link via Firebase.
+class SendMagicLinkRequested extends AuthEvent {
+  final String email;
+
+  const SendMagicLinkRequested(this.email);
+
+  @override
+  List<Object?> get props => [email];
+}
+
 /// Sign in or Sign up with Google.
 class SignInWithGoogleRequested extends AuthEvent {
   const SignInWithGoogleRequested();

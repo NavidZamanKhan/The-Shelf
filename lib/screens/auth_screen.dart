@@ -10,6 +10,7 @@ import 'package:the_shelf/theme/app_theme.dart';
 import 'package:the_shelf/widgets/google_logo_icon.dart';
 
 enum AuthTab { signIn, signUp }
+enum SignInMethod { password, magicLink }
 
 /// Full-screen authentication page (login / signup).
 /// Users must authenticate before accessing the main app.
@@ -22,6 +23,8 @@ class AuthScreen extends StatefulWidget {
 
 class _AuthScreenState extends State<AuthScreen> {
   AuthTab _selectedTab = AuthTab.signIn;
+  SignInMethod _signInMethod = SignInMethod.password;
+
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
@@ -40,30 +43,45 @@ class _AuthScreenState extends State<AuthScreen> {
 
   void _onSubmit() {
     final email = _emailController.text.trim();
-    final password = _passwordController.text.trim();
-
-    if (email.isEmpty || password.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Please fill in all fields'),
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
-      return;
-    }
 
     if (_selectedTab == AuthTab.signIn) {
+      if (_signInMethod == SignInMethod.magicLink) {
+        if (email.isEmpty) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Please enter your email address'),
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+          return;
+        }
+        context.read<AuthBloc>().add(SendMagicLinkRequested(email));
+        return;
+      }
+
+      final password = _passwordController.text.trim();
+      if (email.isEmpty || password.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Please fill in all fields'),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+        return;
+      }
+
       context.read<AuthBloc>().add(
             SignInRequested(email: email, password: password),
           );
     } else {
+      final password = _passwordController.text.trim();
       final name = _nameController.text.trim();
       final confirmPassword = _confirmPasswordController.text.trim();
 
-      if (name.isEmpty) {
+      if (email.isEmpty || password.isEmpty || name.isEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Please enter your username'),
+            content: Text('Please fill in all fields'),
             behavior: SnackBarBehavior.floating,
           ),
         );
@@ -104,8 +122,23 @@ class _AuthScreenState extends State<AuthScreen> {
               behavior: SnackBarBehavior.floating,
             ),
           );
+        } else if (state is MagicLinkSent) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Row(
+                children: [
+                  const Icon(PhosphorIcons.magicWand,
+                      color: Colors.white, size: 18),
+                  const SizedBox(width: 8),
+                  Expanded(child: Text(state.message)),
+                ],
+              ),
+              backgroundColor: activePalette.primaryAccent,
+              behavior: SnackBarBehavior.floating,
+              duration: const Duration(seconds: 4),
+            ),
+          );
         }
-        // Authenticated state is handled by main.dart's BlocBuilder
       },
       child: Scaffold(
         backgroundColor: activePalette.background,
@@ -154,7 +187,13 @@ class _AuthScreenState extends State<AuthScreen> {
                     ),
                     textAlign: TextAlign.center,
                   ),
-                  const SizedBox(height: 28),
+                  const SizedBox(height: 24),
+
+                  // --- Sign In Mode Switcher (Password vs Magic Link) ---
+                  if (_selectedTab == AuthTab.signIn) ...[
+                    _buildSignInMethodSwitcher(activePalette),
+                    const SizedBox(height: 20),
+                  ],
 
                   // --- Form Fields ---
                   if (_selectedTab == AuthTab.signUp) ...[
@@ -174,29 +213,49 @@ class _AuthScreenState extends State<AuthScreen> {
                     keyboardType: TextInputType.emailAddress,
                     activePalette: activePalette,
                   ),
-                  const SizedBox(height: 12),
 
-                  _buildInputField(
-                    controller: _passwordController,
-                    icon: PhosphorIcons.lockSimple,
-                    hintText: 'Password',
-                    obscureText: _obscurePassword,
-                    suffixIcon: IconButton(
-                      icon: Icon(
-                        _obscurePassword
-                            ? PhosphorIcons.eyeClosed
-                            : PhosphorIcons.eye,
-                        size: 18,
-                        color: activePalette.secondaryText,
+                  if (_selectedTab == AuthTab.signIn &&
+                      _signInMethod == SignInMethod.magicLink) ...[
+                    const SizedBox(height: 8),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 4),
+                      child: Text(
+                        '✨ We\'ll send a passwordless sign-in link directly to your email inbox.',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: activePalette.secondaryText,
+                        ),
+                        textAlign: TextAlign.center,
                       ),
-                      onPressed: () {
-                        setState(() {
-                          _obscurePassword = !_obscurePassword;
-                        });
-                      },
                     ),
-                    activePalette: activePalette,
-                  ),
+                  ],
+
+                  if (_selectedTab == AuthTab.signUp ||
+                      (_selectedTab == AuthTab.signIn &&
+                          _signInMethod == SignInMethod.password)) ...[
+                    const SizedBox(height: 12),
+                    _buildInputField(
+                      controller: _passwordController,
+                      icon: PhosphorIcons.lockSimple,
+                      hintText: 'Password',
+                      obscureText: _obscurePassword,
+                      suffixIcon: IconButton(
+                        icon: Icon(
+                          _obscurePassword
+                              ? PhosphorIcons.eyeClosed
+                              : PhosphorIcons.eye,
+                          size: 18,
+                          color: activePalette.secondaryText,
+                        ),
+                        onPressed: () {
+                          setState(() {
+                            _obscurePassword = !_obscurePassword;
+                          });
+                        },
+                      ),
+                      activePalette: activePalette,
+                    ),
+                  ],
 
                   if (_selectedTab == AuthTab.signUp) ...[
                     const SizedBox(height: 12),
@@ -264,6 +323,109 @@ class _AuthScreenState extends State<AuthScreen> {
     );
   }
 
+  Widget _buildSignInMethodSwitcher(AppColorPalette activePalette) {
+    return Container(
+      decoration: BoxDecoration(
+        color: activePalette.cardBackground,
+        borderRadius: AppTheme.asymmetricBadgeRadius,
+        border: Border.all(color: activePalette.cardBorder, width: 1),
+      ),
+      padding: const EdgeInsets.all(3),
+      child: Row(
+        children: [
+          Expanded(
+            child: GestureDetector(
+              onTap: () {
+                setState(() {
+                  _signInMethod = SignInMethod.password;
+                });
+              },
+              child: Container(
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                decoration: BoxDecoration(
+                  color: _signInMethod == SignInMethod.password
+                      ? activePalette.subtleBadgeBackground
+                      : Colors.transparent,
+                  borderRadius: AppTheme.asymmetricBadgeRadius,
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      PhosphorIcons.lockKey,
+                      size: 14,
+                      color: _signInMethod == SignInMethod.password
+                          ? activePalette.primaryAccent
+                          : activePalette.secondaryText,
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      'Password',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: _signInMethod == SignInMethod.password
+                            ? FontWeight.w700
+                            : FontWeight.w500,
+                        color: _signInMethod == SignInMethod.password
+                            ? activePalette.primaryText
+                            : activePalette.secondaryText,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          Expanded(
+            child: GestureDetector(
+              onTap: () {
+                setState(() {
+                  _signInMethod = SignInMethod.magicLink;
+                });
+              },
+              child: Container(
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                decoration: BoxDecoration(
+                  color: _signInMethod == SignInMethod.magicLink
+                      ? activePalette.subtleBadgeBackground
+                      : Colors.transparent,
+                  borderRadius: AppTheme.asymmetricBadgeRadius,
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      PhosphorIcons.magicWand,
+                      size: 14,
+                      color: _signInMethod == SignInMethod.magicLink
+                          ? activePalette.primaryAccent
+                          : activePalette.secondaryText,
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      'Magic Link',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: _signInMethod == SignInMethod.magicLink
+                            ? FontWeight.w700
+                            : FontWeight.w500,
+                        color: _signInMethod == SignInMethod.magicLink
+                            ? activePalette.primaryText
+                            : activePalette.secondaryText,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildInputField({
     required TextEditingController controller,
     required IconData icon,
@@ -318,6 +480,13 @@ class _AuthScreenState extends State<AuthScreen> {
       builder: (context, state) {
         final isLoading = state is AuthLoading;
 
+        String label = 'Sign In';
+        if (_selectedTab == AuthTab.signUp) {
+          label = 'Create Account';
+        } else if (_signInMethod == SignInMethod.magicLink) {
+          label = 'Send Magic Link';
+        }
+
         return GestureDetector(
           onTap: isLoading ? null : _onSubmit,
           child: Container(
@@ -337,15 +506,29 @@ class _AuthScreenState extends State<AuthScreen> {
                       ),
                     ),
                   )
-                : Text(
-                    _selectedTab == AuthTab.signIn ? 'Sign In' : 'Create Account',
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(
-                      fontFamily: AppTheme.serifFontFamily,
-                      fontSize: 15,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.white,
-                    ),
+                : Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      if (_selectedTab == AuthTab.signIn &&
+                          _signInMethod == SignInMethod.magicLink) ...[
+                        const Icon(
+                          PhosphorIcons.magicWand,
+                          size: 18,
+                          color: Colors.white,
+                        ),
+                        const SizedBox(width: 8),
+                      ],
+                      Text(
+                        label,
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(
+                          fontFamily: AppTheme.serifFontFamily,
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ],
                   ),
           ),
         );

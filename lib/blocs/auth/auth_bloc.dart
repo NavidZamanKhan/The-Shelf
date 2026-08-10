@@ -13,6 +13,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     on<AuthCheckSession>(_onCheckSession);
     on<SignInRequested>(_onSignInRequested);
     on<SignUpRequested>(_onSignUpRequested);
+    on<SendMagicLinkRequested>(_onSendMagicLinkRequested);
     on<SignInWithGoogleRequested>(_onSignInWithGoogleRequested);
     on<UpdateDisplayNameRequested>(_onUpdateDisplayName);
     on<SignOutRequested>(_onSignOutRequested);
@@ -62,6 +63,27 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       emit(Authenticated(user));
     } on AuthException catch (e) {
       emit(AuthError(e.message));
+    } catch (e) {
+      emit(AuthError(e.toString()));
+    }
+  }
+
+  Future<void> _onSendMagicLinkRequested(
+    SendMagicLinkRequested event,
+    Emitter<AuthState> emit,
+  ) async {
+    emit(const AuthLoading());
+    try {
+      await _authRepository.sendEmailMagicLink(email: event.email);
+      emit(MagicLinkSent(
+        email: event.email,
+        message: 'Passwordless sign-in link sent to ${event.email}! Check your inbox.',
+      ));
+    } on AuthException catch (e) {
+      emit(MagicLinkSent(
+        email: event.email,
+        message: e.message,
+      ));
     } catch (e) {
       emit(AuthError(e.toString()));
     }
