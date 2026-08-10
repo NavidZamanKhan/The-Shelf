@@ -1,98 +1,161 @@
-import 'dart:async';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:the_shelf/blocs/auth/auth_bloc.dart';
 import 'package:the_shelf/blocs/auth/auth_event.dart';
 import 'package:the_shelf/blocs/auth/auth_state.dart';
+import 'package:the_shelf/models/local_user.dart';
 import 'package:the_shelf/services/auth_repository.dart';
-import 'package:the_shelf/services/document_repository.dart';
 
-class FakeAuthRepository implements AuthRepository {
-  final StreamController<User?> controller = StreamController<User?>.broadcast();
-  User? _user;
+/// Fake auth repository that operates entirely in memory (no SharedPreferences).
+class FakeAuthRepository extends AuthRepository {
+  LocalUser? _currentUser;
+  bool _loggedIn = false;
+  String? _storedEmail;
+  String? _storedPassword;
 
-  void emitUser(User? user) {
-    _user = user;
-    controller.add(user);
+  @override
+  Future<LocalUser?> getCurrentUser() async {
+    return _loggedIn ? _currentUser : null;
   }
 
   @override
-  Stream<User?> get authStateChanges => controller.stream;
-
-  @override
-  User? get currentUser => _user;
-
-  @override
-  Future<UserCredential?> signInWithGoogle() async => null;
-
-  @override
-  Future<UserCredential> signInWithEmailAndPassword({
+  Future<LocalUser> signInWithEmailAndPassword({
     required String email,
     required String password,
-  }) async => throw UnimplementedError();
+  }) async {
+    if (_storedEmail == null || _storedPassword == null) {
+      throw const AuthException('No account found. Please create one first.');
+    }
+    if (email != _storedEmail) {
+      throw const AuthException('No account found with this email.');
+    }
+    if (password != _storedPassword) {
+      throw const AuthException('Incorrect password.');
+    }
+    _loggedIn = true;
+    return _currentUser!;
+  }
 
   @override
-  Future<UserCredential> signUpWithEmailAndPassword({
+  Future<LocalUser> signUpWithEmailAndPassword({
     required String email,
     required String password,
     required String displayName,
-  }) async => throw UnimplementedError();
-
-  @override
-  Future<void> updateDisplayName(String displayName) async {}
-
-  @override
-  Future<void> signOut() async => emitUser(null);
-}
-
-class FakeDocumentRepository implements DocumentRepository {
-  String? claimedUserId;
-
-  @override
-  Future<void> claimGuestData(String userId) async {
-    claimedUserId = userId;
+  }) async {
+    _storedEmail = email;
+    _storedPassword = password;
+    _currentUser = LocalUser(
+      email: email,
+      displayName: displayName,
+      createdAt: DateTime.now(),
+    );
+    _loggedIn = true;
+    return _currentUser!;
   }
 
   @override
-  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+  Future<LocalUser?> updateDisplayName(String displayName) async {
+    if (_currentUser != null) {
+      _currentUser = LocalUser(
+        email: _currentUser!.email,
+        displayName: displayName,
+        createdAt: _currentUser!.createdAt,
+      );
+    }
+    return _currentUser;
+  }
+
+  @override
+  Future<void> signOut() async {
+    _loggedIn = false;
+  }
 }
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   late FakeAuthRepository fakeAuthRepository;
-  late FakeDocumentRepository fakeDocumentRepository;
 
   setUp(() {
     fakeAuthRepository = FakeAuthRepository();
-    fakeDocumentRepository = FakeDocumentRepository();
   });
 
   group('AuthBloc Tests', () {
     test('initial state is AuthInitial', () {
-      final bloc = AuthBloc(
-        authRepository: fakeAuthRepository,
-        documentRepository: fakeDocumentRepository,
-      );
+      final bloc = AuthBloc(authRepository: fakeAuthRepository);
       expect(bloc.state, equals(const AuthInitial()));
     });
 
-    test('emits Unauthenticated when authStateChanges emits null', () async {
-      final bloc = AuthBloc(
-        authRepository: fakeAuthRepository,
-        documentRepository: fakeDocumentRepository,
-      );
+    test('emits Unauthenticated when no session exists', () async {
+      final bloc = AuthBloc(authRepository: fakeAuthRepository);
 
-      bloc.add(const AuthStarted());
-      await Future.delayed(Duration.zero);
+      bloc.add(const AuthCheckSession());
 
-      final expectation = expectLater(
+      await expectLater(
         bloc.stream,
         emitsInOrder([const Unauthenticated()]),
       );
+    });
 
-      fakeAuthRepository.emitUser(null);
-      await expectation;
+    test('emits Authenticated after successful sign up', () async {
+      final bloc = AuthBloc(authRepository: fakeAuthRepository);
+
+      bloc.add(const SignUpRequested(
+        email: 'test@example.com',
+        password: 'password123',
+        displayName: 'Test User',
+      ));
+
+      await expectLater(
+        bloc.stream,
+        emitsInOrder([
+          const AuthLoading(),
+          isA<Authenticated>(),
+        ]),
+      );
+    });
+
+    test('emits AuthError on sign in with no account', () async {
+      final bloc = AuthBloc(authRepository: fakeAuthRepository);
+
+      bloc.add(const SignInRequested(
+        email: 'nobody@example.com',
+        password: 'wrong',
+      ));
+
+      await expectLater(
+        bloc.stream,
+        emitsInOrder([
+          const AuthLoading(),
+          isA<AuthError>(),
+        ]),
+      );
+    });
+
+    test('emits Unauthenticated after sign out', () async {
+      final bloc = AuthBloc(authRepository: fakeAuthRepository);
+
+      // Sign up first
+      bloc.add(const SignUpRequested(
+        email: 'test@example.com',
+        password: 'password123',
+        displayName: 'Test User',
+      ));
+
+      await expectLater(
+        bloc.stream,
+        emitsInOrder([
+          const AuthLoading(),
+          isA<Authenticated>(),
+        ]),
+      );
+
+      // Now sign out
+      bloc.add(const SignOutRequested());
+
+      await expectLater(
+        bloc.stream,
+        emitsInOrder([const Unauthenticated()]),
+      );
     });
   });
 }

@@ -10,40 +10,21 @@ import 'package:the_shelf/theme/app_theme.dart';
 
 enum AuthTab { signIn, signUp }
 
-/// Screen/modal presenting Minimalist Sign In / Sign Up tabs + Google Sign-In options.
+/// Full-screen authentication page (login / signup).
+/// Users must authenticate before accessing the main app.
 class AuthScreen extends StatefulWidget {
-  final AuthTab initialTab;
-
-  const AuthScreen({
-    super.key,
-    this.initialTab = AuthTab.signIn,
-  });
-
-  static Future<void> show(BuildContext context, {AuthTab initialTab = AuthTab.signIn}) {
-    return showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) => AuthScreen(initialTab: initialTab),
-    );
-  }
+  const AuthScreen({super.key});
 
   @override
   State<AuthScreen> createState() => _AuthScreenState();
 }
 
 class _AuthScreenState extends State<AuthScreen> {
-  late AuthTab _selectedTab;
+  AuthTab _selectedTab = AuthTab.signIn;
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
   bool _obscurePassword = true;
-
-  @override
-  void initState() {
-    super.initState();
-    _selectedTab = widget.initialTab;
-  }
 
   @override
   void dispose() {
@@ -69,15 +50,21 @@ class _AuthScreenState extends State<AuthScreen> {
 
     if (_selectedTab == AuthTab.signIn) {
       context.read<AuthBloc>().add(
-            SignInWithEmailPasswordRequested(
-              email: email,
-              password: password,
-            ),
+            SignInRequested(email: email, password: password),
           );
     } else {
       final name = _nameController.text.trim();
+      if (name.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Please enter your name'),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+        return;
+      }
       context.read<AuthBloc>().add(
-            SignUpWithEmailPasswordRequested(
+            SignUpRequested(
               email: email,
               password: password,
               displayName: name,
@@ -92,9 +79,7 @@ class _AuthScreenState extends State<AuthScreen> {
 
     return BlocListener<AuthBloc, AuthState>(
       listener: (context, state) {
-        if (state is Authenticated) {
-          Navigator.of(context).pop();
-        } else if (state is AuthError) {
+        if (state is AuthError) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(state.message),
@@ -103,165 +88,113 @@ class _AuthScreenState extends State<AuthScreen> {
             ),
           );
         }
+        // Authenticated state is handled by main.dart's BlocBuilder
       },
-      child: Container(
-        padding: EdgeInsets.only(
-          bottom: MediaQuery.of(context).viewInsets.bottom + 24,
-          top: 16,
-          left: 24,
-          right: 24,
-        ),
-        decoration: BoxDecoration(
-          color: activePalette.cardBackground,
-          borderRadius: const BorderRadius.only(
-            topLeft: Radius.circular(24),
-            topRight: Radius.circular(24),
-          ),
-          border: Border.all(color: activePalette.cardBorder, width: 1),
-        ),
-        child: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // Handle bar
-              Center(
-                child: Container(
-                  width: 36,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: activePalette.cardBorder,
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 20),
-
-              // --- Book Header Icon Badge ---
-              Container(
-                width: 64,
-                height: 64,
-                decoration: BoxDecoration(
-                  color: activePalette.subtleBadgeBackground,
-                  borderRadius: AppTheme.asymmetricBadgeRadius,
-                  border: Border.all(color: activePalette.cardBorder, width: 1.2),
-                ),
-                child: Icon(
-                  PhosphorIcons.books,
-                  size: 32,
-                  color: activePalette.primaryAccent,
-                ),
-              ),
-              const SizedBox(height: 12),
-
-              // Title & Subtitle
-              Text(
-                'The Shelf',
-                style: TextStyle(
-                  fontFamily: AppTheme.serifFontFamily,
-                  fontSize: 24,
-                  fontWeight: FontWeight.w700,
-                  color: activePalette.primaryText,
-                ),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 4),
-              Text(
-                'Your personal reading companion',
-                style: TextStyle(
-                  fontSize: 13,
-                  color: activePalette.secondaryText,
-                ),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 20),
-
-              // --- Minimalist Tab Switcher ---
-              _buildTabSwitcher(activePalette),
-              const SizedBox(height: 20),
-
-              // --- Form Fields ---
-              if (_selectedTab == AuthTab.signUp) ...[
-                _buildInputField(
-                  controller: _nameController,
-                  icon: PhosphorIcons.user,
-                  hintText: 'Full Name',
-                  activePalette: activePalette,
-                ),
-                const SizedBox(height: 12),
-              ],
-
-              _buildInputField(
-                controller: _emailController,
-                icon: PhosphorIcons.envelopeSimple,
-                hintText: 'Email address',
-                keyboardType: TextInputType.emailAddress,
-                activePalette: activePalette,
-              ),
-              const SizedBox(height: 12),
-
-              _buildInputField(
-                controller: _passwordController,
-                icon: PhosphorIcons.lockSimple,
-                hintText: 'Password',
-                obscureText: _obscurePassword,
-                suffixIcon: IconButton(
-                  icon: Icon(
-                    _obscurePassword ? PhosphorIcons.eyeClosed : PhosphorIcons.eye,
-                    size: 18,
-                    color: activePalette.secondaryText,
-                  ),
-                  onPressed: () {
-                    setState(() {
-                      _obscurePassword = !_obscurePassword;
-                    });
-                  },
-                ),
-                activePalette: activePalette,
-              ),
-              const SizedBox(height: 20),
-
-              // --- Submit CTA Button ---
-              _buildSubmitButton(activePalette),
-              const SizedBox(height: 20),
-
-              // --- Divider ---
-              Row(
+      child: Scaffold(
+        backgroundColor: activePalette.background,
+        body: SafeArea(
+          child: Center(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 40),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Expanded(child: Divider(color: activePalette.cardBorder)),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 12),
-                    child: Text(
-                      'OR CONTINUE WITH',
-                      style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w600,
-                        letterSpacing: 0.8,
-                        color: activePalette.desaturatedEmptyText,
-                      ),
+                  // --- Book Icon Badge ---
+                  Container(
+                    width: 72,
+                    height: 72,
+                    decoration: BoxDecoration(
+                      color: activePalette.subtleBadgeBackground,
+                      borderRadius: AppTheme.asymmetricBadgeRadius,
+                      border: Border.all(
+                          color: activePalette.cardBorder, width: 1.2),
+                    ),
+                    child: Icon(
+                      PhosphorIcons.books,
+                      size: 36,
+                      color: activePalette.primaryAccent,
                     ),
                   ),
-                  Expanded(child: Divider(color: activePalette.cardBorder)),
+                  const SizedBox(height: 16),
+
+                  // App title
+                  Text(
+                    'The Shelf',
+                    style: TextStyle(
+                      fontFamily: AppTheme.serifFontFamily,
+                      fontSize: 28,
+                      fontWeight: FontWeight.w700,
+                      color: activePalette.primaryText,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Your personal reading companion',
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: activePalette.secondaryText,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 28),
+
+                  // --- Tab Switcher ---
+                  _buildTabSwitcher(activePalette),
+                  const SizedBox(height: 24),
+
+                  // --- Form Fields ---
+                  if (_selectedTab == AuthTab.signUp) ...[
+                    _buildInputField(
+                      controller: _nameController,
+                      icon: PhosphorIcons.user,
+                      hintText: 'Full Name',
+                      activePalette: activePalette,
+                    ),
+                    const SizedBox(height: 12),
+                  ],
+
+                  _buildInputField(
+                    controller: _emailController,
+                    icon: PhosphorIcons.envelopeSimple,
+                    hintText: 'Email address',
+                    keyboardType: TextInputType.emailAddress,
+                    activePalette: activePalette,
+                  ),
+                  const SizedBox(height: 12),
+
+                  _buildInputField(
+                    controller: _passwordController,
+                    icon: PhosphorIcons.lockSimple,
+                    hintText: 'Password',
+                    obscureText: _obscurePassword,
+                    suffixIcon: IconButton(
+                      icon: Icon(
+                        _obscurePassword
+                            ? PhosphorIcons.eyeClosed
+                            : PhosphorIcons.eye,
+                        size: 18,
+                        color: activePalette.secondaryText,
+                      ),
+                      onPressed: () {
+                        setState(() {
+                          _obscurePassword = !_obscurePassword;
+                        });
+                      },
+                    ),
+                    activePalette: activePalette,
+                  ),
+                  const SizedBox(height: 24),
+
+                  // --- Submit Button ---
+                  _buildSubmitButton(activePalette),
+                  const SizedBox(height: 20),
+
+                  // --- Switch tab hint ---
+                  _buildSwitchTabHint(activePalette),
                 ],
               ),
-              const SizedBox(height: 16),
-
-              // --- Google Sign-In Button ---
-              _buildGoogleSignInButton(activePalette),
-              const SizedBox(height: 16),
-
-              // Continue as Guest CTA
-              TextButton(
-                onPressed: () => Navigator.of(context).pop(),
-                child: Text(
-                  'Continue as Guest',
-                  style: TextStyle(
-                    fontFamily: AppTheme.serifFontFamily,
-                    fontSize: 14,
-                    color: activePalette.secondaryText,
-                  ),
-                ),
-              ),
-            ],
+            ),
           ),
         ),
       ),
@@ -295,7 +228,8 @@ class _AuthScreenState extends State<AuthScreen> {
                   boxShadow: _selectedTab == AuthTab.signIn
                       ? [
                           BoxShadow(
-                            color: activePalette.primaryText.withValues(alpha: 0.05),
+                            color: activePalette.primaryText
+                                .withValues(alpha: 0.05),
                             blurRadius: 4,
                             offset: const Offset(0, 1),
                           ),
@@ -336,7 +270,8 @@ class _AuthScreenState extends State<AuthScreen> {
                   boxShadow: _selectedTab == AuthTab.signUp
                       ? [
                           BoxShadow(
-                            color: activePalette.primaryText.withValues(alpha: 0.05),
+                            color: activePalette.primaryText
+                                .withValues(alpha: 0.05),
                             blurRadius: 4,
                             offset: const Offset(0, 1),
                           ),
@@ -344,7 +279,7 @@ class _AuthScreenState extends State<AuthScreen> {
                       : [],
                 ),
                 child: Text(
-                  'Create Account',
+                  'Sign Up',
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     fontFamily: AppTheme.serifFontFamily,
@@ -376,7 +311,7 @@ class _AuthScreenState extends State<AuthScreen> {
   }) {
     return Container(
       decoration: BoxDecoration(
-        color: activePalette.background,
+        color: activePalette.cardBackground,
         borderRadius: AppTheme.asymmetricBadgeRadius,
         border: Border.all(color: activePalette.cardBorder, width: 1),
       ),
@@ -421,88 +356,69 @@ class _AuthScreenState extends State<AuthScreen> {
 
         return GestureDetector(
           onTap: isLoading ? null : _onSubmit,
-          child: AnimatedScale(
-            scale: 1.0,
-            duration: const Duration(milliseconds: 120),
-            child: Container(
-              width: double.infinity,
-              padding: const EdgeInsets.symmetric(vertical: 14),
-              decoration: BoxDecoration(
-                color: activePalette.primaryAccent,
-                borderRadius: AppTheme.asymmetricCardRadius,
-              ),
-              child: isLoading
-                  ? const SizedBox(
-                      height: 20,
-                      child: Center(
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: Colors.white,
-                        ),
-                      ),
-                    )
-                  : Text(
-                      _selectedTab == AuthTab.signIn ? 'Sign In' : 'Create Account',
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(
-                        fontFamily: AppTheme.serifFontFamily,
-                        fontSize: 15,
-                        fontWeight: FontWeight.w600,
+          child: Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(vertical: 14),
+            decoration: BoxDecoration(
+              color: activePalette.primaryAccent,
+              borderRadius: AppTheme.asymmetricCardRadius,
+            ),
+            child: isLoading
+                ? const SizedBox(
+                    height: 20,
+                    child: Center(
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
                         color: Colors.white,
                       ),
                     ),
-            ),
+                  )
+                : Text(
+                    _selectedTab == AuthTab.signIn ? 'Sign In' : 'Create Account',
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      fontFamily: AppTheme.serifFontFamily,
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.white,
+                    ),
+                  ),
           ),
         );
       },
     );
   }
 
-  Widget _buildGoogleSignInButton(AppColorPalette activePalette) {
-    return BlocBuilder<AuthBloc, AuthState>(
-      builder: (context, state) {
-        final isLoading = state is AuthLoading;
+  Widget _buildSwitchTabHint(AppColorPalette activePalette) {
+    final isSignIn = _selectedTab == AuthTab.signIn;
 
-        return GestureDetector(
-          onTap: isLoading
-              ? null
-              : () {
-                  context.read<AuthBloc>().add(const SignInWithGoogleRequested());
-                },
-          child: Container(
-            width: double.infinity,
-            padding: const EdgeInsets.symmetric(vertical: 13),
-            decoration: BoxDecoration(
-              color: activePalette.cardBackground,
-              borderRadius: AppTheme.asymmetricCardRadius,
-              border: Border.all(
-                color: activePalette.cardBorder,
-                width: 1.2,
-              ),
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(
-                  PhosphorIcons.googleLogo,
-                  size: 18,
-                  color: activePalette.primaryAccent,
-                ),
-                const SizedBox(width: 10),
-                Text(
-                  'Continue with Google',
-                  style: TextStyle(
-                    fontFamily: AppTheme.serifFontFamily,
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                    color: activePalette.primaryText,
-                  ),
-                ),
-              ],
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Text(
+          isSignIn ? "Don't have an account? " : 'Already have an account? ',
+          style: TextStyle(
+            fontSize: 13,
+            color: activePalette.secondaryText,
+          ),
+        ),
+        GestureDetector(
+          onTap: () {
+            setState(() {
+              _selectedTab = isSignIn ? AuthTab.signUp : AuthTab.signIn;
+            });
+          },
+          child: Text(
+            isSignIn ? 'Sign Up' : 'Sign In',
+            style: TextStyle(
+              fontFamily: AppTheme.serifFontFamily,
+              fontSize: 13,
+              fontWeight: FontWeight.w700,
+              color: activePalette.primaryAccent,
             ),
           ),
-        );
-      },
+        ),
+      ],
     );
   }
 }

@@ -1,99 +1,122 @@
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
-import 'package:google_sign_in/google_sign_in.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:the_shelf/models/local_user.dart';
 
-/// Repository encapsulating Firebase Authentication (Email/Password & Google Sign-In) operations.
+/// Frontend-only authentication repository using SharedPreferences.
+/// Stores user credentials locally — no backend required.
 class AuthRepository {
-  final FirebaseAuth _firebaseAuth;
-  final GoogleSignIn _googleSignIn;
+  static const _keyEmail = 'auth_email';
+  static const _keyPassword = 'auth_password';
+  static const _keyDisplayName = 'auth_display_name';
+  static const _keyCreatedAt = 'auth_created_at';
+  static const _keyLoggedIn = 'auth_logged_in';
 
-  AuthRepository({
-    FirebaseAuth? firebaseAuth,
-    GoogleSignIn? googleSignIn,
-  })  : _firebaseAuth = firebaseAuth ?? FirebaseAuth.instance,
-        _googleSignIn = googleSignIn ?? GoogleSignIn.instance;
+  /// Check if a user session is currently active.
+  Future<LocalUser?> getCurrentUser() async {
+    final prefs = await SharedPreferences.getInstance();
+    final loggedIn = prefs.getBool(_keyLoggedIn) ?? false;
+    if (!loggedIn) return null;
 
-  /// Stream of authentication state changes.
-  Stream<User?> get authStateChanges => _firebaseAuth.authStateChanges();
+    final email = prefs.getString(_keyEmail);
+    final name = prefs.getString(_keyDisplayName) ?? '';
+    final createdMs = prefs.getInt(_keyCreatedAt) ?? 0;
 
-  /// Currently authenticated Firebase user (or null if signed out/guest).
-  User? get currentUser => _firebaseAuth.currentUser;
+    if (email == null || email.isEmpty) return null;
 
-  /// Signs in with Email and Password.
-  Future<UserCredential> signInWithEmailAndPassword({
+    return LocalUser(
+      email: email,
+      displayName: name,
+      createdAt: DateTime.fromMillisecondsSinceEpoch(createdMs),
+    );
+  }
+
+  /// Sign in with stored credentials.
+  Future<LocalUser> signInWithEmailAndPassword({
     required String email,
     required String password,
   }) async {
-    try {
-      return await _firebaseAuth.signInWithEmailAndPassword(
-        email: email.trim(),
-        password: password,
-      );
-    } catch (e) {
-      debugPrint('Error signing in with Email/Password: $e');
-      rethrow;
+    final prefs = await SharedPreferences.getInstance();
+    final storedEmail = prefs.getString(_keyEmail);
+    final storedPassword = prefs.getString(_keyPassword);
+
+    if (storedEmail == null || storedPassword == null) {
+      throw AuthException('No account found. Please create one first.');
     }
+
+    if (email.trim().toLowerCase() != storedEmail.toLowerCase()) {
+      throw AuthException('No account found with this email.');
+    }
+
+    if (password != storedPassword) {
+      throw AuthException('Incorrect password.');
+    }
+
+    await prefs.setBool(_keyLoggedIn, true);
+
+    return LocalUser(
+      email: storedEmail,
+      displayName: prefs.getString(_keyDisplayName) ?? '',
+      createdAt: DateTime.fromMillisecondsSinceEpoch(
+        prefs.getInt(_keyCreatedAt) ?? DateTime.now().millisecondsSinceEpoch,
+      ),
+    );
   }
 
-  /// Creates a new user with Email, Password, and Display Name.
-  Future<UserCredential> signUpWithEmailAndPassword({
+  /// Create a new local account and sign in.
+  Future<LocalUser> signUpWithEmailAndPassword({
     required String email,
     required String password,
     required String displayName,
   }) async {
-    try {
-      final credential = await _firebaseAuth.createUserWithEmailAndPassword(
-        email: email.trim(),
-        password: password,
-      );
-
-      if (displayName.trim().isNotEmpty && credential.user != null) {
-        await credential.user!.updateDisplayName(displayName.trim());
-        await credential.user!.reload();
-      }
-
-      return credential;
-    } catch (e) {
-      debugPrint('Error signing up with Email/Password: $e');
-      rethrow;
+    if (email.trim().isEmpty) {
+      throw AuthException('Please enter a valid email address.');
     }
+    if (password.length < 6) {
+      throw AuthException('Password should be at least 6 characters.');
+    }
+
+    final prefs = await SharedPreferences.getInstance();
+    final existingEmail = prefs.getString(_keyEmail);
+
+    if (existingEmail != null &&
+        existingEmail.toLowerCase() == email.trim().toLowerCase()) {
+      throw AuthException('An account already exists with this email.');
+    }
+
+    final now = DateTime.now();
+    await prefs.setString(_keyEmail, email.trim());
+    await prefs.setString(_keyPassword, password);
+    await prefs.setString(_keyDisplayName, displayName.trim());
+    await prefs.setInt(_keyCreatedAt, now.millisecondsSinceEpoch);
+    await prefs.setBool(_keyLoggedIn, true);
+
+    return LocalUser(
+      email: email.trim(),
+      displayName: displayName.trim(),
+      createdAt: now,
+    );
   }
 
-  /// Updates the display name of the current authenticated user.
-  Future<void> updateDisplayName(String displayName) async {
-    final user = _firebaseAuth.currentUser;
-    if (user != null && displayName.trim().isNotEmpty) {
-      await user.updateDisplayName(displayName.trim());
-      await user.reload();
-    }
+  /// Update the display name of the current user.
+  Future<LocalUser?> updateDisplayName(String displayName) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_keyDisplayName, displayName.trim());
+    return getCurrentUser();
   }
 
-  /// Signs in with Google using native GoogleSignIn account selection and Firebase credential.
-  Future<UserCredential?> signInWithGoogle() async {
-    try {
-      final googleUser = await _googleSignIn.authenticate();
-      final googleAuth = googleUser.authentication;
-      final AuthCredential credential = GoogleAuthProvider.credential(
-        idToken: googleAuth.idToken,
-      );
-
-      return await _firebaseAuth.signInWithCredential(credential);
-    } catch (e) {
-      debugPrint('Error during Google Sign-In: $e');
-      rethrow;
-    }
-  }
-
-  /// Signs out of both Firebase Auth and Google Sign-In.
+  /// Sign out (clear the session flag).
   Future<void> signOut() async {
-    try {
-      await Future.wait([
-        _firebaseAuth.signOut(),
-        _googleSignIn.signOut(),
-      ]);
-    } catch (e) {
-      debugPrint('Error during sign out: $e');
-      rethrow;
-    }
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_keyLoggedIn, false);
+    debugPrint('User signed out.');
   }
+}
+
+/// Simple exception for auth errors with user-friendly messages.
+class AuthException implements Exception {
+  final String message;
+  const AuthException(this.message);
+
+  @override
+  String toString() => message;
 }

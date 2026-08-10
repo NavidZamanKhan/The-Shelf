@@ -1,5 +1,4 @@
 import 'package:equatable/equatable.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 
 abstract class AuthEvent extends Equatable {
   const AuthEvent();
@@ -8,42 +7,29 @@ abstract class AuthEvent extends Equatable {
   List<Object?> get props => [];
 }
 
-/// Triggers initial subscription to authStateChanges.
-class AuthStarted extends AuthEvent {
-  const AuthStarted();
+/// Check if user has an existing session on app startup.
+class AuthCheckSession extends AuthEvent {
+  const AuthCheckSession();
 }
 
-/// Internal event fired when authStateChanges stream emits a user update.
-class AuthUserChanged extends AuthEvent {
-  final User? user;
-
-  const AuthUserChanged(this.user);
-
-  @override
-  List<Object?> get props => [user];
-}
-
-/// Triggered when user submits email & password for Sign In.
-class SignInWithEmailPasswordRequested extends AuthEvent {
+/// Sign in with email and password.
+class SignInRequested extends AuthEvent {
   final String email;
   final String password;
 
-  const SignInWithEmailPasswordRequested({
-    required this.email,
-    required this.password,
-  });
+  const SignInRequested({required this.email, required this.password});
 
   @override
   List<Object?> get props => [email, password];
 }
 
-/// Triggered when user submits email, password & display name for Sign Up.
-class SignUpWithEmailPasswordRequested extends AuthEvent {
+/// Sign up with email, password, and display name.
+class SignUpRequested extends AuthEvent {
   final String email;
   final String password;
   final String displayName;
 
-  const SignUpWithEmailPasswordRequested({
+  const SignUpRequested({
     required this.email,
     required this.password,
     required this.displayName,
@@ -53,7 +39,7 @@ class SignUpWithEmailPasswordRequested extends AuthEvent {
   List<Object?> get props => [email, password, displayName];
 }
 
-/// Triggered when user updates their display name from Profile Screen.
+/// Update display name.
 class UpdateDisplayNameRequested extends AuthEvent {
   final String displayName;
 
@@ -63,12 +49,7 @@ class UpdateDisplayNameRequested extends AuthEvent {
   List<Object?> get props => [displayName];
 }
 
-/// Triggered when the user taps "Continue with Google".
-class SignInWithGoogleRequested extends AuthEvent {
-  const SignInWithGoogleRequested();
-}
-
-/// Triggered when the user taps "Log out".
+/// Log out.
 class SignOutRequested extends AuthEvent {
   const SignOutRequested();
 }

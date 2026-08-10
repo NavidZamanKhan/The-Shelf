@@ -1,5 +1,5 @@
 import 'package:equatable/equatable.dart';
-import 'package:firebase_auth/firebase_auth.dart';
+import 'package:the_shelf/models/local_user.dart';
 
 abstract class AuthState extends Equatable {
   const AuthState();
@@ -8,7 +8,7 @@ abstract class AuthState extends Equatable {
   List<Object?> get props => [];
 }
 
-/// Initial uninitialized state.
+/// Initial state — checking if user session exists.
 class AuthInitial extends AuthState {
   const AuthInitial();
 }
@@ -18,9 +18,9 @@ class AuthLoading extends AuthState {
   const AuthLoading();
 }
 
-/// Authenticated state holding active Firebase user session.
+/// Authenticated state holding local user session.
 class Authenticated extends AuthState {
-  final User user;
+  final LocalUser user;
 
   const Authenticated(this.user);
 
@@ -28,12 +28,12 @@ class Authenticated extends AuthState {
   List<Object?> get props => [user];
 }
 
-/// Unauthenticated state (guest mode or signed out).
+/// Unauthenticated state — must sign in or sign up.
 class Unauthenticated extends AuthState {
   const Unauthenticated();
 }
 
-/// Error state when a sign-in or sign-out attempt fails.
+/// Error state when a sign-in or sign-up attempt fails.
 class AuthError extends AuthState {
   final String message;
 
