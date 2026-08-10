@@ -1,5 +1,6 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:the_shelf/models/local_user.dart';
@@ -266,8 +267,20 @@ class AuthRepository {
       );
     } on AuthException {
       rethrow;
+    } on PlatformException catch (e) {
+      debugPrint('Google Sign-In PlatformException: ${e.code} - ${e.message}');
+      if (e.message?.contains('GIDClientID') == true) {
+        throw const AuthException(
+          'Missing GIDClientID in iOS Info.plist. Check GoogleService-Info.plist configuration.',
+        );
+      }
+      throw AuthException(e.message ?? 'Google Sign-In failed.');
     } catch (e) {
       debugPrint('Google Sign-In error: $e');
+      final msg = e.toString();
+      if (msg.contains('canceled') || msg.contains('cancelled')) {
+        throw const AuthException('Google Sign-In was cancelled.');
+      }
       throw AuthException('Google Sign-In failed: $e');
     }
   }
