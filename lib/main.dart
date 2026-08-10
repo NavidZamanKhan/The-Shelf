@@ -12,6 +12,7 @@ import 'package:the_shelf/blocs/shelf/shelf_event.dart';
 import 'package:the_shelf/blocs/theme/theme_cubit.dart';
 import 'package:the_shelf/screens/auth_screen.dart';
 import 'package:the_shelf/screens/home_screen.dart';
+import 'package:the_shelf/screens/splash_screen.dart';
 import 'package:the_shelf/services/shelf_classifier_service.dart';
 import 'package:the_shelf/theme/app_color_palette.dart';
 import 'package:the_shelf/theme/app_theme.dart';
@@ -63,11 +64,15 @@ class TheShelfApp extends StatelessWidget {
             theme: AppTheme.getThemeData(activePalette),
             home: BlocBuilder<AuthBloc, AuthState>(
               builder: (context, authState) {
-                // Gate: show auth screen until user is authenticated
+                // Polished startup navigation gate
                 if (authState is Authenticated) {
                   return const HomeScreen();
                 }
-                return const AuthScreen();
+                if (authState is Unauthenticated) {
+                  return const AuthScreen();
+                }
+                // Show clean splash screen during session check (never flickers AuthScreen)
+                return const SplashScreen();
               },
             ),
           );

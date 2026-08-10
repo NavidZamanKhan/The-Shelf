@@ -47,9 +47,13 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         email: user.email,
         displayName: user.displayName,
       );
-      // Auto-persist profile to Cloud Firestore
-      await _userProfileRepository.saveUserProfile(profile);
+      // Immediately emit Authenticated so app opens instantly with no flickering
       emit(Authenticated(profile));
+
+      // Auto-persist profile in background
+      _userProfileRepository.saveUserProfile(profile).catchError((e) {
+        debugPrint('Background Firestore save error: $e');
+      });
     } else {
       emit(const Unauthenticated());
     }
