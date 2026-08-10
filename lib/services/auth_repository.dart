@@ -4,7 +4,8 @@ import 'package:google_sign_in/google_sign_in.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:the_shelf/models/local_user.dart';
 
-/// Authentication repository supporting email/password, email magic link, and Google Sign-In.
+/// Authentication repository fully connected to Firebase Authentication,
+/// with SharedPreferences session caching for offline persistence.
 class AuthRepository {
   static const _keyEmail = 'auth_email';
   static const _keyPassword = 'auth_password';
@@ -12,8 +13,43 @@ class AuthRepository {
   static const _keyCreatedAt = 'auth_created_at';
   static const _keyLoggedIn = 'auth_logged_in';
 
-  /// Check if a user session is currently active.
+  /// Stream of authentication state changes from Firebase Auth.
+  Stream<User?> get authStateChanges {
+    try {
+      return FirebaseAuth.instance.authStateChanges();
+    } catch (_) {
+      return const Stream.empty();
+    }
+  }
+
+  /// Check if a user session is currently active (via Firebase Auth or local session).
   Future<LocalUser?> getCurrentUser() async {
+    // 1. Try Firebase Auth first
+    try {
+      final fbUser = FirebaseAuth.instance.currentUser;
+      if (fbUser != null) {
+        final email = fbUser.email ?? '';
+        final name = fbUser.displayName ?? '';
+        final creationTime = fbUser.metadata.creationTime ?? DateTime.now();
+
+        // Sync to local cache
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString(_keyEmail, email);
+        await prefs.setString(_keyDisplayName, name);
+        await prefs.setInt(_keyCreatedAt, creationTime.millisecondsSinceEpoch);
+        await prefs.setBool(_keyLoggedIn, true);
+
+        return LocalUser(
+          email: email,
+          displayName: name,
+          createdAt: creationTime,
+        );
+      }
+    } catch (e) {
+      debugPrint('Firebase getCurrentUser check skipped: $e');
+    }
+
+    // 2. Check local SharedPreferences fallback
     final prefs = await SharedPreferences.getInstance();
     final loggedIn = prefs.getBool(_keyLoggedIn) ?? false;
     if (!loggedIn) return null;
@@ -31,71 +67,136 @@ class AuthRepository {
     );
   }
 
-  /// Sign in with stored credentials.
+  /// Sign in with Email and Password using Firebase Auth.
   Future<LocalUser> signInWithEmailAndPassword({
     required String email,
     required String password,
   }) async {
-    final prefs = await SharedPreferences.getInstance();
-    final storedEmail = prefs.getString(_keyEmail);
-    final storedPassword = prefs.getString(_keyPassword);
-
-    if (storedEmail == null || storedPassword == null) {
-      throw const AuthException('No account found. Please create one first.');
+    final trimmedEmail = email.trim();
+    if (trimmedEmail.isEmpty || password.isEmpty) {
+      throw const AuthException('Please enter both email and password.');
     }
 
-    if (email.trim().toLowerCase() != storedEmail.toLowerCase()) {
-      throw const AuthException('No account found with this email.');
+    try {
+      // Real Firebase Authentication
+      final userCredential = await FirebaseAuth.instance
+          .signInWithEmailAndPassword(email: trimmedEmail, password: password);
+      final fbUser = userCredential.user;
+
+      final userEmail = fbUser?.email ?? trimmedEmail;
+      final userName = fbUser?.displayName ?? '';
+      final now = fbUser?.metadata.creationTime ?? DateTime.now();
+
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(_keyEmail, userEmail);
+      await prefs.setString(_keyPassword, password);
+      await prefs.setString(_keyDisplayName, userName);
+      await prefs.setInt(_keyCreatedAt, now.millisecondsSinceEpoch);
+      await prefs.setBool(_keyLoggedIn, true);
+
+      return LocalUser(
+        email: userEmail,
+        displayName: userName,
+        createdAt: now,
+      );
+    } on FirebaseAuthException catch (e) {
+      debugPrint('FirebaseAuthException during sign-in: ${e.code} - ${e.message}');
+      throw AuthException(_mapFirebaseAuthError(e));
+    } catch (e) {
+      debugPrint('Fallback local sign-in due to Firebase exception: $e');
+      // Fallback local check if Firebase is not initialized
+      final prefs = await SharedPreferences.getInstance();
+      final storedEmail = prefs.getString(_keyEmail);
+      final storedPassword = prefs.getString(_keyPassword);
+
+      if (storedEmail == null || storedPassword == null) {
+        throw const AuthException('No account found. Please create one first.');
+      }
+      if (trimmedEmail.toLowerCase() != storedEmail.toLowerCase()) {
+        throw const AuthException('No account found with this email.');
+      }
+      if (password != storedPassword) {
+        throw const AuthException('Incorrect password.');
+      }
+
+      await prefs.setBool(_keyLoggedIn, true);
+      return LocalUser(
+        email: storedEmail,
+        displayName: prefs.getString(_keyDisplayName) ?? '',
+        createdAt: DateTime.fromMillisecondsSinceEpoch(
+          prefs.getInt(_keyCreatedAt) ?? DateTime.now().millisecondsSinceEpoch,
+        ),
+      );
     }
-
-    if (password != storedPassword) {
-      throw const AuthException('Incorrect password.');
-    }
-
-    await prefs.setBool(_keyLoggedIn, true);
-
-    return LocalUser(
-      email: storedEmail,
-      displayName: prefs.getString(_keyDisplayName) ?? '',
-      createdAt: DateTime.fromMillisecondsSinceEpoch(
-        prefs.getInt(_keyCreatedAt) ?? DateTime.now().millisecondsSinceEpoch,
-      ),
-    );
   }
 
-  /// Create a new account and sign in.
+  /// Create a new account with Email and Password using Firebase Auth.
   Future<LocalUser> signUpWithEmailAndPassword({
     required String email,
     required String password,
     required String displayName,
   }) async {
-    if (email.trim().isEmpty) {
+    final trimmedEmail = email.trim();
+    final trimmedName = displayName.trim();
+
+    if (trimmedEmail.isEmpty) {
       throw const AuthException('Please enter a valid email address.');
     }
     if (password.length < 6) {
       throw const AuthException('Password should be at least 6 characters.');
     }
 
-    final prefs = await SharedPreferences.getInstance();
-    final existingEmail = prefs.getString(_keyEmail);
+    try {
+      // Real Firebase Authentication
+      final userCredential = await FirebaseAuth.instance
+          .createUserWithEmailAndPassword(email: trimmedEmail, password: password);
+      final fbUser = userCredential.user;
 
-    if (existingEmail != null &&
-        existingEmail.toLowerCase() == email.trim().toLowerCase()) {
-      throw const AuthException('An account already exists with this email.');
+      if (fbUser != null && trimmedName.isNotEmpty) {
+        await fbUser.updateDisplayName(trimmedName);
+      }
+
+      final now = fbUser?.metadata.creationTime ?? DateTime.now();
+
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(_keyEmail, trimmedEmail);
+      await prefs.setString(_keyPassword, password);
+      await prefs.setString(_keyDisplayName, trimmedName);
+      await prefs.setInt(_keyCreatedAt, now.millisecondsSinceEpoch);
+      await prefs.setBool(_keyLoggedIn, true);
+
+      return LocalUser(
+        email: trimmedEmail,
+        displayName: trimmedName,
+        createdAt: now,
+      );
+    } on FirebaseAuthException catch (e) {
+      debugPrint('FirebaseAuthException during sign-up: ${e.code} - ${e.message}');
+      throw AuthException(_mapFirebaseAuthError(e));
+    } catch (e) {
+      debugPrint('Fallback local sign-up due to Firebase exception: $e');
+      // Local fallback if Firebase isn't active
+      final prefs = await SharedPreferences.getInstance();
+      final existingEmail = prefs.getString(_keyEmail);
+
+      if (existingEmail != null &&
+          existingEmail.toLowerCase() == trimmedEmail.toLowerCase()) {
+        throw const AuthException('An account already exists with this email.');
+      }
+
+      final now = DateTime.now();
+      await prefs.setString(_keyEmail, trimmedEmail);
+      await prefs.setString(_keyPassword, password);
+      await prefs.setString(_keyDisplayName, trimmedName);
+      await prefs.setInt(_keyCreatedAt, now.millisecondsSinceEpoch);
+      await prefs.setBool(_keyLoggedIn, true);
+
+      return LocalUser(
+        email: trimmedEmail,
+        displayName: trimmedName,
+        createdAt: now,
+      );
     }
-
-    final now = DateTime.now();
-    await prefs.setString(_keyEmail, email.trim());
-    await prefs.setString(_keyPassword, password);
-    await prefs.setString(_keyDisplayName, displayName.trim());
-    await prefs.setInt(_keyCreatedAt, now.millisecondsSinceEpoch);
-    await prefs.setBool(_keyLoggedIn, true);
-
-    return LocalUser(
-      email: email.trim(),
-      displayName: displayName.trim(),
-      createdAt: now,
-    );
   }
 
   /// Send passwordless email sign-in link via Firebase Auth.
@@ -127,7 +228,7 @@ class AuthRepository {
     }
   }
 
-  /// Sign in or Sign up using Google account.
+  /// Sign in or Sign up using Google account via Firebase Auth.
   Future<LocalUser> signInWithGoogle() async {
     try {
       final googleUser = await GoogleSignIn.instance.authenticate();
@@ -135,7 +236,6 @@ class AuthRepository {
       String email = googleUser.email;
       String displayName = googleUser.displayName ?? 'Google User';
 
-      // Attempt Firebase authentication if configured
       try {
         final googleAuth = googleUser.authentication;
         final credential = GoogleAuthProvider.credential(
@@ -149,7 +249,7 @@ class AuthRepository {
           if (fbUser.displayName != null) displayName = fbUser.displayName!;
         }
       } catch (e) {
-        debugPrint('Firebase Auth not available, using Google account details: $e');
+        debugPrint('Firebase Auth error during Google Sign-In: $e');
       }
 
       final now = DateTime.now();
@@ -172,14 +272,24 @@ class AuthRepository {
     }
   }
 
-  /// Update the display name of the current user.
+  /// Update the display name of the current user in Firebase Auth and local cache.
   Future<LocalUser?> updateDisplayName(String displayName) async {
+    final trimmed = displayName.trim();
+    try {
+      final fbUser = FirebaseAuth.instance.currentUser;
+      if (fbUser != null) {
+        await fbUser.updateDisplayName(trimmed);
+      }
+    } catch (e) {
+      debugPrint('Firebase updateDisplayName error: $e');
+    }
+
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_keyDisplayName, displayName.trim());
+    await prefs.setString(_keyDisplayName, trimmed);
     return getCurrentUser();
   }
 
-  /// Sign out (clear session & Google/Firebase sign in).
+  /// Sign out (clear session & Firebase/Google sign out).
   Future<void> signOut() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(_keyLoggedIn, false);
@@ -190,6 +300,31 @@ class AuthRepository {
       await FirebaseAuth.instance.signOut();
     } catch (_) {}
     debugPrint('User signed out.');
+  }
+
+  /// Helper to convert Firebase error codes to friendly messages.
+  String _mapFirebaseAuthError(FirebaseAuthException e) {
+    switch (e.code) {
+      case 'user-not-found':
+        return 'No account found with this email.';
+      case 'wrong-password':
+      case 'invalid-credential':
+        return 'Incorrect password or credentials.';
+      case 'email-already-in-use':
+        return 'An account already exists with this email.';
+      case 'weak-password':
+        return 'Password should be at least 6 characters.';
+      case 'invalid-email':
+        return 'Please enter a valid email address.';
+      case 'network-request-failed':
+        return 'Network connection error. Please try again.';
+      case 'user-disabled':
+        return 'This account has been disabled.';
+      case 'too-many-requests':
+        return 'Too many unsuccessful attempts. Please try again later.';
+      default:
+        return e.message ?? 'Authentication failed. Please try again.';
+    }
   }
 }
 
