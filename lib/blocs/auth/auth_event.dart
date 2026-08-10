@@ -54,14 +54,22 @@ class SignInWithGoogleRequested extends AuthEvent {
   const SignInWithGoogleRequested();
 }
 
-/// Update display name.
-class UpdateDisplayNameRequested extends AuthEvent {
+/// Update user profile details (display name, bio/reading motto, profile picture, banner photo).
+class UpdateProfileDetailsRequested extends AuthEvent {
   final String displayName;
+  final String? bio;
+  final String? photoPath;
+  final String? bannerPath;
 
-  const UpdateDisplayNameRequested(this.displayName);
+  const UpdateProfileDetailsRequested({
+    required this.displayName,
+    this.bio,
+    this.photoPath,
+    this.bannerPath,
+  });
 
   @override
-  List<Object?> get props => [displayName];
+  List<Object?> get props => [displayName, bio, photoPath, bannerPath];
 }
 
 /// Log out.

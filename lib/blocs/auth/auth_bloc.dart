@@ -1,21 +1,28 @@
+import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:the_shelf/blocs/auth/auth_event.dart';
 import 'package:the_shelf/blocs/auth/auth_state.dart';
+import 'package:the_shelf/models/user_profile.dart';
 import 'package:the_shelf/services/auth_repository.dart';
+import 'package:the_shelf/services/user_profile_repository.dart';
 
 class AuthBloc extends Bloc<AuthEvent, AuthState> {
   final AuthRepository _authRepository;
+  final UserProfileRepository _userProfileRepository;
 
   AuthBloc({
     AuthRepository? authRepository,
+    UserProfileRepository? userProfileRepository,
   })  : _authRepository = authRepository ?? AuthRepository(),
+        _userProfileRepository = userProfileRepository ?? UserProfileRepository(),
         super(const AuthInitial()) {
     on<AuthCheckSession>(_onCheckSession);
     on<SignInRequested>(_onSignInRequested);
     on<SignUpRequested>(_onSignUpRequested);
     on<SendMagicLinkRequested>(_onSendMagicLinkRequested);
     on<SignInWithGoogleRequested>(_onSignInWithGoogleRequested);
-    on<UpdateDisplayNameRequested>(_onUpdateDisplayName);
+    on<UpdateProfileDetailsRequested>(_onUpdateProfileDetails);
     on<SignOutRequested>(_onSignOutRequested);
   }
 
@@ -25,7 +32,12 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
   ) async {
     final user = await _authRepository.getCurrentUser();
     if (user != null) {
-      emit(Authenticated(user));
+      final profile = await _userProfileRepository.getUserProfile(
+        uid: user.email.replaceAll('.', '_'),
+        email: user.email,
+        displayName: user.displayName,
+      );
+      emit(Authenticated(profile));
     } else {
       emit(const Unauthenticated());
     }
@@ -41,7 +53,12 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         email: event.email,
         password: event.password,
       );
-      emit(Authenticated(user));
+      final profile = await _userProfileRepository.getUserProfile(
+        uid: user.email.replaceAll('.', '_'),
+        email: user.email,
+        displayName: user.displayName,
+      );
+      emit(Authenticated(profile));
     } on AuthException catch (e) {
       emit(AuthError(e.message));
     } catch (e) {
@@ -60,7 +77,18 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         password: event.password,
         displayName: event.displayName,
       );
-      emit(Authenticated(user));
+
+      final uid = user.email.replaceAll('.', '_');
+      final newProfile = UserProfile(
+        uid: uid,
+        email: user.email,
+        displayName: user.displayName,
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+      );
+
+      await _userProfileRepository.saveUserProfile(newProfile);
+      emit(Authenticated(newProfile));
     } on AuthException catch (e) {
       emit(AuthError(e.message));
     } catch (e) {
@@ -96,7 +124,14 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     emit(const AuthLoading());
     try {
       final user = await _authRepository.signInWithGoogle();
-      emit(Authenticated(user));
+      final uid = user.email.replaceAll('.', '_');
+      final profile = await _userProfileRepository.getUserProfile(
+        uid: uid,
+        email: user.email,
+        displayName: user.displayName,
+      );
+      await _userProfileRepository.saveUserProfile(profile);
+      emit(Authenticated(profile));
     } on AuthException catch (e) {
       emit(AuthError(e.message));
     } catch (e) {
@@ -104,17 +139,58 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     }
   }
 
-  Future<void> _onUpdateDisplayName(
-    UpdateDisplayNameRequested event,
+  Future<void> _onUpdateProfileDetails(
+    UpdateProfileDetailsRequested event,
     Emitter<AuthState> emit,
   ) async {
+    final currentState = state;
+    if (currentState is! Authenticated) return;
+
+    final currentProfile = currentState.profile;
+    final uid = currentProfile.uid;
+
     try {
-      final user = await _authRepository.updateDisplayName(event.displayName);
-      if (user != null) {
-        emit(Authenticated(user));
+      String? newPhotoUrl = currentProfile.photoUrl;
+      String? newBannerUrl = currentProfile.bannerUrl;
+
+      // Upload avatar image if picked
+      if (event.photoPath != null && event.photoPath!.isNotEmpty) {
+        newPhotoUrl = await _userProfileRepository.uploadProfileMedia(
+          uid: uid,
+          imageFile: File(event.photoPath!),
+          mediaType: 'avatar',
+        );
       }
+
+      // Upload cover banner image if picked
+      if (event.bannerPath != null && event.bannerPath!.isNotEmpty) {
+        newBannerUrl = await _userProfileRepository.uploadProfileMedia(
+          uid: uid,
+          imageFile: File(event.bannerPath!),
+          mediaType: 'banner',
+        );
+      }
+
+      final updatedProfile = currentProfile.copyWith(
+        displayName: event.displayName.trim().isNotEmpty
+            ? event.displayName.trim()
+            : currentProfile.displayName,
+        bio: event.bio,
+        photoUrl: newPhotoUrl,
+        bannerUrl: newBannerUrl,
+        updatedAt: DateTime.now(),
+      );
+
+      // Save to Cloud Firestore
+      await _userProfileRepository.saveUserProfile(updatedProfile);
+      await _authRepository.updateDisplayName(updatedProfile.displayName);
+
+      emit(Authenticated(updatedProfile));
     } catch (e) {
-      emit(AuthError('Failed to update name: $e'));
+      debugPrint('Error updating profile details: $e');
+      emit(AuthError('Failed to update profile: $e'));
+      // Restore authenticated state
+      emit(Authenticated(currentProfile));
     }
   }
 

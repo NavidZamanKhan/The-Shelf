@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -8,13 +9,14 @@ import 'package:the_shelf/blocs/auth/auth_state.dart';
 import 'package:the_shelf/blocs/collection/collection_bloc.dart';
 import 'package:the_shelf/blocs/collection/collection_state.dart';
 import 'package:the_shelf/blocs/theme/theme_cubit.dart';
+import 'package:the_shelf/models/user_profile.dart';
 import 'package:the_shelf/services/document_repository.dart';
 import 'package:the_shelf/theme/app_color_palette.dart';
 import 'package:the_shelf/theme/app_theme.dart';
 import 'package:the_shelf/widgets/edit_profile_modal.dart';
 
-/// Profile screen showing user identity, genre distribution donut chart,
-/// account stats, and sign-out action.
+/// Profile screen showing user identity, custom cover photo, profile picture,
+/// reading motto / bio card, genre distribution donut chart, account stats, and sign-out.
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
 
@@ -33,7 +35,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Future<void> _loadGenreData() async {
-    final distribution = await DocumentRepository.instance.getGenreDistribution();
+    final distribution =
+        await DocumentRepository.instance.getGenreDistribution();
     if (mounted) {
       setState(() {
         _genreDistribution = distribution;
@@ -108,6 +111,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
           // --- Identity Section ---
           _buildIdentitySection(activePalette),
 
+          // --- Reading Motto / Bio Section ---
+          _buildMottoCard(activePalette),
+
           const SizedBox(height: 20),
 
           // --- Donut Chart Card ---
@@ -133,40 +139,74 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   Widget _buildBannerHeader(AppColorPalette activePalette) {
     final authState = context.watch<AuthBloc>().state;
-    String initial = 'U';
-    if (authState is Authenticated) {
-      initial = authState.user.initials;
+    final UserProfile? profile =
+        authState is Authenticated ? authState.profile : null;
+
+    ImageProvider? bannerImage;
+    if (profile?.bannerUrl != null && profile!.bannerUrl!.isNotEmpty) {
+      if (profile.bannerUrl!.startsWith('http')) {
+        bannerImage = NetworkImage(profile.bannerUrl!);
+      } else {
+        bannerImage = FileImage(File(profile.bannerUrl!));
+      }
     }
 
+    ImageProvider? avatarImage;
+    if (profile?.photoUrl != null && profile!.photoUrl!.isNotEmpty) {
+      if (profile.photoUrl!.startsWith('http')) {
+        avatarImage = NetworkImage(profile.photoUrl!);
+      } else {
+        avatarImage = FileImage(File(profile.photoUrl!));
+      }
+    }
+
+    final initial = profile?.initials ?? 'U';
+
     return Container(
-      height: 130,
+      height: 140,
       width: double.infinity,
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [
-            activePalette.gradientStart,
-            activePalette.primaryAccent.withValues(alpha: 0.7),
-          ],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
+        image: bannerImage != null
+            ? DecorationImage(
+                image: bannerImage,
+                fit: BoxFit.cover,
+              )
+            : null,
+        gradient: bannerImage == null
+            ? LinearGradient(
+                colors: [
+                  activePalette.gradientStart,
+                  activePalette.primaryAccent.withValues(alpha: 0.7),
+                ],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              )
+            : null,
       ),
       child: Stack(
         clipBehavior: Clip.none,
         children: [
+          // Dark overlay for legibility if custom banner image is set
+          if (bannerImage != null)
+            Container(
+              decoration: BoxDecoration(
+                color: Colors.black.withValues(alpha: 0.25),
+              ),
+            ),
+
           // Avatar badge — positioned to overlap bottom of banner
           Positioned(
             left: 20,
-            bottom: -30,
+            bottom: -32,
             child: Container(
-              width: 72,
-              height: 72,
+              width: 76,
+              height: 76,
               decoration: BoxDecoration(
                 color: activePalette.primaryAccent,
                 borderRadius: AppTheme.asymmetricBadgeRadius,
                 border: Border.all(
                   color: activePalette.cardBackground,
-                  width: 3,
+                  width: 3.5,
                 ),
                 boxShadow: [
                   BoxShadow(
@@ -175,52 +215,50 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     offset: const Offset(0, 3),
                   ),
                 ],
+                image: avatarImage != null
+                    ? DecorationImage(
+                        image: avatarImage,
+                        fit: BoxFit.cover,
+                      )
+                    : null,
               ),
-              child: Center(
-                child: Text(
-                  initial,
-                  style: const TextStyle(
-                    fontFamily: AppTheme.serifFontFamily,
-                    fontSize: 30,
-                    fontWeight: FontWeight.w700,
-                    color: Colors.white,
-                  ),
-                ),
-              ),
+              child: avatarImage == null
+                  ? Center(
+                      child: Text(
+                        initial,
+                        style: const TextStyle(
+                          fontFamily: AppTheme.serifFontFamily,
+                          fontSize: 32,
+                          fontWeight: FontWeight.w700,
+                          color: Colors.white,
+                        ),
+                      ),
+                    )
+                  : null,
             ),
           ),
 
-          // Edit photo button — top right of banner
+          // Edit photo / profile button top-right
           Positioned(
             right: 16,
             top: 16,
             child: GestureDetector(
               onTap: () {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text(
-                      'Photo editing coming soon',
-                      style: TextStyle(
-                        fontFamily: AppTheme.serifFontFamily,
-                        fontSize: 14,
-                      ),
-                    ),
-                    behavior: SnackBarBehavior.floating,
-                    duration: Duration(seconds: 2),
-                  ),
-                );
+                if (profile != null) {
+                  EditProfileModal.show(context, profile: profile);
+                }
               },
               child: Container(
                 width: 36,
                 height: 36,
                 decoration: BoxDecoration(
-                  color: activePalette.cardBackground.withValues(alpha: 0.6),
+                  color: activePalette.cardBackground.withValues(alpha: 0.75),
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: Icon(
                   PhosphorIcons.camera,
                   size: 18,
-                  color: activePalette.primaryText.withValues(alpha: 0.7),
+                  color: activePalette.primaryText.withValues(alpha: 0.8),
                 ),
               ),
             ),
@@ -236,13 +274,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   Widget _buildIdentitySection(AppColorPalette activePalette) {
     final authState = context.watch<AuthBloc>().state;
-    final user = authState is Authenticated ? authState.user : null;
+    final profile = authState is Authenticated ? authState.profile : null;
 
-    final displayName = user?.displayName ?? 'User';
-    final email = user?.email ?? '';
+    final displayName = profile?.displayName ?? 'User';
+    final email = profile?.email ?? '';
 
     return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 40, 20, 0),
+      padding: const EdgeInsets.fromLTRB(20, 42, 20, 0),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -275,7 +313,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
           // Edit profile button
           GestureDetector(
             onTap: () {
-              EditProfileModal.show(context, currentName: displayName);
+              if (profile != null) {
+                EditProfileModal.show(context, profile: profile);
+              }
             },
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
@@ -310,6 +350,56 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  // ================================================================
+  // READING MOTTO / BIO CARD
+  // ================================================================
+
+  Widget _buildMottoCard(AppColorPalette activePalette) {
+    final authState = context.watch<AuthBloc>().state;
+    final profile = authState is Authenticated ? authState.profile : null;
+
+    final bio = profile?.bio;
+    if (bio == null || bio.trim().isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: activePalette.subtleBadgeBackground.withValues(alpha: 0.6),
+          borderRadius: AppTheme.asymmetricBadgeRadius,
+          border: Border.all(color: activePalette.cardBorder, width: 1),
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(
+              PhosphorIcons.quotes,
+              size: 20,
+              color: activePalette.primaryAccent,
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                bio.trim(),
+                style: TextStyle(
+                  fontFamily: AppTheme.serifFontFamily,
+                  fontSize: 14,
+                  fontStyle: FontStyle.italic,
+                  height: 1.4,
+                  color: activePalette.primaryText,
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -511,12 +601,25 @@ class _ProfileScreenState extends State<ProfileScreen> {
         : 0;
 
     final authState = context.watch<AuthBloc>().state;
-    final user = authState is Authenticated ? authState.user : null;
+    final profile = authState is Authenticated ? authState.profile : null;
 
     String memberSince = '—';
-    if (user != null) {
-      final dt = user.createdAt;
-      const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    if (profile != null) {
+      final dt = profile.createdAt;
+      const months = [
+        'Jan',
+        'Feb',
+        'Mar',
+        'Apr',
+        'May',
+        'Jun',
+        'Jul',
+        'Aug',
+        'Sep',
+        'Oct',
+        'Nov',
+        'Dec'
+      ];
       memberSince = '${months[dt.month - 1]} ${dt.year}';
     }
 
@@ -552,7 +655,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 color: activePalette.cardBorder,
               ),
               _buildStatCell(
-                user != null ? 'Email' : '—',
+                profile != null ? 'Firebase' : '—',
                 'Signed in via',
                 activePalette,
               ),

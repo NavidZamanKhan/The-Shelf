@@ -23,6 +23,9 @@ dependencies:
   path: ^1.9.0
   firebase_core: ^4.13.0
   firebase_auth: ^6.5.7
+  cloud_firestore: ^6.1.0
+  firebase_storage: ^13.0.0
+  image_picker: ^1.1.2
   google_sign_in: ^7.2.0
   fl_chart: ^1.2.0
   app_links: ^7.2.1

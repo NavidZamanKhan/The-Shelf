@@ -1,5 +1,5 @@
 import 'package:equatable/equatable.dart';
-import 'package:the_shelf/models/local_user.dart';
+import 'package:the_shelf/models/user_profile.dart';
 
 abstract class AuthState extends Equatable {
   const AuthState();
@@ -18,14 +18,14 @@ class AuthLoading extends AuthState {
   const AuthLoading();
 }
 
-/// Authenticated state holding local user session.
+/// Authenticated state holding active user profile session.
 class Authenticated extends AuthState {
-  final LocalUser user;
+  final UserProfile profile;
 
-  const Authenticated(this.user);
+  const Authenticated(this.profile);
 
   @override
-  List<Object?> get props => [user];
+  List<Object?> get props => [profile];
 }
 
 /// Unauthenticated state — must sign in or sign up.

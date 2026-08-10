@@ -1,11 +1,14 @@
+import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:the_shelf/blocs/auth/auth_bloc.dart';
 import 'package:the_shelf/blocs/auth/auth_event.dart';
 import 'package:the_shelf/blocs/auth/auth_state.dart';
 import 'package:the_shelf/models/local_user.dart';
+import 'package:the_shelf/models/user_profile.dart';
 import 'package:the_shelf/services/auth_repository.dart';
+import 'package:the_shelf/services/user_profile_repository.dart';
 
-/// Fake auth repository that operates entirely in memory (no SharedPreferences).
+/// Fake auth repository operating in-memory.
 class FakeAuthRepository extends AuthRepository {
   LocalUser? _currentUser;
   bool _loggedIn = false;
@@ -81,23 +84,70 @@ class FakeAuthRepository extends AuthRepository {
   }
 }
 
+/// Fake user profile repository operating in-memory.
+class FakeUserProfileRepository extends UserProfileRepository {
+  final Map<String, UserProfile> _profiles = {};
+
+  @override
+  Future<UserProfile> getUserProfile({
+    required String uid,
+    required String email,
+    required String displayName,
+  }) async {
+    if (_profiles.containsKey(uid)) {
+      return _profiles[uid]!;
+    }
+    final profile = UserProfile(
+      uid: uid,
+      email: email,
+      displayName: displayName,
+      createdAt: DateTime.now(),
+      updatedAt: DateTime.now(),
+    );
+    _profiles[uid] = profile;
+    return profile;
+  }
+
+  @override
+  Future<void> saveUserProfile(UserProfile profile) async {
+    _profiles[profile.uid] = profile;
+  }
+
+  @override
+  Future<String> uploadProfileMedia({
+    required String uid,
+    required File imageFile,
+    required String mediaType,
+  }) async {
+    return 'https://fake-storage.example.com/$uid/$mediaType.jpg';
+  }
+}
+
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   late FakeAuthRepository fakeAuthRepository;
+  late FakeUserProfileRepository fakeUserProfileRepository;
 
   setUp(() {
     fakeAuthRepository = FakeAuthRepository();
+    fakeUserProfileRepository = FakeUserProfileRepository();
   });
 
   group('AuthBloc Tests', () {
     test('initial state is AuthInitial', () {
-      final bloc = AuthBloc(authRepository: fakeAuthRepository);
+      final bloc = AuthBloc(
+        authRepository: fakeAuthRepository,
+        userProfileRepository: fakeUserProfileRepository,
+      );
       expect(bloc.state, equals(const AuthInitial()));
     });
 
     test('emits Unauthenticated when no session exists', () async {
-      final bloc = AuthBloc(authRepository: fakeAuthRepository);
+      final bloc = AuthBloc(
+        authRepository: fakeAuthRepository,
+        userProfileRepository: fakeUserProfileRepository,
+      );
 
       bloc.add(const AuthCheckSession());
 
@@ -107,8 +157,11 @@ void main() {
       );
     });
 
-    test('emits Authenticated after successful sign up', () async {
-      final bloc = AuthBloc(authRepository: fakeAuthRepository);
+    test('emits Authenticated with UserProfile after successful sign up', () async {
+      final bloc = AuthBloc(
+        authRepository: fakeAuthRepository,
+        userProfileRepository: fakeUserProfileRepository,
+      );
 
       bloc.add(const SignUpRequested(
         email: 'test@example.com',
@@ -126,7 +179,10 @@ void main() {
     });
 
     test('emits Authenticated after Google Sign-In', () async {
-      final bloc = AuthBloc(authRepository: fakeAuthRepository);
+      final bloc = AuthBloc(
+        authRepository: fakeAuthRepository,
+        userProfileRepository: fakeUserProfileRepository,
+      );
 
       bloc.add(const SignInWithGoogleRequested());
 
@@ -140,7 +196,10 @@ void main() {
     });
 
     test('emits AuthError on sign in with no account', () async {
-      final bloc = AuthBloc(authRepository: fakeAuthRepository);
+      final bloc = AuthBloc(
+        authRepository: fakeAuthRepository,
+        userProfileRepository: fakeUserProfileRepository,
+      );
 
       bloc.add(const SignInRequested(
         email: 'nobody@example.com',
@@ -156,8 +215,48 @@ void main() {
       );
     });
 
+    test('updates profile details (reading motto / bio) successfully', () async {
+      final bloc = AuthBloc(
+        authRepository: fakeAuthRepository,
+        userProfileRepository: fakeUserProfileRepository,
+      );
+
+      bloc.add(const SignUpRequested(
+        email: 'reader@example.com',
+        password: 'password123',
+        displayName: 'Bookworm',
+      ));
+
+      await expectLater(
+        bloc.stream,
+        emitsInOrder([
+          const AuthLoading(),
+          isA<Authenticated>(),
+        ]),
+      );
+
+      bloc.add(const UpdateProfileDetailsRequested(
+        displayName: 'Jane Austen Fan',
+        bio: 'A room without books is like a body without a soul.',
+      ));
+
+      await expectLater(
+        bloc.stream,
+        emitsInOrder([
+          isA<Authenticated>().having(
+            (state) => state.profile.bio,
+            'bio',
+            contains('body without a soul'),
+          ),
+        ]),
+      );
+    });
+
     test('emits Unauthenticated after sign out', () async {
-      final bloc = AuthBloc(authRepository: fakeAuthRepository);
+      final bloc = AuthBloc(
+        authRepository: fakeAuthRepository,
+        userProfileRepository: fakeUserProfileRepository,
+      );
 
       // Sign up first
       bloc.add(const SignUpRequested(

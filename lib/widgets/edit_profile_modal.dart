@@ -1,26 +1,31 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:phosphoricons_flutter/phosphoricons_flutter.dart';
 import 'package:the_shelf/blocs/auth/auth_bloc.dart';
 import 'package:the_shelf/blocs/auth/auth_event.dart';
 import 'package:the_shelf/blocs/theme/theme_cubit.dart';
+import 'package:the_shelf/models/user_profile.dart';
+import 'package:the_shelf/theme/app_color_palette.dart';
 import 'package:the_shelf/theme/app_theme.dart';
 
-/// Modal bottom sheet allowing authenticated users to update their profile display name.
+/// Modal bottom sheet allowing users to update display name, reading motto/bio,
+/// avatar profile picture, and cover banner photo with Cloud Firestore sync.
 class EditProfileModal extends StatefulWidget {
-  final String currentName;
+  final UserProfile profile;
 
   const EditProfileModal({
     super.key,
-    required this.currentName,
+    required this.profile,
   });
 
-  static Future<void> show(BuildContext context, {required String currentName}) {
+  static Future<void> show(BuildContext context, {required UserProfile profile}) {
     return showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (context) => EditProfileModal(currentName: currentName),
+      builder: (context) => EditProfileModal(profile: profile),
     );
   }
 
@@ -30,24 +35,78 @@ class EditProfileModal extends StatefulWidget {
 
 class _EditProfileModalState extends State<EditProfileModal> {
   late final TextEditingController _nameController;
+  late final TextEditingController _bioController;
+
+  String? _selectedPhotoPath;
+  String? _selectedBannerPath;
+  bool _isSaving = false;
+
+  final ImagePicker _picker = ImagePicker();
 
   @override
   void initState() {
     super.initState();
-    _nameController = TextEditingController(text: widget.currentName);
+    _nameController = TextEditingController(text: widget.profile.displayName);
+    _bioController = TextEditingController(text: widget.profile.bio ?? '');
   }
 
   @override
   void dispose() {
     _nameController.dispose();
+    _bioController.dispose();
     super.dispose();
+  }
+
+  Future<void> _pickImage({required bool isBanner}) async {
+    try {
+      final XFile? pickedFile = await _picker.pickImage(
+        source: ImageSource.gallery,
+        maxWidth: isBanner ? 1200 : 600,
+        maxHeight: isBanner ? 600 : 600,
+        imageQuality: 85,
+      );
+
+      if (pickedFile != null && mounted) {
+        setState(() {
+          if (isBanner) {
+            _selectedBannerPath = pickedFile.path;
+          } else {
+            _selectedPhotoPath = pickedFile.path;
+          }
+        });
+      }
+    } catch (e) {
+      debugPrint('Error picking image: $e');
+    }
   }
 
   void _onSave(BuildContext context) {
     final newName = _nameController.text.trim();
-    if (newName.isNotEmpty && newName != widget.currentName) {
-      context.read<AuthBloc>().add(UpdateDisplayNameRequested(newName));
+    final newBio = _bioController.text.trim();
+
+    if (newName.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please enter your user name'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
     }
+
+    setState(() {
+      _isSaving = true;
+    });
+
+    context.read<AuthBloc>().add(
+          UpdateProfileDetailsRequested(
+            displayName: newName,
+            bio: newBio.isNotEmpty ? newBio : null,
+            photoPath: _selectedPhotoPath,
+            bannerPath: _selectedBannerPath,
+          ),
+        );
+
     Navigator.of(context).pop();
   }
 
@@ -59,8 +118,8 @@ class _EditProfileModalState extends State<EditProfileModal> {
       padding: EdgeInsets.only(
         bottom: MediaQuery.of(context).viewInsets.bottom + 24,
         top: 16,
-        left: 24,
-        right: 24,
+        left: 20,
+        right: 20,
       ),
       decoration: BoxDecoration(
         color: activePalette.cardBackground,
@@ -86,7 +145,7 @@ class _EditProfileModalState extends State<EditProfileModal> {
                 ),
               ),
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 16),
 
             // Header Title
             Row(
@@ -108,9 +167,9 @@ class _EditProfileModalState extends State<EditProfileModal> {
                 ),
               ],
             ),
-            const SizedBox(height: 6),
+            const SizedBox(height: 4),
             Text(
-              'Update your display name across The Shelf',
+              'Customize your reading persona and profile cover',
               style: TextStyle(
                 fontSize: 13,
                 color: activePalette.secondaryText,
@@ -118,9 +177,13 @@ class _EditProfileModalState extends State<EditProfileModal> {
             ),
             const SizedBox(height: 20),
 
-            // Name Input Field
+            // --- Cover Photo & Avatar Picker Area ---
+            _buildMediaPickerHeader(activePalette),
+            const SizedBox(height: 24),
+
+            // --- User Name Field ---
             Text(
-              'DISPLAY NAME',
+              'USER NAME',
               style: TextStyle(
                 fontSize: 11,
                 fontWeight: FontWeight.w600,
@@ -135,7 +198,7 @@ class _EditProfileModalState extends State<EditProfileModal> {
                 borderRadius: AppTheme.asymmetricBadgeRadius,
                 border: Border.all(color: activePalette.cardBorder, width: 1),
               ),
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 2),
               child: Row(
                 children: [
                   Icon(
@@ -148,12 +211,72 @@ class _EditProfileModalState extends State<EditProfileModal> {
                     child: TextField(
                       controller: _nameController,
                       style: TextStyle(
-                        fontSize: 15,
+                        fontSize: 14,
                         color: activePalette.primaryText,
                       ),
-                      decoration: const InputDecoration(
-                        hintText: 'Enter your name',
+                      decoration: InputDecoration(
+                        hintText: 'Enter your user name',
+                        hintStyle: TextStyle(
+                          fontSize: 14,
+                          color: activePalette.desaturatedEmptyText,
+                        ),
                         border: InputBorder.none,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+
+            // --- Reading Motto / Bio Field ---
+            Text(
+              'READING MOTTO / BIO',
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+                letterSpacing: 0.8,
+                color: activePalette.desaturatedEmptyText,
+              ),
+            ),
+            const SizedBox(height: 6),
+            Container(
+              decoration: BoxDecoration(
+                color: activePalette.background,
+                borderRadius: AppTheme.asymmetricBadgeRadius,
+                border: Border.all(color: activePalette.cardBorder, width: 1),
+              ),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.only(top: 2),
+                    child: Icon(
+                      PhosphorIcons.quotes,
+                      size: 18,
+                      color: activePalette.secondaryText,
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: TextField(
+                      controller: _bioController,
+                      maxLines: 3,
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: activePalette.primaryText,
+                      ),
+                      decoration: InputDecoration(
+                        hintText:
+                            'Share your reading motto or favorite book quote...',
+                        hintStyle: TextStyle(
+                          fontSize: 13,
+                          color: activePalette.desaturatedEmptyText,
+                        ),
+                        border: InputBorder.none,
+                        isDense: true,
+                        contentPadding: EdgeInsets.zero,
                       ),
                     ),
                   ),
@@ -162,9 +285,9 @@ class _EditProfileModalState extends State<EditProfileModal> {
             ),
             const SizedBox(height: 24),
 
-            // Save Button
+            // --- Save Button ---
             GestureDetector(
-              onTap: () => _onSave(context),
+              onTap: _isSaving ? null : () => _onSave(context),
               child: Container(
                 width: double.infinity,
                 padding: const EdgeInsets.symmetric(vertical: 14),
@@ -172,20 +295,186 @@ class _EditProfileModalState extends State<EditProfileModal> {
                   color: activePalette.primaryAccent,
                   borderRadius: AppTheme.asymmetricCardRadius,
                 ),
-                child: const Text(
-                  'Save Changes',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontFamily: AppTheme.serifFontFamily,
-                    fontSize: 15,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.white,
-                  ),
-                ),
+                child: _isSaving
+                    ? const SizedBox(
+                        height: 20,
+                        child: Center(
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        ),
+                      )
+                    : const Text(
+                        'Save Changes',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontFamily: AppTheme.serifFontFamily,
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.white,
+                        ),
+                      ),
               ),
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildMediaPickerHeader(AppColorPalette activePalette) {
+    ImageProvider? bannerImage;
+    if (_selectedBannerPath != null) {
+      bannerImage = FileImage(File(_selectedBannerPath!));
+    } else if (widget.profile.bannerUrl != null &&
+        widget.profile.bannerUrl!.isNotEmpty) {
+      if (widget.profile.bannerUrl!.startsWith('http')) {
+        bannerImage = NetworkImage(widget.profile.bannerUrl!);
+      } else {
+        bannerImage = FileImage(File(widget.profile.bannerUrl!));
+      }
+    }
+
+    ImageProvider? avatarImage;
+    if (_selectedPhotoPath != null) {
+      avatarImage = FileImage(File(_selectedPhotoPath!));
+    } else if (widget.profile.photoUrl != null &&
+        widget.profile.photoUrl!.isNotEmpty) {
+      if (widget.profile.photoUrl!.startsWith('http')) {
+        avatarImage = NetworkImage(widget.profile.photoUrl!);
+      } else {
+        avatarImage = FileImage(File(widget.profile.photoUrl!));
+      }
+    }
+
+    return Container(
+      height: 120,
+      width: double.infinity,
+      decoration: BoxDecoration(
+        borderRadius: AppTheme.asymmetricCardRadius,
+        border: Border.all(color: activePalette.cardBorder, width: 1),
+        image: bannerImage != null
+            ? DecorationImage(
+                image: bannerImage,
+                fit: BoxFit.cover,
+              )
+            : null,
+        gradient: bannerImage == null
+            ? LinearGradient(
+                colors: [
+                  activePalette.gradientStart,
+                  activePalette.primaryAccent.withValues(alpha: 0.7),
+                ],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              )
+            : null,
+      ),
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          // Banner edit overlay button
+          Positioned(
+            right: 12,
+            top: 12,
+            child: GestureDetector(
+              onTap: () => _pickImage(isBanner: true),
+              child: Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                decoration: BoxDecoration(
+                  color: Colors.black.withValues(alpha: 0.55),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      PhosphorIcons.camera,
+                      size: 14,
+                      color: Colors.white,
+                    ),
+                    SizedBox(width: 4),
+                    Text(
+                      'Cover Photo',
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+
+          // Avatar badge positioned at bottom left
+          Positioned(
+            left: 16,
+            bottom: -20,
+            child: GestureDetector(
+              onTap: () => _pickImage(isBanner: false),
+              child: Stack(
+                children: [
+                  Container(
+                    width: 64,
+                    height: 64,
+                    decoration: BoxDecoration(
+                      color: activePalette.primaryAccent,
+                      borderRadius: AppTheme.asymmetricBadgeRadius,
+                      border: Border.all(
+                        color: activePalette.cardBackground,
+                        width: 3,
+                      ),
+                      image: avatarImage != null
+                          ? DecorationImage(
+                              image: avatarImage,
+                              fit: BoxFit.cover,
+                            )
+                          : null,
+                    ),
+                    child: avatarImage == null
+                        ? Center(
+                            child: Text(
+                              widget.profile.initials,
+                              style: const TextStyle(
+                                fontFamily: AppTheme.serifFontFamily,
+                                fontSize: 26,
+                                fontWeight: FontWeight.w700,
+                                color: Colors.white,
+                              ),
+                            ),
+                          )
+                        : null,
+                  ),
+                  // Camera badge overlay
+                  Positioned(
+                    right: 0,
+                    bottom: 0,
+                    child: Container(
+                      padding: const EdgeInsets.all(4),
+                      decoration: BoxDecoration(
+                        color: activePalette.primaryAccent,
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: activePalette.cardBackground,
+                          width: 1.5,
+                        ),
+                      ),
+                      child: const Icon(
+                        PhosphorIcons.camera,
+                        size: 12,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
