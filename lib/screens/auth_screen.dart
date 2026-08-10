@@ -24,13 +24,16 @@ class _AuthScreenState extends State<AuthScreen> {
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
+  final TextEditingController _confirmPasswordController = TextEditingController();
   bool _obscurePassword = true;
+  bool _obscureConfirmPassword = true;
 
   @override
   void dispose() {
     _nameController.dispose();
     _emailController.dispose();
     _passwordController.dispose();
+    _confirmPasswordController.dispose();
     super.dispose();
   }
 
@@ -54,15 +57,28 @@ class _AuthScreenState extends State<AuthScreen> {
           );
     } else {
       final name = _nameController.text.trim();
+      final confirmPassword = _confirmPasswordController.text.trim();
+
       if (name.isEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Please enter your name'),
+            content: Text('Please enter your username'),
             behavior: SnackBarBehavior.floating,
           ),
         );
         return;
       }
+
+      if (password != confirmPassword) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Passwords do not match'),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+        return;
+      }
+
       context.read<AuthBloc>().add(
             SignUpRequested(
               email: email,
@@ -139,16 +155,12 @@ class _AuthScreenState extends State<AuthScreen> {
                   ),
                   const SizedBox(height: 28),
 
-                  // --- Tab Switcher ---
-                  _buildTabSwitcher(activePalette),
-                  const SizedBox(height: 24),
-
                   // --- Form Fields ---
                   if (_selectedTab == AuthTab.signUp) ...[
                     _buildInputField(
                       controller: _nameController,
                       icon: PhosphorIcons.user,
-                      hintText: 'Full Name',
+                      hintText: 'User Name',
                       activePalette: activePalette,
                     ),
                     const SizedBox(height: 12),
@@ -184,6 +196,31 @@ class _AuthScreenState extends State<AuthScreen> {
                     ),
                     activePalette: activePalette,
                   ),
+
+                  if (_selectedTab == AuthTab.signUp) ...[
+                    const SizedBox(height: 12),
+                    _buildInputField(
+                      controller: _confirmPasswordController,
+                      icon: PhosphorIcons.lockSimple,
+                      hintText: 'Confirm Password',
+                      obscureText: _obscureConfirmPassword,
+                      suffixIcon: IconButton(
+                        icon: Icon(
+                          _obscureConfirmPassword
+                              ? PhosphorIcons.eyeClosed
+                              : PhosphorIcons.eye,
+                          size: 18,
+                          color: activePalette.secondaryText,
+                        ),
+                        onPressed: () {
+                          setState(() {
+                            _obscureConfirmPassword = !_obscureConfirmPassword;
+                          });
+                        },
+                      ),
+                      activePalette: activePalette,
+                    ),
+                  ],
                   const SizedBox(height: 24),
 
                   // --- Submit Button ---
@@ -197,105 +234,6 @@ class _AuthScreenState extends State<AuthScreen> {
             ),
           ),
         ),
-      ),
-    );
-  }
-
-  Widget _buildTabSwitcher(AppColorPalette activePalette) {
-    return Container(
-      decoration: BoxDecoration(
-        color: activePalette.background,
-        borderRadius: AppTheme.asymmetricBadgeRadius,
-        border: Border.all(color: activePalette.cardBorder, width: 1),
-      ),
-      padding: const EdgeInsets.all(4),
-      child: Row(
-        children: [
-          Expanded(
-            child: GestureDetector(
-              onTap: () {
-                setState(() {
-                  _selectedTab = AuthTab.signIn;
-                });
-              },
-              child: Container(
-                padding: const EdgeInsets.symmetric(vertical: 10),
-                decoration: BoxDecoration(
-                  color: _selectedTab == AuthTab.signIn
-                      ? activePalette.cardBackground
-                      : Colors.transparent,
-                  borderRadius: AppTheme.asymmetricBadgeRadius,
-                  boxShadow: _selectedTab == AuthTab.signIn
-                      ? [
-                          BoxShadow(
-                            color: activePalette.primaryText
-                                .withValues(alpha: 0.05),
-                            blurRadius: 4,
-                            offset: const Offset(0, 1),
-                          ),
-                        ]
-                      : [],
-                ),
-                child: Text(
-                  'Sign In',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontFamily: AppTheme.serifFontFamily,
-                    fontSize: 14,
-                    fontWeight: _selectedTab == AuthTab.signIn
-                        ? FontWeight.w700
-                        : FontWeight.w500,
-                    color: _selectedTab == AuthTab.signIn
-                        ? activePalette.primaryText
-                        : activePalette.secondaryText,
-                  ),
-                ),
-              ),
-            ),
-          ),
-          Expanded(
-            child: GestureDetector(
-              onTap: () {
-                setState(() {
-                  _selectedTab = AuthTab.signUp;
-                });
-              },
-              child: Container(
-                padding: const EdgeInsets.symmetric(vertical: 10),
-                decoration: BoxDecoration(
-                  color: _selectedTab == AuthTab.signUp
-                      ? activePalette.cardBackground
-                      : Colors.transparent,
-                  borderRadius: AppTheme.asymmetricBadgeRadius,
-                  boxShadow: _selectedTab == AuthTab.signUp
-                      ? [
-                          BoxShadow(
-                            color: activePalette.primaryText
-                                .withValues(alpha: 0.05),
-                            blurRadius: 4,
-                            offset: const Offset(0, 1),
-                          ),
-                        ]
-                      : [],
-                ),
-                child: Text(
-                  'Sign Up',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontFamily: AppTheme.serifFontFamily,
-                    fontSize: 14,
-                    fontWeight: _selectedTab == AuthTab.signUp
-                        ? FontWeight.w700
-                        : FontWeight.w500,
-                    color: _selectedTab == AuthTab.signUp
-                        ? activePalette.primaryText
-                        : activePalette.secondaryText,
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ],
       ),
     );
   }
