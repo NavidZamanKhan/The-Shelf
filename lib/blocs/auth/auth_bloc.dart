@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:the_shelf/blocs/auth/auth_event.dart';
@@ -26,17 +27,28 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     on<SignOutRequested>(_onSignOutRequested);
   }
 
+  String _resolveUid(String email) {
+    try {
+      final fbUid = FirebaseAuth.instance.currentUser?.uid;
+      if (fbUid != null && fbUid.isNotEmpty) return fbUid;
+    } catch (_) {}
+    return email.trim().replaceAll('.', '_').replaceAll('@', '_at_');
+  }
+
   Future<void> _onCheckSession(
     AuthCheckSession event,
     Emitter<AuthState> emit,
   ) async {
     final user = await _authRepository.getCurrentUser();
     if (user != null) {
+      final uid = _resolveUid(user.email);
       final profile = await _userProfileRepository.getUserProfile(
-        uid: user.email.replaceAll('.', '_'),
+        uid: uid,
         email: user.email,
         displayName: user.displayName,
       );
+      // Auto-persist profile to Cloud Firestore
+      await _userProfileRepository.saveUserProfile(profile);
       emit(Authenticated(profile));
     } else {
       emit(const Unauthenticated());
@@ -53,11 +65,14 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         email: event.email,
         password: event.password,
       );
+      final uid = _resolveUid(user.email);
       final profile = await _userProfileRepository.getUserProfile(
-        uid: user.email.replaceAll('.', '_'),
+        uid: uid,
         email: user.email,
         displayName: user.displayName,
       );
+      // Auto-persist profile to Cloud Firestore
+      await _userProfileRepository.saveUserProfile(profile);
       emit(Authenticated(profile));
     } on AuthException catch (e) {
       emit(AuthError(e.message));
@@ -78,7 +93,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         displayName: event.displayName,
       );
 
-      final uid = user.email.replaceAll('.', '_');
+      final uid = _resolveUid(user.email);
       final newProfile = UserProfile(
         uid: uid,
         email: user.email,
@@ -87,6 +102,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         updatedAt: DateTime.now(),
       );
 
+      // Auto-persist profile to Cloud Firestore
       await _userProfileRepository.saveUserProfile(newProfile);
       emit(Authenticated(newProfile));
     } on AuthException catch (e) {
@@ -124,12 +140,13 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     emit(const AuthLoading());
     try {
       final user = await _authRepository.signInWithGoogle();
-      final uid = user.email.replaceAll('.', '_');
+      final uid = _resolveUid(user.email);
       final profile = await _userProfileRepository.getUserProfile(
         uid: uid,
         email: user.email,
         displayName: user.displayName,
       );
+      // Auto-persist profile to Cloud Firestore
       await _userProfileRepository.saveUserProfile(profile);
       emit(Authenticated(profile));
     } on AuthException catch (e) {
@@ -181,7 +198,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         updatedAt: DateTime.now(),
       );
 
-      // Save to Cloud Firestore
+      // Save to Cloud Firestore & Firebase Auth
       await _userProfileRepository.saveUserProfile(updatedProfile);
       await _authRepository.updateDisplayName(updatedProfile.displayName);
 
