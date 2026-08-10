@@ -463,43 +463,48 @@ class _CollectionsView extends StatelessWidget {
                       ),
                     ],
                   ),
-                  GestureDetector(
-                    onTap: collections.length >= 20
-                        ? null
-                        : () {
-                            CreateCollectionModal.show(context);
-                          },
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                      decoration: BoxDecoration(
+                  OutlinedButton.icon(
+                    onPressed: collections.length >= 20
+                        ? () {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('Maximum limit of 20 collections reached.'),
+                                behavior: SnackBarBehavior.floating,
+                              ),
+                            );
+                          }
+                        : () => CreateCollectionModal.show(context),
+                    icon: Icon(
+                      PhosphorIcons.plus,
+                      size: 15,
+                      color: collections.length >= 20
+                          ? activePalette.secondaryText
+                          : activePalette.primaryAccent,
+                    ),
+                    label: Text(
+                      'New Collection',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
                         color: collections.length >= 20
-                            ? activePalette.subtleBadgeBackground
+                            ? activePalette.secondaryText
                             : activePalette.primaryAccent,
-                        borderRadius: BorderRadius.circular(12),
                       ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(
-                            PhosphorIcons.plus,
-                            size: 14,
-                            color: collections.length >= 20
-                                ? activePalette.secondaryText
-                                : Colors.white,
-                          ),
-                          const SizedBox(width: 4),
-                          Text(
-                            'New',
-                            style: TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.bold,
-                              color: collections.length >= 20
-                                  ? activePalette.secondaryText
-                                  : Colors.white,
-                            ),
-                          ),
-                        ],
+                    ),
+                    style: OutlinedButton.styleFrom(
+                      backgroundColor: collections.length >= 20
+                          ? activePalette.subtleBadgeBackground
+                          : activePalette.primaryAccent.withValues(alpha: 0.08),
+                      side: BorderSide(
+                        color: collections.length >= 20
+                            ? activePalette.cardBorder
+                            : activePalette.primaryAccent.withValues(alpha: 0.5),
+                        width: 1.2,
                       ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                     ),
                   ),
                 ],
@@ -540,13 +545,31 @@ class _CollectionsView extends StatelessWidget {
                               ),
                             ),
                             const SizedBox(height: 16),
-                            ElevatedButton.icon(
+                            OutlinedButton.icon(
                               onPressed: () => CreateCollectionModal.show(context),
-                              icon: const Icon(PhosphorIcons.plus, size: 16),
-                              label: const Text('Create Collection'),
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: activePalette.primaryAccent,
-                                foregroundColor: Colors.white,
+                              icon: Icon(
+                                PhosphorIcons.plus,
+                                size: 18,
+                                color: activePalette.primaryAccent,
+                              ),
+                              label: Text(
+                                'Create Collection',
+                                style: TextStyle(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w600,
+                                  color: activePalette.primaryAccent,
+                                ),
+                              ),
+                              style: OutlinedButton.styleFrom(
+                                backgroundColor: activePalette.primaryAccent.withValues(alpha: 0.08),
+                                side: BorderSide(
+                                  color: activePalette.primaryAccent.withValues(alpha: 0.5),
+                                  width: 1.2,
+                                ),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: AppTheme.asymmetricCardRadius,
+                                ),
+                                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
                               ),
                             ),
                           ],
