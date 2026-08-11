@@ -51,7 +51,7 @@ class _CollectionChecklistRowState extends State<CollectionChecklistRow> {
             borderRadius: AppTheme.asymmetricCardRadius,
             border: Border.all(
               color: widget.isChecked
-                  ? widget.accentColor.withOpacity(0.5)
+                  ? widget.accentColor.withValues(alpha: 0.5)
                   : activePalette.cardBorder,
               width: widget.isChecked ? 1.5 : 1.0,
             ),
@@ -63,10 +63,10 @@ class _CollectionChecklistRowState extends State<CollectionChecklistRow> {
                 width: 40,
                 height: 40,
                 decoration: BoxDecoration(
-                  color: widget.accentColor.withOpacity(0.18),
+                  color: widget.accentColor.withValues(alpha: 0.18),
                   borderRadius: AppTheme.asymmetricBadgeRadius,
                   border: Border.all(
-                    color: widget.accentColor.withOpacity(0.3),
+                    color: widget.accentColor.withValues(alpha: 0.3),
                     width: 1,
                   ),
                 ),
@@ -120,7 +120,7 @@ class _CollectionChecklistRowState extends State<CollectionChecklistRow> {
                 size: 22,
                 color: widget.isChecked
                     ? widget.accentColor
-                    : activePalette.secondaryText.withOpacity(0.5),
+                    : activePalette.secondaryText.withValues(alpha: 0.5),
               ),
             ],
           ),

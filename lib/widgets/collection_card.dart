@@ -84,7 +84,7 @@ class _CollectionCardState extends State<CollectionCard> {
           ),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.04),
+              color: Colors.black.withValues(alpha: 0.04),
               blurRadius: 8,
               offset: const Offset(0, 2),
             ),
@@ -99,8 +99,8 @@ class _CollectionCardState extends State<CollectionCard> {
               onTapDown: (_) => setState(() => _isPressed = true),
               onTapUp: (_) => setState(() => _isPressed = false),
               onTapCancel: () => setState(() => _isPressed = false),
-              splashColor: accentColor.withOpacity(0.1),
-              highlightColor: accentColor.withOpacity(0.05),
+              splashColor: accentColor.withValues(alpha: 0.1),
+              highlightColor: accentColor.withValues(alpha: 0.05),
               child: IntrinsicHeight(
                 child: Row(
                   children: [
@@ -116,10 +116,10 @@ class _CollectionCardState extends State<CollectionCard> {
                       width: 44,
                       height: 44,
                       decoration: BoxDecoration(
-                        color: accentColor.withOpacity(0.18),
+                        color: accentColor.withValues(alpha: 0.18),
                         borderRadius: AppTheme.asymmetricBadgeRadius,
                         border: Border.all(
-                          color: accentColor.withOpacity(0.35),
+                          color: accentColor.withValues(alpha: 0.35),
                           width: 1,
                         ),
                       ),
@@ -181,7 +181,7 @@ class _CollectionCardState extends State<CollectionCard> {
                         child: Icon(
                           PhosphorIcons.caretRight,
                           size: 18,
-                          color: activePalette.secondaryText.withOpacity(0.6),
+                          color: activePalette.secondaryText.withValues(alpha: 0.6),
                         ),
                       ),
                   ],

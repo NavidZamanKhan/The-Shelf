@@ -85,7 +85,7 @@ class _AddToCollectionSheetState extends State<AddToCollectionSheet> {
                   width: 40,
                   height: 4,
                   decoration: BoxDecoration(
-                    color: activePalette.secondaryText.withOpacity(0.3),
+                    color: activePalette.secondaryText.withValues(alpha: 0.3),
                     borderRadius: BorderRadius.circular(2),
                   ),
                 ),

@@ -207,7 +207,7 @@ class ShelfDetailScreen extends StatelessWidget {
                       itemCount: shelfItems.length,
                       separatorBuilder: (context, index) => Divider(
                         height: 1,
-                        color: activePalette.cardBorder.withOpacity(0.5),
+                        color: activePalette.cardBorder.withValues(alpha: 0.5),
                         indent: 16,
                         endIndent: 16,
                       ),

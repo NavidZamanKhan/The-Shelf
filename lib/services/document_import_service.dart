@@ -27,7 +27,7 @@ class DocumentImportService {
 
   /// Picks a PDF document, extracts plain text, and runs on-device classification.
   Future<ImportedDocumentSummary?> pickAndExtractPdf({int textLimit = 1000}) async {
-    final FilePickerResult? result = await FilePicker.platform.pickFiles(
+    final FilePickerResult? result = await FilePicker.pickFiles(
       type: FileType.custom,
       allowedExtensions: ['pdf'],
       allowMultiple: false,

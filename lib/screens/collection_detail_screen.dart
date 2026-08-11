@@ -9,7 +9,6 @@ import 'package:the_shelf/blocs/shelf/shelf_state.dart';
 import 'package:the_shelf/blocs/theme/theme_cubit.dart';
 import 'package:the_shelf/models/collection_model.dart';
 import 'package:the_shelf/models/mock_shelf_items.dart';
-import 'package:the_shelf/services/collection_repository.dart';
 import 'package:the_shelf/theme/app_theme.dart';
 import 'package:the_shelf/widgets/book_row.dart';
 import 'package:the_shelf/widgets/collection_card.dart';
@@ -98,7 +97,7 @@ class _CollectionDetailScreenState extends State<CollectionDetailScreen> {
                   color: Colors.transparent,
                   borderRadius: AppTheme.asymmetricCardRadius,
                   border: Border.all(
-                    color: Colors.redAccent.withOpacity(0.8),
+                    color: Colors.redAccent.withValues(alpha: 0.8),
                     width: 1.2,
                   ),
                 ),
@@ -286,10 +285,10 @@ class _CollectionDetailScreenState extends State<CollectionDetailScreen> {
                                 width: 48,
                                 height: 48,
                                 decoration: BoxDecoration(
-                                  color: accentColor.withOpacity(0.18),
+                                  color: accentColor.withValues(alpha: 0.18),
                                   borderRadius: AppTheme.asymmetricBadgeRadius,
                                   border: Border.all(
-                                    color: accentColor.withOpacity(0.35),
+                                    color: accentColor.withValues(alpha: 0.35),
                                     width: 1,
                                   ),
                                 ),
@@ -346,7 +345,7 @@ class _CollectionDetailScreenState extends State<CollectionDetailScreen> {
                                 width: 72,
                                 height: 72,
                                 decoration: BoxDecoration(
-                                  color: accentColor.withOpacity(0.12),
+                                  color: accentColor.withValues(alpha: 0.12),
                                   borderRadius: AppTheme.asymmetricBadgeRadius,
                                 ),
                                 child: Center(
@@ -398,7 +397,7 @@ class _CollectionDetailScreenState extends State<CollectionDetailScreen> {
                               itemCount: collectionDocs.length,
                               separatorBuilder: (context, index) => Divider(
                                 height: 1,
-                                color: activePalette.cardBorder.withOpacity(0.5),
+                                color: activePalette.cardBorder.withValues(alpha: 0.5),
                                 indent: 16,
                                 endIndent: 16,
                               ),

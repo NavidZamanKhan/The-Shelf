@@ -137,7 +137,7 @@ class _CreateCollectionModalState extends State<CreateCollectionModal> {
                 width: 40,
                 height: 4,
                 decoration: BoxDecoration(
-                  color: activePalette.secondaryText.withOpacity(0.3),
+                  color: activePalette.secondaryText.withValues(alpha: 0.3),
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
@@ -187,7 +187,7 @@ class _CreateCollectionModalState extends State<CreateCollectionModal> {
                 hintText: 'e.g. Summer Reading, Work Docs',
                 errorText: _errorMessage,
                 labelStyle: TextStyle(color: activePalette.secondaryText),
-                hintStyle: TextStyle(color: activePalette.secondaryText.withOpacity(0.5)),
+                hintStyle: TextStyle(color: activePalette.secondaryText.withValues(alpha: 0.5)),
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
                   borderSide: BorderSide(color: activePalette.primaryAccent, width: 1.5),
@@ -246,7 +246,7 @@ class _CreateCollectionModalState extends State<CreateCollectionModal> {
                         boxShadow: isSelected
                             ? [
                                 BoxShadow(
-                                  color: color.withOpacity(0.4),
+                                  color: color.withValues(alpha: 0.4),
                                   blurRadius: 6,
                                   spreadRadius: 1,
                                 )
@@ -295,7 +295,7 @@ class _CreateCollectionModalState extends State<CreateCollectionModal> {
                       height: 44,
                       decoration: BoxDecoration(
                         color: isSelected
-                            ? activeColor.withOpacity(0.2)
+                            ? activeColor.withValues(alpha: 0.2)
                             : activePalette.subtleBadgeBackground,
                         borderRadius: BorderRadius.circular(12),
                         border: Border.all(

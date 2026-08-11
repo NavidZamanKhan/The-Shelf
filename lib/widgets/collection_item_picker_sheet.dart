@@ -94,7 +94,7 @@ class _CollectionItemPickerSheetState extends State<CollectionItemPickerSheet> {
                   width: 40,
                   height: 4,
                   decoration: BoxDecoration(
-                    color: activePalette.secondaryText.withOpacity(0.3),
+                    color: activePalette.secondaryText.withValues(alpha: 0.3),
                     borderRadius: BorderRadius.circular(2),
                   ),
                 ),
@@ -128,7 +128,7 @@ class _CollectionItemPickerSheetState extends State<CollectionItemPickerSheet> {
                 style: TextStyle(color: activePalette.primaryText, fontSize: 15),
                 decoration: InputDecoration(
                   hintText: 'Search documents by title or shelf...',
-                  hintStyle: TextStyle(color: activePalette.secondaryText.withOpacity(0.6)),
+                  hintStyle: TextStyle(color: activePalette.secondaryText.withValues(alpha: 0.6)),
                   prefixIcon: Icon(PhosphorIcons.magnifyingGlass, color: activePalette.secondaryText),
                   filled: true,
                   fillColor: activePalette.subtleBadgeBackground,
@@ -161,7 +161,7 @@ class _CollectionItemPickerSheetState extends State<CollectionItemPickerSheet> {
                     itemCount: availableDocs.length,
                     separatorBuilder: (_, _) => Divider(
                       height: 1,
-                      color: activePalette.cardBorder.withOpacity(0.4),
+                      color: activePalette.cardBorder.withValues(alpha: 0.4),
                     ),
                     itemBuilder: (context, index) {
                       final doc = availableDocs[index];
@@ -207,7 +207,7 @@ class _CollectionItemPickerSheetState extends State<CollectionItemPickerSheet> {
                   style: ElevatedButton.styleFrom(
                     backgroundColor: activePalette.primaryAccent,
                     foregroundColor: Colors.white,
-                    disabledBackgroundColor: activePalette.secondaryText.withOpacity(0.2),
+                    disabledBackgroundColor: activePalette.secondaryText.withValues(alpha: 0.2),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),

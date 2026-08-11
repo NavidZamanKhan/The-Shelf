@@ -125,10 +125,10 @@ class _BookRowState extends State<BookRow> {
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
                           decoration: BoxDecoration(
-                            color: activePalette.primaryAccent.withOpacity(0.12),
-                            borderRadius: BorderRadius.circular(4),
+                            color: activePalette.primaryAccent.withValues(alpha: 0.12),
+                            borderRadius: AppTheme.asymmetricBadgeRadius,
                             border: Border.all(
-                              color: activePalette.primaryAccent.withOpacity(0.3),
+                              color: activePalette.primaryAccent.withValues(alpha: 0.3),
                               width: 1,
                             ),
                           ),

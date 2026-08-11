@@ -70,7 +70,7 @@ class _SearchScreenState extends State<SearchScreen> {
             hintStyle: TextStyle(
               fontFamily: AppTheme.serifFontFamily,
               fontSize: 18,
-              color: activePalette.secondaryText.withOpacity(0.6),
+              color: activePalette.secondaryText.withValues(alpha: 0.6),
             ),
             border: InputBorder.none,
           ),
@@ -218,7 +218,7 @@ class _SearchScreenState extends State<SearchScreen> {
       itemCount: items.length,
       separatorBuilder: (context, index) => Divider(
         height: 1,
-        color: activePalette.cardBorder.withOpacity(0.5),
+        color: activePalette.cardBorder.withValues(alpha: 0.5),
       ),
       itemBuilder: (context, index) {
         final item = items[index];
