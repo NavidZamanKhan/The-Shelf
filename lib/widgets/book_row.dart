@@ -3,6 +3,8 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:phosphoricons_flutter/phosphoricons_flutter.dart';
 import 'package:the_shelf/blocs/collection/collection_bloc.dart';
 import 'package:the_shelf/blocs/collection/collection_state.dart';
+import 'package:the_shelf/blocs/shelf/shelf_bloc.dart';
+import 'package:the_shelf/blocs/shelf/shelf_event.dart';
 import 'package:the_shelf/blocs/shelf/shelf_state.dart';
 import 'package:the_shelf/blocs/theme/theme_cubit.dart';
 import 'package:the_shelf/services/file_launcher_service.dart';
@@ -34,6 +36,189 @@ class _BookRowState extends State<BookRow> {
     return 'DOC';
   }
 
+  void _showOptionsModal(BuildContext context) {
+    final activePalette = context.read<ThemeCubit>().state;
+
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: activePalette.cardBackground,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (modalContext) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Top drag handle
+                Center(
+                  child: Container(
+                    width: 36,
+                    height: 4,
+                    margin: const EdgeInsets.only(bottom: 16),
+                    decoration: BoxDecoration(
+                      color: activePalette.cardBorder,
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                ),
+
+                // Document Title
+                Text(
+                  widget.item.title,
+                  style: TextStyle(
+                    fontFamily: AppTheme.serifFontFamily,
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: activePalette.primaryText,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  '${widget.item.shelf} • ${_getFileExtension(widget.item.filePath)}',
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: activePalette.secondaryText,
+                  ),
+                ),
+                const SizedBox(height: 16),
+
+                // Option 1: Open Document
+                ListTile(
+                  leading: Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: activePalette.primaryAccent.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Icon(
+                      PhosphorIcons.bookOpen,
+                      color: activePalette.primaryAccent,
+                      size: 20,
+                    ),
+                  ),
+                  title: Text(
+                    'Open Document',
+                    style: TextStyle(
+                      fontWeight: FontWeight.w600,
+                      color: activePalette.primaryText,
+                    ),
+                  ),
+                  subtitle: const Text('View with native OS viewer'),
+                  onTap: () {
+                    Navigator.pop(modalContext);
+                    FileLauncherService.instance.openFile(
+                      context,
+                      widget.item.filePath,
+                      documentId: widget.item.id,
+                    );
+                  },
+                ),
+
+                // Option 2: Add to Collection
+                ListTile(
+                  leading: Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: activePalette.primaryAccent.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Icon(
+                      PhosphorIcons.folderPlus,
+                      color: activePalette.primaryAccent,
+                      size: 20,
+                    ),
+                  ),
+                  title: Text(
+                    'Add / Remove Collections',
+                    style: TextStyle(
+                      fontWeight: FontWeight.w600,
+                      color: activePalette.primaryText,
+                    ),
+                  ),
+                  subtitle: const Text('Organize in custom collections'),
+                  onTap: () {
+                    Navigator.pop(modalContext);
+                    AddToCollectionSheet.show(context, widget.item);
+                  },
+                ),
+
+                const Divider(height: 24),
+
+                // Option 3: Delete Document
+                ListTile(
+                  leading: Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: Colors.redAccent.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: const Icon(
+                      PhosphorIcons.trash,
+                      color: Colors.redAccent,
+                      size: 20,
+                    ),
+                  ),
+                  title: const Text(
+                    'Delete Document',
+                    style: TextStyle(
+                      fontWeight: FontWeight.w600,
+                      color: Colors.redAccent,
+                    ),
+                  ),
+                  subtitle: const Text('Remove permanently from library'),
+                  onTap: () {
+                    Navigator.pop(modalContext);
+                    _confirmAndDelete(context);
+                  },
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  void _confirmAndDelete(BuildContext context) {
+    showDialog<void>(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          title: const Text('Delete Document?'),
+          content: Text('Are you sure you want to delete "${widget.item.title}" from your library?'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext),
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () {
+                Navigator.pop(dialogContext);
+                context.read<ShelfBloc>().add(DeleteDocumentEvent(widget.item.id));
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('Deleted "${widget.item.title}"'),
+                    behavior: SnackBarBehavior.floating,
+                  ),
+                );
+              },
+              child: const Text(
+                'Delete',
+                style: TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final activePalette = context.watch<ThemeCubit>().state;
@@ -58,7 +243,7 @@ class _BookRowState extends State<BookRow> {
                   widget.item.filePath,
                   documentId: widget.item.id,
                 ),
-        onLongPress: () => AddToCollectionSheet.show(context, widget.item),
+        onLongPress: () => _showOptionsModal(context),
         behavior: HitTestBehavior.opaque,
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -186,7 +371,7 @@ class _BookRowState extends State<BookRow> {
                           size: 18,
                           color: activePalette.secondaryText,
                         ),
-                        onPressed: () => AddToCollectionSheet.show(context, widget.item),
+                        onPressed: () => _showOptionsModal(context),
                       ),
                     ],
                   );
