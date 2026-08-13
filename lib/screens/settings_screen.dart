@@ -331,7 +331,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             child: Icon(
                               PhosphorIcons.checkBold,
                               color: activePalette.isDark
-                                  ? activePalette.primaryText
+                                  ? const Color(0xFF141416)
                                   : Colors.white,
                               size: 14,
                             ),
@@ -743,7 +743,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 icon,
                 size: 16,
                 color: isSelected
-                    ? (activePalette.isDark ? activePalette.primaryText : Colors.white)
+                    ? (activePalette.isDark ? const Color(0xFF141416) : Colors.white)
                     : activePalette.secondaryText,
               ),
               const SizedBox(width: 6),
@@ -753,7 +753,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   fontSize: 13,
                   fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
                   color: isSelected
-                      ? (activePalette.isDark ? activePalette.primaryText : Colors.white)
+                      ? (activePalette.isDark ? const Color(0xFF141416) : Colors.white)
                       : activePalette.secondaryText,
                 ),
               ),

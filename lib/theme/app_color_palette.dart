@@ -170,12 +170,12 @@ class AppColorPalette {
   );
 
   // ---------------------------------------------------------------------------
-  // 3. Moonbow — Light
+  // 3. Reynisfjara — Light
   // ---------------------------------------------------------------------------
   static const AppColorPalette moonbowLight = AppColorPalette(
     id: 'moonbow_light',
     familyId: 'moonbow',
-    name: 'Moonbow',
+    name: 'Reynisfjara',
     primaryAccent: Color(0xFF1C1C1E),
     lightAccent: Color(0xFF8E8E93),
     gradientStart: Color(0xFF1C1C1E),
@@ -197,12 +197,12 @@ class AppColorPalette {
   );
 
   // ---------------------------------------------------------------------------
-  // 3. Moonbow — Dark
+  // 3. Reynisfjara — Dark
   // ---------------------------------------------------------------------------
   static const AppColorPalette moonbowDark = AppColorPalette(
     id: 'moonbow_dark',
     familyId: 'moonbow',
-    name: 'Moonbow',
+    name: 'Reynisfjara',
     isDark: true,
     primaryAccent: Color(0xFFE5E5EA),
     lightAccent: Color(0xFFA1A1A6),
@@ -409,7 +409,7 @@ class AppColorPalette {
     ),
     ThemeFamily(
       id: 'moonbow',
-      name: 'Moonbow',
+      name: 'Reynisfjara',
       light: moonbowLight,
       dark: moonbowDark,
     ),
