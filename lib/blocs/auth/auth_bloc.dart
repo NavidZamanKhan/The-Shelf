@@ -205,6 +205,13 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       // Save to Cloud Firestore & Firebase Auth
       await _userProfileRepository.saveUserProfile(updatedProfile);
       await _authRepository.updateDisplayName(updatedProfile.displayName);
+      if (newPhotoUrl != null && newPhotoUrl.isNotEmpty) {
+        try {
+          await FirebaseAuth.instance.currentUser?.updatePhotoURL(newPhotoUrl);
+        } catch (e) {
+          debugPrint('FirebaseAuth photoURL update skipped: $e');
+        }
+      }
 
       emit(Authenticated(updatedProfile));
     } catch (e) {

@@ -88,39 +88,7 @@ class _BookRowState extends State<BookRow> {
                 ),
                 const SizedBox(height: 16),
 
-                // Option 1: Open Document
-                ListTile(
-                  leading: Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: activePalette.primaryAccent.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: Icon(
-                      PhosphorIcons.bookOpen,
-                      color: activePalette.primaryAccent,
-                      size: 20,
-                    ),
-                  ),
-                  title: Text(
-                    'Open Document',
-                    style: TextStyle(
-                      fontWeight: FontWeight.w600,
-                      color: activePalette.primaryText,
-                    ),
-                  ),
-                  subtitle: const Text('View with native OS viewer'),
-                  onTap: () {
-                    Navigator.pop(modalContext);
-                    FileLauncherService.instance.openFile(
-                      context,
-                      widget.item.filePath,
-                      documentId: widget.item.id,
-                    );
-                  },
-                ),
-
-                // Option 2: Add to Collection
+                // Option 1: Add / Remove Collections
                 ListTile(
                   leading: Container(
                     padding: const EdgeInsets.all(8),

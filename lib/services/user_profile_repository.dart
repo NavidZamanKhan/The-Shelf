@@ -88,14 +88,30 @@ class UserProfileRepository {
       if (db != null) {
         final doc = await db.collection('users').doc(uid).get();
         if (doc.exists && doc.data() != null) {
-          final profile = UserProfile.fromMap(doc.data()!, defaultUid: uid);
+          final remoteProfile = UserProfile.fromMap(doc.data()!, defaultUid: uid);
+
+          final mergedPhotoUrl = (remoteProfile.photoUrl != null && remoteProfile.photoUrl!.isNotEmpty)
+              ? remoteProfile.photoUrl
+              : cachedPhotoUrl;
+          final mergedBannerUrl = (remoteProfile.bannerUrl != null && remoteProfile.bannerUrl!.isNotEmpty)
+              ? remoteProfile.bannerUrl
+              : cachedBannerUrl;
+          final mergedBio = (remoteProfile.bio != null && remoteProfile.bio!.isNotEmpty)
+              ? remoteProfile.bio
+              : cachedBio;
+
+          final mergedProfile = remoteProfile.copyWith(
+            photoUrl: mergedPhotoUrl,
+            bannerUrl: mergedBannerUrl,
+            bio: mergedBio,
+          );
 
           // Cache to SharedPreferences
-          if (profile.bio != null) await prefs.setString(_keyBio, profile.bio!);
-          if (profile.photoUrl != null) await prefs.setString(_keyPhotoUrl, profile.photoUrl!);
-          if (profile.bannerUrl != null) await prefs.setString(_keyBannerUrl, profile.bannerUrl!);
+          if (mergedBio != null) await prefs.setString(_keyBio, mergedBio);
+          if (mergedPhotoUrl != null) await prefs.setString(_keyPhotoUrl, mergedPhotoUrl);
+          if (mergedBannerUrl != null) await prefs.setString(_keyBannerUrl, mergedBannerUrl);
 
-          return profile;
+          return mergedProfile;
         }
       }
     } catch (e) {
@@ -148,11 +164,12 @@ class UserProfileRepository {
       final st = _storage;
       if (st != null) {
         final ref = st.ref().child('users').child(uid).child('$mediaType.jpg');
-        final uploadTask = await ref.putFile(
+        final uploadTask = ref.putFile(
           permanentLocalFile,
           SettableMetadata(contentType: 'image/jpeg'),
         );
-        final downloadUrl = await uploadTask.ref.getDownloadURL();
+        final snapshot = await uploadTask;
+        final downloadUrl = await snapshot.ref.getDownloadURL();
         debugPrint('Uploaded $mediaType image to Firebase Storage: $downloadUrl');
         return downloadUrl;
       }
