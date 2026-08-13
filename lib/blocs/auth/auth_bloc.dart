@@ -51,11 +51,6 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       // Immediately emit Authenticated so app opens instantly with no flickering
       emit(Authenticated(profile));
 
-      // Auto-persist profile in background
-      _userProfileRepository.saveUserProfile(profile).catchError((e) {
-        debugPrint('Background Firestore save error: $e');
-      });
-
       // Restore cloud documents across devices in background
       CloudLibraryService.instance.restoreCloudLibrary(uid: uid).catchError((e) {
         debugPrint('Background cloud library restore error: $e');

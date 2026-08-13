@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
@@ -147,43 +148,53 @@ class UserProfileRepository {
   }
 
   /// Uploads profile media (avatar or cover banner) to Firebase Storage.
-  /// Returns public HTTPS download URL if upload succeeds, or relative local path if offline.
+  /// Falls back to a cross-device synced Base64 Data URL if Firebase Storage is unavailable or offline.
   Future<String> uploadProfileMedia({
     required String uid,
     required File imageFile,
     required String mediaType, // 'avatar' or 'banner'
   }) async {
-    // Save to permanent local application directory first
+    // 1. Save to permanent local application directory
     final permanentLocalFile = await savePermanentLocalMedia(
       tempFile: imageFile,
       mediaType: mediaType,
     );
 
-    final String relativePath = 'relative:profile/${p.basename(permanentLocalFile.path)}';
-
-    if (uid.isEmpty) return relativePath;
-
-    try {
-      final st = _storage;
-      if (st != null) {
-        final ref = st.ref().child('users').child(uid).child('$mediaType.jpg');
-        final uploadTask = ref.putFile(
-          permanentLocalFile,
-          SettableMetadata(contentType: 'image/jpeg'),
-        );
-        final snapshot = await uploadTask;
-        final downloadUrl = await snapshot.ref.getDownloadURL();
-        debugPrint('Uploaded $mediaType image to Firebase Storage: $downloadUrl');
-        return downloadUrl;
+    // 2. Attempt real Firebase Storage upload
+    if (uid.isNotEmpty) {
+      try {
+        final st = _storage;
+        if (st != null) {
+          final ref = st.ref().child('users').child(uid).child('$mediaType.jpg');
+          final uploadTask = ref.putFile(
+            permanentLocalFile,
+            SettableMetadata(contentType: 'image/jpeg'),
+          );
+          final snapshot = await uploadTask;
+          final downloadUrl = await snapshot.ref.getDownloadURL();
+          debugPrint('Uploaded $mediaType image to Firebase Storage: $downloadUrl');
+          return downloadUrl;
+        }
+      } catch (e) {
+        debugPrint('Firebase Storage upload error: $e. Falling back to Cloud Firestore Data URL.');
       }
-    } catch (e) {
-      debugPrint('Firebase Storage upload error: $e. Returning relative local file path.');
     }
 
-    return relativePath;
+    // 3. Robust cross-device Fallback: Read bytes and create Base64 Data URL
+    try {
+      final bytes = await permanentLocalFile.readAsBytes();
+      if (bytes.isNotEmpty) {
+        final base64Str = base64Encode(bytes);
+        return 'data:image/jpeg;base64,$base64Str';
+      }
+    } catch (e) {
+      debugPrint('Error creating base64 data URL for profile media: $e');
+    }
+
+    return 'relative:profile/${p.basename(permanentLocalFile.path)}';
   }
 
-  /// Helper utility for resolving safe ImageProvider across web URLs, relative paths, and local files.
+  /// Helper utility for resolving safe ImageProvider across web URLs, base64 data URLs, and local files.
   static ImageProvider? resolveSafeImageProvider(String? urlStr, {Directory? docsDir}) {
     if (urlStr == null || urlStr.trim().isEmpty) return null;
     final trimmed = urlStr.trim();
@@ -193,8 +204,20 @@ class UserProfileRepository {
       return NetworkImage(trimmed);
     }
 
+    // 2. Base64 Data URL (cross-device Cloud Firestore sync)
+    if (trimmed.startsWith('data:image/') || trimmed.contains(';base64,')) {
+      try {
+        final commaIndex = trimmed.indexOf(',');
+        final base64Content = commaIndex != -1 ? trimmed.substring(commaIndex + 1) : trimmed;
+        final bytes = base64Decode(base64Content.trim());
+        return MemoryImage(bytes);
+      } catch (e) {
+        debugPrint('Error decoding base64 profile image: $e');
+      }
+    }
+
     try {
-      // 2. Relative path relative:profile/avatar_xxx.jpg or profile/avatar_xxx.jpg
+      // 3. Relative path relative:profile/avatar_xxx.jpg or profile/avatar_xxx.jpg
       String relPath = trimmed;
       if (relPath.startsWith('relative:')) {
         relPath = relPath.substring('relative:'.length);
@@ -213,7 +236,7 @@ class UserProfileRepository {
         }
       }
 
-      // 3. Absolute local file path (with fallback to basename if iOS container UUID changed)
+      // 4. Absolute local file path (with fallback to basename if iOS container UUID changed)
       final directFile = File(trimmed);
       if (directFile.existsSync()) {
         return FileImage(directFile);

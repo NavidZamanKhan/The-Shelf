@@ -44,8 +44,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
         docsDir = await getApplicationDocumentsDirectory();
       } catch (_) {}
 
-      final bool isTesting =
-          WidgetsBinding.instance.runtimeType.toString().contains('Test');
+      final bool isTesting = WidgetsBinding.instance.runtimeType
+          .toString()
+          .contains('Test');
       final distribution = isTesting
           ? <String, int>{}
           : await DocumentRepository.instance.getGenreDistribution();
@@ -90,11 +91,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
     // Top 4 genres shown individually
     final topCount = entries.length > 4 ? 4 : entries.length;
     for (int i = 0; i < topCount; i++) {
-      chartEntries.add(_ChartEntry(
-        label: entries[i].key,
-        count: entries[i].value,
-        color: _colorForIndex(i),
-      ));
+      chartEntries.add(
+        _ChartEntry(
+          label: entries[i].key,
+          count: entries[i].value,
+          color: _colorForIndex(i),
+        ),
+      );
     }
 
     // Remaining genres grouped as "Other"
@@ -104,11 +107,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
         otherCount += entries[i].value;
       }
       if (otherCount > 0) {
-        chartEntries.add(_ChartEntry(
-          label: 'Other',
-          count: otherCount,
-          color: _colorForIndex(4),
-        ));
+        chartEntries.add(
+          _ChartEntry(
+            label: 'Other',
+            count: otherCount,
+            color: _colorForIndex(4),
+          ),
+        );
       }
     }
 
@@ -158,13 +163,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   Widget _buildBannerHeader(AppColorPalette activePalette) {
     final authState = context.watch<AuthBloc>().state;
-    final UserProfile? profile =
-        authState is Authenticated ? authState.profile : null;
+    final UserProfile? profile = authState is Authenticated
+        ? authState.profile
+        : null;
 
     final ImageProvider? bannerImage =
-        UserProfileRepository.resolveSafeImageProvider(profile?.bannerUrl, docsDir: _docsDir);
+        UserProfileRepository.resolveSafeImageProvider(
+          profile?.bannerUrl,
+          docsDir: _docsDir,
+        );
     final ImageProvider? avatarImage =
-        UserProfileRepository.resolveSafeImageProvider(profile?.photoUrl, docsDir: _docsDir);
+        UserProfileRepository.resolveSafeImageProvider(
+          profile?.photoUrl,
+          docsDir: _docsDir,
+        );
 
     final initial = profile?.initials ?? 'U';
 
@@ -173,10 +185,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       width: double.infinity,
       decoration: BoxDecoration(
         image: bannerImage != null
-            ? DecorationImage(
-                image: bannerImage,
-                fit: BoxFit.cover,
-              )
+            ? DecorationImage(image: bannerImage, fit: BoxFit.cover)
             : null,
         color: bannerImage == null ? activePalette.subtleBadgeBackground : null,
       ),
@@ -213,16 +222,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   ),
                   boxShadow: [
                     BoxShadow(
-                      color: activePalette.primaryAccent.withValues(alpha: 0.25),
+                      color: activePalette.primaryAccent.withValues(
+                        alpha: 0.25,
+                      ),
                       blurRadius: 8,
                       offset: const Offset(0, 3),
                     ),
                   ],
                   image: avatarImage != null
-                      ? DecorationImage(
-                          image: avatarImage,
-                          fit: BoxFit.cover,
-                        )
+                      ? DecorationImage(image: avatarImage, fit: BoxFit.cover)
                       : null,
                 ),
                 child: avatarImage == null
@@ -326,10 +334,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               decoration: BoxDecoration(
                 color: Colors.transparent,
                 borderRadius: AppTheme.asymmetricBadgeRadius,
-                border: Border.all(
-                  color: activePalette.cardBorder,
-                  width: 1.2,
-                ),
+                border: Border.all(color: activePalette.cardBorder, width: 1.2),
               ),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
@@ -624,7 +629,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         'Sep',
         'Oct',
         'Nov',
-        'Dec'
+        'Dec',
       ];
       memberSince = '${months[dt.month - 1]} ${dt.year}';
     }
@@ -640,31 +645,19 @@ class _ProfileScreenState extends State<ProfileScreen> {
         child: IntrinsicHeight(
           child: Row(
             children: [
-              _buildStatCell(
-                '$totalBooks',
-                'Total Books',
-                activePalette,
-              ),
+              _buildStatCell('$totalBooks', 'Total Books', activePalette),
               VerticalDivider(
                 width: 1,
                 thickness: 1,
                 color: activePalette.cardBorder,
               ),
-              _buildStatCell(
-                '$count',
-                'Collections',
-                activePalette,
-              ),
+              _buildStatCell('$count', 'Collections', activePalette),
               VerticalDivider(
                 width: 1,
                 thickness: 1,
                 color: activePalette.cardBorder,
               ),
-              _buildStatCell(
-                memberSince,
-                'Member since',
-                activePalette,
-              ),
+              _buildStatCell(memberSince, 'Member since', activePalette),
             ],
           ),
         ),
@@ -735,11 +728,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           child: const Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(
-                PhosphorIcons.signOut,
-                size: 18,
-                color: Colors.redAccent,
-              ),
+              Icon(PhosphorIcons.signOut, size: 18, color: Colors.redAccent),
               SizedBox(width: 8),
               Text(
                 'Log out',
