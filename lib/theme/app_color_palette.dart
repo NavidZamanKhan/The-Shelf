@@ -60,12 +60,12 @@ class AppColorPalette {
   });
 
   // ---------------------------------------------------------------------------
-  // 1. Terracotta — Light
+  // 1. Sedona Sandstone — Light
   // ---------------------------------------------------------------------------
   static const AppColorPalette terracottaLight = AppColorPalette(
     id: 'terracotta_light',
     familyId: 'terracotta',
-    name: 'Terracotta',
+    name: 'Sedona Sandstone',
     primaryAccent: Color(0xFFC85A30),
     lightAccent: Color(0xFFF0997B),
     gradientStart: Color(0xFFF7C5B2),
@@ -87,12 +87,12 @@ class AppColorPalette {
   );
 
   // ---------------------------------------------------------------------------
-  // 1. Terracotta — Dark
+  // 1. Sedona Sandstone — Dark
   // ---------------------------------------------------------------------------
   static const AppColorPalette terracottaDark = AppColorPalette(
     id: 'terracotta_dark',
     familyId: 'terracotta',
-    name: 'Terracotta',
+    name: 'Sedona Sandstone',
     isDark: true,
     primaryAccent: Color(0xFFD97349),
     lightAccent: Color(0xFFE28E69),
@@ -397,7 +397,7 @@ class AppColorPalette {
   static const List<ThemeFamily> families = [
     ThemeFamily(
       id: 'terracotta',
-      name: 'Terracotta',
+      name: 'Sedona Sandstone',
       light: terracottaLight,
       dark: terracottaDark,
     ),
