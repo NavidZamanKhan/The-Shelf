@@ -340,6 +340,51 @@ class CloudLibraryService {
     return false;
   }
 
+  /// Deletes a document record and its storage file from Cloud Firestore & Firebase Storage.
+  Future<bool> deleteDocumentFromCloud(String docId, {String? uid}) async {
+    try {
+      final effectiveUid = await resolveUid(uid: uid);
+      final safeDocId = docId.replaceAll('/', '_').replaceAll('\\', '_');
+
+      // 1. Delete from Firestore and check for storage_path
+      final db = _firestore;
+      if (db != null) {
+        final docRef = db
+            .collection('users')
+            .doc(effectiveUid)
+            .collection('documents')
+            .doc(safeDocId);
+        final docSnap = await docRef.get();
+        if (docSnap.exists) {
+          final storagePath = docSnap.data()?['storage_path'] as String?;
+          if (storagePath != null && storagePath.isNotEmpty) {
+            try {
+              final storage = _storage;
+              if (storage != null) {
+                await storage.ref().child(storagePath).delete();
+              }
+            } catch (_) {}
+          }
+          await docRef.delete();
+        }
+      }
+
+      // 2. Remove from local synced doc IDs cache
+      final prefs = await SharedPreferences.getInstance();
+      final synced = prefs.getStringList(_keySyncedDocIds) ?? [];
+      if (synced.contains(docId)) {
+        synced.remove(docId);
+        await prefs.setStringList(_keySyncedDocIds, synced);
+      }
+
+      debugPrint('Deleted document $docId from cloud for user $effectiveUid');
+      return true;
+    } catch (e) {
+      debugPrint('Error deleting document from cloud: $e');
+      return false;
+    }
+  }
+
   /// Backs up all local documents into the user's Cloud Firestore account.
   Future<int> backupAllDocuments({String? uid}) async {
     final effectiveUid = await resolveUid(uid: uid);

@@ -37,8 +37,11 @@ class _BookRowState extends State<BookRow> {
     return 'DOC';
   }
 
-  void _showOptionsModal(BuildContext context) {
-    final activePalette = context.read<ThemeCubit>().state;
+  void _showOptionsModal(BuildContext context) async {
+    final activePalette = context.read<ThemeCubit>().state.resolvedPalette;
+    final isSynced = await CloudLibraryService.instance.isDocumentSynced(widget.item.id);
+
+    if (!context.mounted) return;
 
     showModalBottomSheet<void>(
       context: context,
@@ -132,13 +135,15 @@ class _BookRowState extends State<BookRow> {
                     ),
                   ),
                   title: Text(
-                    'Backup to Cloud',
+                    isSynced ? 'Update Cloud Backup' : 'Backup to Cloud',
                     style: TextStyle(
                       fontWeight: FontWeight.w600,
                       color: activePalette.primaryText,
                     ),
                   ),
-                  subtitle: const Text('Sync with your account across devices'),
+                  subtitle: Text(
+                    isSynced ? 'Synced to your cloud account' : 'Sync with your account across devices',
+                  ),
                   onTap: () async {
                     Navigator.pop(modalContext);
                     ScaffoldMessenger.of(context).showSnackBar(
@@ -173,9 +178,64 @@ class _BookRowState extends State<BookRow> {
                   },
                 ),
 
+                // Option 3: Delete from Cloud (only if backed up)
+                if (isSynced) ...[
+                  ListTile(
+                    leading: Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: Colors.orangeAccent.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: const Icon(
+                        PhosphorIcons.cloudSlash,
+                        color: Colors.orangeAccent,
+                        size: 20,
+                      ),
+                    ),
+                    title: const Text(
+                      'Delete from Cloud',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w600,
+                        color: Colors.orangeAccent,
+                      ),
+                    ),
+                    subtitle: const Text('Remove from cloud backup while keeping on this device'),
+                    onTap: () async {
+                      Navigator.pop(modalContext);
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text('Removing "${widget.item.title}" from Cloud...'),
+                          behavior: SnackBarBehavior.floating,
+                          duration: const Duration(seconds: 1),
+                        ),
+                      );
+                      final success = await CloudLibraryService.instance.deleteDocumentFromCloud(widget.item.id);
+                      if (context.mounted) {
+                        if (success) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text('Deleted "${widget.item.title}" from Cloud backup.'),
+                              behavior: SnackBarBehavior.floating,
+                            ),
+                          );
+                        } else {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Failed to remove from cloud.'),
+                              backgroundColor: Colors.redAccent,
+                              behavior: SnackBarBehavior.floating,
+                            ),
+                          );
+                        }
+                      }
+                    },
+                  ),
+                ],
+
                 const Divider(height: 24),
 
-                // Option 3: Delete Document
+                // Option 4: Delete Document
                 ListTile(
                   leading: Container(
                     padding: const EdgeInsets.all(8),
@@ -196,7 +256,7 @@ class _BookRowState extends State<BookRow> {
                       color: Colors.redAccent,
                     ),
                   ),
-                  subtitle: const Text('Remove permanently from library'),
+                  subtitle: const Text('Remove permanently from device library'),
                   onTap: () {
                     Navigator.pop(modalContext);
                     _confirmAndDelete(context);
