@@ -57,6 +57,38 @@ class CloudLibraryService {
     return 'guest_local';
   }
 
+  /// Attempts to find the local file even if the iOS app container sandbox UUID changed.
+  Future<File?> _resolveLocalFile(String rawPath) async {
+    if (rawPath.trim().isEmpty) return null;
+    final direct = File(rawPath.trim());
+    if (await direct.exists()) return direct;
+
+    try {
+      final docsDir = await getApplicationDocumentsDirectory();
+      final importsDir = Directory('${docsDir.path}/imports');
+      final fileName = p.basename(rawPath.trim());
+
+      final inImports = File('${importsDir.path}/$fileName');
+      if (await inImports.exists()) return inImports;
+
+      final inDocs = File('${docsDir.path}/$fileName');
+      if (await inDocs.exists()) return inDocs;
+
+      if (await importsDir.exists()) {
+        final list = importsDir.listSync();
+        for (final entity in list) {
+          if (entity is File) {
+            final base = p.basename(entity.path);
+            if (base == fileName || base.endsWith('_$fileName') || base.endsWith(fileName)) {
+              return entity;
+            }
+          }
+        }
+      }
+    } catch (_) {}
+    return null;
+  }
+
   /// Uploads a document's metadata to Cloud Firestore and its file to Firebase Storage.
   Future<bool> uploadDocument(ShelfItem item, {String? uid}) async {
     final effectiveUid = await resolveUid(uid: uid);
@@ -65,31 +97,37 @@ class CloudLibraryService {
     String? embeddedFileData;
     final safeDocId = item.id.replaceAll('/', '_').replaceAll('\\', '_');
 
-    final file = File(item.filePath);
-    final bool fileExists = await file.exists();
+    final File? resolvedFile = await _resolveLocalFile(item.filePath);
+    final bool fileExists = resolvedFile != null && await resolvedFile.exists();
 
-    // 1. If file is small (< 700KB), embed Base64 in Firestore document for instant sync
+    // 1. If file is small (< 750KB), embed Base64 in Firestore document for guaranteed instant cross-device sync
     if (fileExists) {
       try {
-        final length = await file.length();
-        if (length > 0 && length <= 700 * 1024) {
-          final bytes = await file.readAsBytes();
+        final length = await resolvedFile.length();
+        if (length > 0 && length <= 750 * 1024) {
+          final bytes = await resolvedFile.readAsBytes();
           embeddedFileData = base64Encode(bytes);
+          debugPrint('Embedded base64 file data (${bytes.length} bytes) for "${item.title}"');
         }
       } catch (e) {
         debugPrint('Error embedding base64 file data: $e');
       }
     }
 
-    // 2. Try uploading the physical file to Firebase Storage
+    // 2. Try uploading the physical file to Firebase Storage if available
     try {
       final storage = _storage;
       if (storage != null && fileExists) {
-        final filename = p.basename(item.filePath);
-        storagePath = 'users/$effectiveUid/documents/$safeDocId/$filename';
-        final ref = storage.ref().child(storagePath);
-        final uploadTask = await ref.putFile(file);
-        cloudFileUrl = await uploadTask.ref.getDownloadURL();
+        final filename = p.basename(resolvedFile.path);
+        final candidatePath = 'users/$effectiveUid/documents/$safeDocId/$filename';
+        final ref = storage.ref().child(candidatePath);
+        final uploadTask = await ref.putFile(resolvedFile);
+        final downloadUrl = await uploadTask.ref.getDownloadURL();
+        if (downloadUrl.isNotEmpty) {
+          cloudFileUrl = downloadUrl;
+          storagePath = candidatePath;
+          debugPrint('Uploaded file to Firebase Storage: $candidatePath');
+        }
       }
     } catch (e) {
       debugPrint('Firebase Storage upload skipped/fallback: $e');
@@ -120,7 +158,7 @@ class CloudLibraryService {
             .collection('documents')
             .doc(safeDocId)
             .set(docMap, SetOptions(merge: true));
-        debugPrint('Synced document "${item.title}" ($safeDocId) to Cloud Firestore for user $effectiveUid');
+        debugPrint('Synced document "${item.title}" ($safeDocId) to Cloud Firestore for user $effectiveUid (embeddedData: ${embeddedFileData != null})');
       }
     } catch (e) {
       debugPrint('Firestore document sync error: $e');

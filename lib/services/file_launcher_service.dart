@@ -15,23 +15,31 @@ class FileLauncherService {
 
   /// Attempts to resolve a broken path by searching permanent app imports directory or current app container.
   Future<File?> _resolveHealedFile(String originalPath) async {
-    final String fileName = p.basename(originalPath);
+    final String trimmed = originalPath.trim();
+    if (trimmed.isEmpty) return null;
+    final direct = File(trimmed);
+    if (await direct.exists()) return direct;
+
+    final String fileName = p.basename(trimmed);
     try {
       final docsDir = await getApplicationDocumentsDirectory();
+      final inDocs = File('${docsDir.path}/$fileName');
+      if (await inDocs.exists()) return inDocs;
+
       final importsDir = Directory('${docsDir.path}/imports');
+      final exactImportFile = File('${importsDir.path}/$fileName');
+      if (await exactImportFile.exists()) return exactImportFile;
 
       if (await importsDir.exists()) {
         final List<FileSystemEntity> files = importsDir.listSync();
         for (final entity in files) {
-          if (entity is File && p.basename(entity.path).endsWith(fileName)) {
-            return entity;
+          if (entity is File) {
+            final base = p.basename(entity.path);
+            if (base == fileName || base.endsWith('_$fileName') || base.endsWith(fileName)) {
+              return entity;
+            }
           }
         }
-      }
-
-      final exactImportFile = File('${importsDir.path}/$fileName');
-      if (await exactImportFile.exists()) {
-        return exactImportFile;
       }
     } catch (e) {
       debugPrint('Error searching healed file: $e');
