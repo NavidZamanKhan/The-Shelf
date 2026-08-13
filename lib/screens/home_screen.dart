@@ -2,9 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:phosphoricons_flutter/phosphoricons_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:the_shelf/blocs/auth/auth_bloc.dart';
+import 'package:the_shelf/blocs/auth/auth_state.dart';
 import 'package:the_shelf/blocs/collection/collection_bloc.dart';
 import 'package:the_shelf/blocs/collection/collection_state.dart';
 import 'package:the_shelf/blocs/shelf/shelf_bloc.dart';
+import 'package:the_shelf/blocs/shelf/shelf_event.dart';
 import 'package:the_shelf/blocs/shelf/shelf_state.dart';
 import 'package:the_shelf/blocs/theme/theme_cubit.dart';
 import 'package:the_shelf/models/mock_shelf_items.dart';
@@ -26,7 +29,6 @@ import 'package:the_shelf/widgets/create_collection_modal.dart';
 import 'package:the_shelf/blocs/document_import/document_import_bloc.dart';
 import 'package:the_shelf/blocs/document_import/document_import_event.dart';
 import 'package:the_shelf/blocs/document_import/document_import_state.dart';
-import 'package:the_shelf/blocs/shelf/shelf_event.dart';
 import 'package:the_shelf/widgets/import_bottom_sheet_modal.dart';
 import 'package:the_shelf/widgets/import_confirmation_sheet.dart';
 import 'package:the_shelf/widgets/shelf_card.dart';
@@ -150,101 +152,115 @@ class _HomeScreenState extends State<HomeScreen> {
       backgroundColor: activePalette.background,
       body: SafeArea(
         bottom: false,
-        child: BlocListener<DocumentImportBloc, DocumentImportState>(
-          listener: (context, importState) async {
-            if (importState is DocumentImportSuccess) {
-              final summary = importState.summary;
-              final isInstant = await AppSettingsService.instance.getInstantAutoFile();
+        child: MultiBlocListener(
+          listeners: [
+            BlocListener<AuthBloc, AuthState>(
+              listener: (context, authState) async {
+                if (authState is Authenticated) {
+                  final count = await CloudLibraryService.instance.restoreCloudLibrary(uid: authState.profile.uid);
+                  if (count > 0 && context.mounted) {
+                    context.read<ShelfBloc>().add(const LoadShelfItemsEvent());
+                  }
+                }
+              },
+            ),
+            BlocListener<DocumentImportBloc, DocumentImportState>(
+              listener: (context, importState) async {
+                if (importState is DocumentImportSuccess) {
+                  final summary = importState.summary;
+                  final isInstant = await AppSettingsService.instance.getInstantAutoFile();
 
-              if (isInstant) {
-                final topShelf = summary.classification.label;
-                if (context.mounted) {
-                  context.read<ShelfBloc>().add(
-                        AddDocumentToShelfEvent(
+                  if (!context.mounted) return;
+
+                  if (isInstant) {
+                    final topShelf = summary.classification.label;
+                    context.read<ShelfBloc>().add(
+                          AddDocumentToShelfEvent(
+                            title: summary.title,
+                            shelf: topShelf,
+                            filePath: summary.filePath,
+                          ),
+                        );
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('Filed "${summary.title}" into $topShelf!'),
+                        behavior: SnackBarBehavior.floating,
+                      ),
+                    );
+
+                    final isAutoBackup = await AppSettingsService.instance.getAutoCloudBackup();
+                    if (isAutoBackup) {
+                      CloudLibraryService.instance.uploadDocument(
+                        ShelfItem(
+                          id: '${summary.title}_${DateTime.now().millisecondsSinceEpoch}',
                           title: summary.title,
                           shelf: topShelf,
                           filePath: summary.filePath,
+                          addedAt: DateTime.now(),
                         ),
                       );
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text('Filed "${summary.title}" into $topShelf!'),
-                      behavior: SnackBarBehavior.floating,
-                    ),
-                  );
-
-                  final isAutoBackup = await AppSettingsService.instance.getAutoCloudBackup();
-                  if (isAutoBackup) {
-                    CloudLibraryService.instance.uploadDocument(
-                      ShelfItem(
-                        id: '${summary.title}_${DateTime.now().millisecondsSinceEpoch}',
-                        title: summary.title,
-                        shelf: topShelf,
-                        filePath: summary.filePath,
-                        addedAt: DateTime.now(),
+                    }
+                  } else {
+                    final result = await showModalBottomSheet<Map<String, dynamic>>(
+                      context: context,
+                      isScrollControlled: true,
+                      backgroundColor: activePalette.cardBackground,
+                      shape: const RoundedRectangleBorder(
+                        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
                       ),
+                      builder: (modalContext) => ImportConfirmationSheet(summary: summary),
                     );
-                  }
-                }
-              } else {
-                final result = await showModalBottomSheet<Map<String, dynamic>>(
-                  context: context,
-                  isScrollControlled: true,
-                  backgroundColor: activePalette.cardBackground,
-                  shape: const RoundedRectangleBorder(
-                    borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-                  ),
-                  builder: (modalContext) => ImportConfirmationSheet(summary: summary),
-                );
-                if (!context.mounted) return;
-                if (result != null && result['confirmed'] == true) {
-                  final String title = result['title'] as String;
-                  final String shelf = result['shelf'] as String;
+                    if (!context.mounted) return;
+                    if (result != null && result['confirmed'] == true) {
+                      final String title = result['title'] as String;
+                      final String shelf = result['shelf'] as String;
 
-                  context.read<ShelfBloc>().add(
-                        AddDocumentToShelfEvent(
-                          title: title,
-                          shelf: shelf,
-                          filePath: summary.filePath,
+                      context.read<ShelfBloc>().add(
+                            AddDocumentToShelfEvent(
+                              title: title,
+                              shelf: shelf,
+                              filePath: summary.filePath,
+                            ),
+                          );
+
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text('Added "$title" to $shelf!'),
+                          behavior: SnackBarBehavior.floating,
                         ),
                       );
 
+                      final isAutoBackup = await AppSettingsService.instance.getAutoCloudBackup();
+                      if (isAutoBackup) {
+                        CloudLibraryService.instance.uploadDocument(
+                          ShelfItem(
+                            id: '${title}_${DateTime.now().millisecondsSinceEpoch}',
+                            title: title,
+                            shelf: shelf,
+                            filePath: summary.filePath,
+                            addedAt: DateTime.now(),
+                          ),
+                        );
+                      }
+                    }
+                  }
+
+                  if (context.mounted) {
+                    context.read<DocumentImportBloc>().add(const ResetImportEvent());
+                  }
+                } else if (importState is DocumentImportFailure) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
-                      content: Text('Added "$title" to $shelf!'),
+                      content: Text('Import failed: ${importState.errorMessage}'),
+                      backgroundColor: Colors.redAccent,
                       behavior: SnackBarBehavior.floating,
                     ),
                   );
-
-                  final isAutoBackup = await AppSettingsService.instance.getAutoCloudBackup();
-                  if (isAutoBackup) {
-                    CloudLibraryService.instance.uploadDocument(
-                      ShelfItem(
-                        id: '${title}_${DateTime.now().millisecondsSinceEpoch}',
-                        title: title,
-                        shelf: shelf,
-                        filePath: summary.filePath,
-                        addedAt: DateTime.now(),
-                      ),
-                    );
-                  }
+                  context.read<DocumentImportBloc>().add(const ResetImportEvent());
                 }
-              }
-
-              if (context.mounted) {
-                context.read<DocumentImportBloc>().add(const ResetImportEvent());
-              }
-            } else if (importState is DocumentImportFailure) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text('Import failed: ${importState.errorMessage}'),
-                  backgroundColor: Colors.redAccent,
-                  behavior: SnackBarBehavior.floating,
-                ),
-              );
-              context.read<DocumentImportBloc>().add(const ResetImportEvent());
-            }
-          },
+              },
+            ),
+          ],
           child: Column(
             children: [
               // Static App Header (actions only shown on Shelf and Collections tabs)

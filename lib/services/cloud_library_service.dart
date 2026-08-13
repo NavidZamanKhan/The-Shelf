@@ -42,15 +42,24 @@ class CloudLibraryService {
       if (fbUid != null && fbUid.isNotEmpty) return fbUid;
     } catch (_) {}
 
-    final prefs = await SharedPreferences.getInstance();
-    final email = prefs.getString('auth_email') ?? 'guest_local';
-    return email.trim().replaceAll('.', '_').replaceAll('@', '_at_');
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final cachedUid = prefs.getString('auth_firebase_uid');
+      if (cachedUid != null && cachedUid.isNotEmpty) return cachedUid;
+      final email = prefs.getString('auth_email');
+      if (email != null && email.isNotEmpty) {
+        return email.trim().replaceAll('.', '_').replaceAll('@', '_at_');
+      }
+    } catch (_) {}
+
+    return 'guest_local';
   }
 
   /// Uploads a document's metadata to Cloud Firestore and its file to Firebase Storage.
   Future<bool> uploadDocument(ShelfItem item, {String? uid}) async {
     final effectiveUid = await resolveUid(uid: uid);
     String? cloudFileUrl;
+    final safeDocId = item.id.replaceAll('/', '_').replaceAll('\\', '_');
 
     // 1. Try uploading the physical file to Firebase Storage if exists
     try {
@@ -58,12 +67,12 @@ class CloudLibraryService {
       final storage = _storage;
       if (storage != null && await file.exists()) {
         final filename = p.basename(item.filePath);
-        final ref = storage.ref().child('users/$effectiveUid/documents/${item.id}/$filename');
+        final ref = storage.ref().child('users/$effectiveUid/documents/$safeDocId/$filename');
         final uploadTask = await ref.putFile(file);
         cloudFileUrl = await uploadTask.ref.getDownloadURL();
       }
     } catch (e) {
-      debugPrint('Firebase Storage upload error: $e');
+      debugPrint('Firebase Storage upload skipped/fallback: $e');
     }
 
     // 2. Write metadata record to Cloud Firestore `users/{uid}/documents/{docId}`
@@ -74,7 +83,7 @@ class CloudLibraryService {
             .collection('users')
             .doc(effectiveUid)
             .collection('documents')
-            .doc(item.id)
+            .doc(safeDocId)
             .set({
           'id': item.id,
           'title': item.title,
@@ -85,9 +94,11 @@ class CloudLibraryService {
           'synced_at': DateTime.now().toIso8601String(),
           'user_id': effectiveUid,
         }, SetOptions(merge: true));
+        debugPrint('Synced document "${item.title}" ($safeDocId) to Cloud Firestore for user $effectiveUid');
       }
     } catch (e) {
       debugPrint('Firestore document sync error: $e');
+      return false;
     }
 
     // 3. Mark document as synced locally
@@ -103,13 +114,14 @@ class CloudLibraryService {
 
     try {
       final effectiveUid = await resolveUid(uid: uid);
+      final safeDocId = docId.replaceAll('/', '_').replaceAll('\\', '_');
       final db = _firestore;
       if (db != null) {
         final doc = await db
             .collection('users')
             .doc(effectiveUid)
             .collection('documents')
-            .doc(docId)
+            .doc(safeDocId)
             .get();
         if (doc.exists) {
           await _markDocumentSynced(docId);
@@ -123,18 +135,20 @@ class CloudLibraryService {
 
   /// Backs up all local documents into the user's Cloud Firestore account.
   Future<int> backupAllDocuments({String? uid}) async {
+    final effectiveUid = await resolveUid(uid: uid);
     final docs = await DocumentRepository.instance.getAllDocuments();
     int successCount = 0;
 
     for (final doc in docs) {
       try {
-        final success = await uploadDocument(doc, uid: uid);
+        final success = await uploadDocument(doc, uid: effectiveUid);
         if (success) successCount++;
       } catch (e) {
         debugPrint('Error backing up document ${doc.id}: $e');
       }
     }
 
+    debugPrint('Completed backup: $successCount of ${docs.length} documents uploaded to user $effectiveUid');
     return successCount;
   }
 
@@ -180,6 +194,7 @@ class CloudLibraryService {
             restoredCount++;
           }
         }
+        debugPrint('Restored $restoredCount cloud documents for user $effectiveUid (found ${snapshot.docs.length} total in cloud)');
       }
     } catch (e) {
       debugPrint('Error restoring cloud library: $e');
