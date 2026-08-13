@@ -30,7 +30,7 @@ import 'package:the_shelf/widgets/import_confirmation_sheet.dart';
 import 'package:the_shelf/widgets/shelf_card.dart';
 import 'package:the_shelf/widgets/sort_options_modal.dart';
 
-/// All 17 target shelf categories specified in design requirements
+/// All target shelf categories supported in the application
 const List<String> all17Categories = [
   'Fantasy',
   'Historical Fiction',
@@ -38,6 +38,7 @@ const List<String> all17Categories = [
   'Romance',
   'Science Fiction',
   'Horror',
+  'School/Reference',
   'Thriller',
   'Young Adult',
   'Graphic Novels & Comics',
@@ -48,6 +49,9 @@ const List<String> all17Categories = [
   'Biography & Memoir',
   'Philosophy',
   'Self-Help & Personal Development',
+  'Religion & Spirituality',
+  'Classic Literature',
+  'Humor',
   'Miscellaneous',
 ];
 
@@ -340,9 +344,17 @@ class _ShelfView extends StatelessWidget {
           }
         }
 
+        // Dynamically compile categories set from standard categories + any populated item shelves
+        final Set<String> categoriesSet = Set<String>.from(all17Categories);
+        for (final item in effectiveItems) {
+          if (item.shelf.isNotEmpty) {
+            categoriesSet.add(_findMatchingCategoryKey(item.shelf));
+          }
+        }
+
         // Sort categories according to active sort option
         final List<String> sortedCategories = _sortCategories(
-          List.from(all17Categories),
+          categoriesSet.toList(),
           countsMap,
           sortOption,
         );
@@ -395,7 +407,7 @@ class _ShelfView extends StatelessWidget {
         return cat;
       }
     }
-    return 'Miscellaneous';
+    return trimmed.isNotEmpty ? trimmed : 'Miscellaneous';
   }
 
   /// Multi-criteria sorting algorithm supporting Alphabetical (A-Z / Z-A), Count, & Populated-First
