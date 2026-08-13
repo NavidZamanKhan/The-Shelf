@@ -14,6 +14,7 @@ import 'package:the_shelf/screens/profile_screen.dart';
 import 'package:the_shelf/screens/search_screen.dart';
 import 'package:the_shelf/screens/settings_screen.dart';
 import 'package:the_shelf/screens/shelf_detail_screen.dart';
+import 'package:the_shelf/services/app_settings_service.dart';
 import 'package:the_shelf/theme/app_color_palette.dart';
 import 'package:the_shelf/theme/app_theme.dart';
 import 'package:the_shelf/widgets/app_bottom_navigation_bar.dart';
@@ -66,6 +67,7 @@ class _HomeScreenState extends State<HomeScreen> {
   int _selectedNavIndex = 0;
   int _selectedFilterIndex = 0;
   SortOption _currentSortOption = SortOption.populatedFirst;
+  Set<String> _hiddenShelves = {};
   late final PageController _pageController;
 
   static const List<String> _formatTabs = ['All Items', 'Books', 'PDFs'];
@@ -74,20 +76,24 @@ class _HomeScreenState extends State<HomeScreen> {
   void initState() {
     super.initState();
     _pageController = PageController(initialPage: _selectedFilterIndex);
-    _loadSavedSortOption();
+    _loadSavedSettings();
   }
 
-  Future<void> _loadSavedSortOption() async {
+  Future<void> _loadSavedSettings() async {
     try {
       final prefs = await SharedPreferences.getInstance();
       final savedName = prefs.getString('shelf_sort_option');
-      if (savedName != null && mounted) {
+      final hidden = await AppSettingsService.instance.getHiddenShelves();
+      if (mounted) {
         setState(() {
-          _currentSortOption = SortOption.fromName(savedName);
+          if (savedName != null) {
+            _currentSortOption = SortOption.fromName(savedName);
+          }
+          _hiddenShelves = hidden;
         });
       }
     } catch (e) {
-      debugPrint('Error loading saved sort option: $e');
+      debugPrint('Error loading saved settings: $e');
     }
   }
 
@@ -130,6 +136,9 @@ class _HomeScreenState extends State<HomeScreen> {
     setState(() {
       _selectedNavIndex = index;
     });
+    if (index == 0) {
+      _loadSavedSettings();
+    }
   }
 
   @override
@@ -144,34 +153,55 @@ class _HomeScreenState extends State<HomeScreen> {
           listener: (context, importState) async {
             if (importState is DocumentImportSuccess) {
               final summary = importState.summary;
-              final result = await showModalBottomSheet<Map<String, dynamic>>(
-                context: context,
-                isScrollControlled: true,
-                backgroundColor: activePalette.cardBackground,
-                shape: const RoundedRectangleBorder(
-                  borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-                ),
-                builder: (modalContext) => ImportConfirmationSheet(summary: summary),
-              );
+              final isInstant = await AppSettingsService.instance.getInstantAutoFile();
 
-              if (result != null && result['confirmed'] == true && context.mounted) {
-                final String title = result['title'] as String;
-                final String shelf = result['shelf'] as String;
-
-                context.read<ShelfBloc>().add(
-                      AddDocumentToShelfEvent(
-                        title: title,
-                        shelf: shelf,
-                        filePath: summary.filePath,
-                      ),
-                    );
-
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text('Added "$title" to $shelf!'),
-                    behavior: SnackBarBehavior.floating,
+              if (isInstant) {
+                final topShelf = summary.classification.label;
+                if (context.mounted) {
+                  context.read<ShelfBloc>().add(
+                        AddDocumentToShelfEvent(
+                          title: summary.title,
+                          shelf: topShelf,
+                          filePath: summary.filePath,
+                        ),
+                      );
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Filed "${summary.title}" into $topShelf!'),
+                      behavior: SnackBarBehavior.floating,
+                    ),
+                  );
+                }
+              } else {
+                final result = await showModalBottomSheet<Map<String, dynamic>>(
+                  context: context,
+                  isScrollControlled: true,
+                  backgroundColor: activePalette.cardBackground,
+                  shape: const RoundedRectangleBorder(
+                    borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
                   ),
+                  builder: (modalContext) => ImportConfirmationSheet(summary: summary),
                 );
+
+                if (result != null && result['confirmed'] == true && context.mounted) {
+                  final String title = result['title'] as String;
+                  final String shelf = result['shelf'] as String;
+
+                  context.read<ShelfBloc>().add(
+                        AddDocumentToShelfEvent(
+                          title: title,
+                          shelf: shelf,
+                          filePath: summary.filePath,
+                        ),
+                      );
+
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Added "$title" to $shelf!'),
+                      behavior: SnackBarBehavior.floating,
+                    ),
+                  );
+                }
               }
 
               if (context.mounted) {
@@ -225,6 +255,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     formatTabs: _formatTabs,
                     pageController: _pageController,
                     sortOption: _currentSortOption,
+                    hiddenShelves: _hiddenShelves,
                     onFilterTabSelected: _onFilterTabSelected,
                     onPageChanged: _onPageChanged,
                     activePalette: activePalette,
@@ -258,6 +289,7 @@ class _ShelfView extends StatelessWidget {
   final List<String> formatTabs;
   final PageController pageController;
   final SortOption sortOption;
+  final Set<String> hiddenShelves;
   final ValueChanged<int> onFilterTabSelected;
   final ValueChanged<int> onPageChanged;
   final AppColorPalette activePalette;
@@ -267,6 +299,7 @@ class _ShelfView extends StatelessWidget {
     required this.formatTabs,
     required this.pageController,
     required this.sortOption,
+    required this.hiddenShelves,
     required this.onFilterTabSelected,
     required this.onPageChanged,
     required this.activePalette,
@@ -365,11 +398,16 @@ class _ShelfView extends StatelessWidget {
           sortOption,
         );
 
+        // Filter out hidden shelves set in Settings
+        final List<String> visibleCategories = sortedCategories
+            .where((cat) => !hiddenShelves.contains(cat))
+            .toList();
+
         return ListView.builder(
           padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
-          itemCount: sortedCategories.length,
+          itemCount: visibleCategories.length,
           itemBuilder: (context, index) {
-            final catName = sortedCategories[index];
+            final catName = visibleCategories[index];
             final itemCount = countsMap[catName] ?? 0;
 
             return ShelfCard(
