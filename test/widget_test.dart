@@ -233,12 +233,17 @@ void main() {
     expect(cubit.state.resolvedPalette.id, equals('kyoto_moss_dark'));
     expect(cubit.state.primaryAccent, equals(const Color(0xFF5E9C72)));
 
-    // Switch to Wisteria Twilight in Light mode
+    // Switch to Santorini (Light)
     await cubit.setBrightness(ThemeBrightness.light);
-    await cubit.setFamily('wisteria');
-    expect(cubit.state.familyId, equals('wisteria'));
-    expect(cubit.state.resolvedPalette.id, equals('wisteria_light'));
-    expect(cubit.state.primaryAccent, equals(const Color(0xFF6A4C9C)));
+    await cubit.setFamily('santorini');
+    expect(cubit.state.familyId, equals('santorini'));
+    expect(cubit.state.resolvedPalette.id, equals('santorini_light'));
+    expect(cubit.state.primaryAccent, equals(const Color(0xFF1E5BB0)));
+
+    // Verify Santorini Dark
+    await cubit.setBrightness(ThemeBrightness.dark);
+    expect(cubit.state.resolvedPalette.id, equals('santorini_dark'));
+    expect(cubit.state.primaryAccent, equals(const Color(0xFF518EE8)));
 
     await cubit.close();
   });

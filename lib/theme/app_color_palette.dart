@@ -225,7 +225,62 @@ class AppColorPalette {
   );
 
   // ---------------------------------------------------------------------------
-  // 4. Sakura Hanafubuki — Light
+  // 4. Santorini — Light (Iconic Aegean Cobalt, Cycladic White & Navy)
+  // ---------------------------------------------------------------------------
+  static const AppColorPalette santoriniLight = AppColorPalette(
+    id: 'santorini_light',
+    familyId: 'santorini',
+    name: 'Santorini',
+    primaryAccent: Color(0xFF1E5BB0),
+    lightAccent: Color(0xFF4C85D4),
+    gradientStart: Color(0xFF1E5BB0),
+    secondaryText: Color(0xFF4A6588),
+    primaryText: Color(0xFF0E2238),
+    background: Color(0xFFF3F7FB),
+    cardBackground: Color(0xFFFFFFFF),
+    cardBorder: Color(0xFFD4E2F0),
+    subtleBadgeBackground: Color(0xFFE5EFF9),
+    desaturatedEmptyText: Color(0xFF8BA5C2),
+    desaturatedEmptyBadge: Color(0xFFEAF1F8),
+    dashedBorderColor: Color(0xFFC7DAEC),
+    navInactiveColor: Color(0xFF7591AF),
+    badgeGradient: LinearGradient(
+      colors: [Color(0xFF1E5BB0), Color(0xFF1E5BB0)],
+      begin: Alignment.topLeft,
+      end: Alignment.bottomRight,
+    ),
+  );
+
+  // ---------------------------------------------------------------------------
+  // 4. Santorini — Dark (Midnight Caldera & Luminous Aegean Azure)
+  // ---------------------------------------------------------------------------
+  static const AppColorPalette santoriniDark = AppColorPalette(
+    id: 'santorini_dark',
+    familyId: 'santorini',
+    name: 'Santorini',
+    isDark: true,
+    primaryAccent: Color(0xFF518EE8),
+    lightAccent: Color(0xFF76A8F0),
+    gradientStart: Color(0xFF518EE8),
+    secondaryText: Color(0xFF8BA5C4),
+    primaryText: Color(0xFFE8F1FA),
+    background: Color(0xFF0E131A),
+    cardBackground: Color(0xFF161E28),
+    cardBorder: Color(0xFF222F3E),
+    subtleBadgeBackground: Color(0xFF1C2735),
+    desaturatedEmptyText: Color(0xFF526B88),
+    desaturatedEmptyBadge: Color(0xFF17202B),
+    dashedBorderColor: Color(0xFF27384A),
+    navInactiveColor: Color(0xFF6785A3),
+    badgeGradient: LinearGradient(
+      colors: [Color(0xFF518EE8), Color(0xFF518EE8)],
+      begin: Alignment.topLeft,
+      end: Alignment.bottomRight,
+    ),
+  );
+
+  // ---------------------------------------------------------------------------
+  // 5. Sakura Hanafubuki — Light
   // ---------------------------------------------------------------------------
   static const AppColorPalette sakuraLight = AppColorPalette(
     id: 'sakura_light',
@@ -252,7 +307,7 @@ class AppColorPalette {
   );
 
   // ---------------------------------------------------------------------------
-  // 4. Sakura Hanafubuki — Dark
+  // 5. Sakura Hanafubuki — Dark
   // ---------------------------------------------------------------------------
   static const AppColorPalette sakuraDark = AppColorPalette(
     id: 'sakura_dark',
@@ -280,7 +335,7 @@ class AppColorPalette {
   );
 
   // ---------------------------------------------------------------------------
-  // 5. Kyoto Moss — Light
+  // 6. Kyoto Moss — Light
   // ---------------------------------------------------------------------------
   static const AppColorPalette kyotoMossLight = AppColorPalette(
     id: 'kyoto_moss_light',
@@ -307,7 +362,7 @@ class AppColorPalette {
   );
 
   // ---------------------------------------------------------------------------
-  // 5. Kyoto Moss — Dark
+  // 6. Kyoto Moss — Dark
   // ---------------------------------------------------------------------------
   static const AppColorPalette kyotoMossDark = AppColorPalette(
     id: 'kyoto_moss_dark',
@@ -335,7 +390,7 @@ class AppColorPalette {
   );
 
   // ---------------------------------------------------------------------------
-  // 6. Wisteria Twilight — Light
+  // 7. Wisteria Twilight — Light
   // ---------------------------------------------------------------------------
   static const AppColorPalette wisteriaLight = AppColorPalette(
     id: 'wisteria_light',
@@ -362,7 +417,7 @@ class AppColorPalette {
   );
 
   // ---------------------------------------------------------------------------
-  // 6. Wisteria Twilight — Dark
+  // 7. Wisteria Twilight — Dark
   // ---------------------------------------------------------------------------
   static const AppColorPalette wisteriaDark = AppColorPalette(
     id: 'wisteria_dark',
@@ -390,7 +445,7 @@ class AppColorPalette {
   );
 
   // ---------------------------------------------------------------------------
-  // Theme Families
+  // Theme Families (Santorini at Index 3)
   // ---------------------------------------------------------------------------
 
   /// The list of curated theme families
@@ -412,6 +467,12 @@ class AppColorPalette {
       name: 'Reynisfjara',
       light: moonbowLight,
       dark: moonbowDark,
+    ),
+    ThemeFamily(
+      id: 'santorini',
+      name: 'Santorini',
+      light: santoriniLight,
+      dark: santoriniDark,
     ),
     ThemeFamily(
       id: 'sakura',
@@ -438,6 +499,7 @@ class AppColorPalette {
     'terracotta',
     'teal',
     'moonbow',
+    'santorini',
     'sakura',
     'kyoto_moss',
     'wisteria',
@@ -448,6 +510,7 @@ class AppColorPalette {
     'terracotta': terracottaLight,
     'teal': tealLight,
     'moonbow': moonbowLight,
+    'santorini': santoriniLight,
     'sakura': sakuraLight,
     'kyoto_moss': kyotoMossLight,
     'wisteria': wisteriaLight,
@@ -458,6 +521,7 @@ class AppColorPalette {
     'terracotta': terracottaDark,
     'teal': tealDark,
     'moonbow': moonbowDark,
+    'santorini': santoriniDark,
     'sakura': sakuraDark,
     'kyoto_moss': kyotoMossDark,
     'wisteria': wisteriaDark,
@@ -471,6 +535,8 @@ class AppColorPalette {
     tealDark,
     moonbowLight,
     moonbowDark,
+    santoriniLight,
+    santoriniDark,
     sakuraLight,
     sakuraDark,
     kyotoMossLight,
@@ -503,6 +569,8 @@ class AppColorPalette {
   static const AppColorPalette terracotta = terracottaLight;
   static const AppColorPalette teal = tealLight;
   static const AppColorPalette moonbow = moonbowLight;
+  static const AppColorPalette reynisfjara = moonbowLight;
+  static const AppColorPalette santorini = santoriniLight;
   static const AppColorPalette sakura = sakuraLight;
   static const AppColorPalette kyotoMoss = kyotoMossLight;
   static const AppColorPalette wisteria = wisteriaLight;
