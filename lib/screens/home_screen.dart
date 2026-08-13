@@ -21,7 +21,12 @@ import 'package:the_shelf/widgets/app_header.dart';
 import 'package:the_shelf/widgets/category_filter_chips.dart';
 import 'package:the_shelf/widgets/collection_card.dart';
 import 'package:the_shelf/widgets/create_collection_modal.dart';
+import 'package:the_shelf/blocs/document_import/document_import_bloc.dart';
+import 'package:the_shelf/blocs/document_import/document_import_event.dart';
+import 'package:the_shelf/blocs/document_import/document_import_state.dart';
+import 'package:the_shelf/blocs/shelf/shelf_event.dart';
 import 'package:the_shelf/widgets/import_bottom_sheet_modal.dart';
+import 'package:the_shelf/widgets/import_confirmation_sheet.dart';
 import 'package:the_shelf/widgets/shelf_card.dart';
 import 'package:the_shelf/widgets/sort_options_modal.dart';
 
@@ -131,31 +136,79 @@ class _HomeScreenState extends State<HomeScreen> {
       backgroundColor: activePalette.background,
       body: SafeArea(
         bottom: false,
-        child: Column(
-          children: [
-            // Static App Header (magGlass triggers SearchScreen, funnel triggers SortOptionsModal)
-            AppHeader(
-              isSliver: false,
-              onAddItemPressed: _selectedNavIndex == 1
-                  ? null
-                  : () {
-                      ImportBottomSheetModal.show(context);
+        child: BlocListener<DocumentImportBloc, DocumentImportState>(
+          listener: (context, importState) async {
+            if (importState is DocumentImportSuccess) {
+              final summary = importState.summary;
+              final result = await showModalBottomSheet<Map<String, dynamic>>(
+                context: context,
+                isScrollControlled: true,
+                backgroundColor: activePalette.cardBackground,
+                shape: const RoundedRectangleBorder(
+                  borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+                ),
+                builder: (modalContext) => ImportConfirmationSheet(summary: summary),
+              );
+
+              if (result != null && result['confirmed'] == true && context.mounted) {
+                final String title = result['title'] as String;
+                final String shelf = result['shelf'] as String;
+
+                context.read<ShelfBloc>().add(
+                      AddDocumentToShelfEvent(
+                        title: title,
+                        shelf: shelf,
+                        filePath: summary.filePath,
+                      ),
+                    );
+
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('Added "$title" to $shelf!'),
+                    behavior: SnackBarBehavior.floating,
+                  ),
+                );
+              }
+
+              if (context.mounted) {
+                context.read<DocumentImportBloc>().add(const ResetImportEvent());
+              }
+            } else if (importState is DocumentImportFailure) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('Import failed: ${importState.errorMessage}'),
+                  backgroundColor: Colors.redAccent,
+                  behavior: SnackBarBehavior.floating,
+                ),
+              );
+              context.read<DocumentImportBloc>().add(const ResetImportEvent());
+            }
+          },
+          child: Column(
+            children: [
+              // Static App Header (magGlass triggers SearchScreen, funnel triggers SortOptionsModal)
+              AppHeader(
+                isSliver: false,
+                onAddItemPressed: _selectedNavIndex == 1
+                    ? null
+                    : () {
+                        ImportBottomSheetModal.show(context);
+                      },
+                onSearchPressed: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(builder: (context) => const SearchScreen()),
+                  );
+                },
+                onFilterPressed: () {
+                  SortOptionsModal.show(
+                    context: context,
+                    currentOption: _currentSortOption,
+                    onOptionSelected: (newOption) {
+                      _updateSortOption(newOption);
                     },
-              onSearchPressed: () {
-                Navigator.of(context).push(
-                  MaterialPageRoute(builder: (context) => const SearchScreen()),
-                );
-              },
-              onFilterPressed: () {
-                SortOptionsModal.show(
-                  context: context,
-                  currentOption: _currentSortOption,
-                  onOptionSelected: (newOption) {
-                    _updateSortOption(newOption);
-                  },
-                );
-              },
-            ),
+                  );
+                },
+              ),
 
             // Tab navigation body or Settings tab
             Expanded(
@@ -187,8 +240,7 @@ class _HomeScreenState extends State<HomeScreen> {
           ],
         ),
       ),
-
-      // Custom non-Material bottom navigation footer bar
+    ),
       bottomNavigationBar: AppBottomNavigationBar(
         selectedIndex: _selectedNavIndex,
         onDestinationSelected: _onBottomNavSelected,
