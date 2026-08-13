@@ -183,90 +183,329 @@ class _SettingsScreenState extends State<SettingsScreen> {
         return ListView(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           children: [
-            // --- Section 1: Library & Smart Import ---
-              Text(
-                'LIBRARY & SMART IMPORT',
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.bold,
-                  letterSpacing: 1.2,
-                  color: activePalette.secondaryText,
-                ),
+            // --- Section 1: Appearance & Theme ---
+            Text(
+              'APPEARANCE & THEME',
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.bold,
+                letterSpacing: 1.2,
+                color: activePalette.secondaryText,
               ),
-              const SizedBox(height: 12),
+            ),
+            const SizedBox(height: 12),
 
-              // Item 1: Instant Auto-Filing Switch
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                decoration: BoxDecoration(
-                  color: activePalette.cardBackground,
-                  borderRadius: AppTheme.asymmetricCardRadius,
-                  border: Border.all(color: activePalette.cardBorder, width: 1.0),
-                ),
-                child: Row(
-                  children: [
-                    Container(
-                      width: 44,
-                      height: 44,
-                      decoration: BoxDecoration(
-                        gradient: activePalette.badgeGradient,
-                        borderRadius: AppTheme.asymmetricBadgeRadius,
-                        border: Border.all(
-                          color: activePalette.cardBorder,
-                          width: 1.0,
-                        ),
-                      ),
-                      child: Center(
-                        child: Icon(
-                          PhosphorIcons.lightningBold,
-                          color: activePalette.isDark
-                              ? activePalette.primaryText
-                              : Colors.white,
-                          size: 22,
-                        ),
+            // Theme Mode Selector (Light / Dark / System)
+            Container(
+              padding: const EdgeInsets.all(4),
+              decoration: BoxDecoration(
+                color: activePalette.cardBackground,
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: activePalette.cardBorder),
+              ),
+              child: Row(
+                children: [
+                  _buildThemeModeOption(
+                    context: context,
+                    activePalette: activePalette,
+                    currentBrightness: themeState.brightness,
+                    mode: ThemeBrightness.light,
+                    label: 'Light',
+                    icon: PhosphorIcons.sunBold,
+                  ),
+                  _buildThemeModeOption(
+                    context: context,
+                    activePalette: activePalette,
+                    currentBrightness: themeState.brightness,
+                    mode: ThemeBrightness.dark,
+                    label: 'Dark',
+                    icon: PhosphorIcons.moonBold,
+                  ),
+                  _buildThemeModeOption(
+                    context: context,
+                    activePalette: activePalette,
+                    currentBrightness: themeState.brightness,
+                    mode: ThemeBrightness.system,
+                    label: 'System',
+                    icon: PhosphorIcons.gearSixBold,
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+
+            // Theme Family Cards
+            Column(
+              children: AppColorPalette.families.map((family) {
+                final bool isSelected = themeState.familyId == family.id;
+                final palette = family.getPalette(isDark: activePalette.isDark);
+
+                return GestureDetector(
+                  onTap: () {
+                    context.read<ThemeCubit>().setFamily(family.id);
+                  },
+                  child: Container(
+                    margin: const EdgeInsets.only(bottom: 12),
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: palette.cardBackground,
+                      borderRadius: AppTheme.asymmetricCardRadius,
+                      border: Border.all(
+                        color: isSelected
+                            ? activePalette.primaryAccent
+                            : palette.cardBorder,
+                        width: isSelected ? 2.0 : 1.0,
                       ),
                     ),
-                    const SizedBox(width: 14),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Instant Auto-Filing',
-                            style: TextStyle(
-                              fontFamily: AppTheme.serifFontFamily,
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                              color: activePalette.primaryText,
+                    child: Row(
+                      children: [
+                        // Color Swatches Preview
+                        Container(
+                          width: 48,
+                          height: 48,
+                          decoration: BoxDecoration(
+                            gradient: palette.badgeGradient,
+                            borderRadius: AppTheme.asymmetricBadgeRadius,
+                          ),
+                          child: Center(
+                            child: Icon(
+                              PhosphorIcons.palette,
+                              color: palette.isDark
+                                  ? palette.primaryText
+                                  : Colors.white,
+                              size: 24,
                             ),
                           ),
-                          const SizedBox(height: 3),
-                          Text(
-                            'Automatically file imports without asking for confirmation',
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: activePalette.secondaryText,
+                        ),
+                        const SizedBox(width: 14),
+
+                        // Palette Details
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                family.name,
+                                style: TextStyle(
+                                  fontFamily: AppTheme.serifFontFamily,
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                  color: palette.primaryText,
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Row(
+                                children: [
+                                  _buildColorDot(palette.primaryAccent),
+                                  const SizedBox(width: 6),
+                                  _buildColorDot(palette.background),
+                                  const SizedBox(width: 6),
+                                  _buildColorDot(palette.primaryText),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    isSelected ? 'Active' : 'Tap to apply',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: isSelected
+                                          ? activePalette.primaryAccent
+                                          : palette.secondaryText,
+                                      fontWeight: isSelected
+                                          ? FontWeight.bold
+                                          : FontWeight.normal,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+
+                        // Checkmark Status Badge
+                        if (isSelected)
+                          Container(
+                            padding: const EdgeInsets.all(6),
+                            decoration: BoxDecoration(
+                              color: activePalette.primaryAccent,
+                              shape: BoxShape.circle,
+                            ),
+                            child: Icon(
+                              PhosphorIcons.checkBold,
+                              color: activePalette.isDark
+                                  ? activePalette.primaryText
+                                  : Colors.white,
+                              size: 14,
                             ),
                           ),
-                        ],
+                      ],
+                    ),
+                  ),
+                );
+              }).toList(),
+            ),
+
+            const SizedBox(height: 24),
+
+            // --- Section 2: Library & Smart Import ---
+            Text(
+              'LIBRARY & SMART IMPORT',
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.bold,
+                letterSpacing: 1.2,
+                color: activePalette.secondaryText,
+              ),
+            ),
+            const SizedBox(height: 12),
+
+            // Item 1: Instant Auto-Filing Switch
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              decoration: BoxDecoration(
+                color: activePalette.cardBackground,
+                borderRadius: AppTheme.asymmetricCardRadius,
+                border: Border.all(color: activePalette.cardBorder, width: 1.0),
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    width: 44,
+                    height: 44,
+                    decoration: BoxDecoration(
+                      gradient: activePalette.badgeGradient,
+                      borderRadius: AppTheme.asymmetricBadgeRadius,
+                      border: Border.all(
+                        color: activePalette.cardBorder,
+                        width: 1.0,
                       ),
                     ),
-                    Switch.adaptive(
-                      value: _instantAutoFile,
-                      activeTrackColor: activePalette.primaryAccent,
-                      onChanged: (val) {
-                        setState(() => _instantAutoFile = val);
-                        AppSettingsService.instance.setInstantAutoFile(val);
-                      },
+                    child: Center(
+                      child: Icon(
+                        PhosphorIcons.lightningBold,
+                        color: activePalette.isDark
+                            ? activePalette.primaryText
+                            : Colors.white,
+                        size: 22,
+                      ),
                     ),
-                  ],
-                ),
+                  ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Instant Auto-Filing',
+                          style: TextStyle(
+                            fontFamily: AppTheme.serifFontFamily,
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: activePalette.primaryText,
+                          ),
+                        ),
+                        const SizedBox(height: 3),
+                        Text(
+                          'Automatically file imports without asking for confirmation',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: activePalette.secondaryText,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Switch.adaptive(
+                    value: _instantAutoFile,
+                    activeTrackColor: activePalette.primaryAccent,
+                    onChanged: (val) {
+                      setState(() => _instantAutoFile = val);
+                      AppSettingsService.instance.setInstantAutoFile(val);
+                    },
+                  ),
+                ],
               ),
+            ),
 
-              const SizedBox(height: 12),
+            const SizedBox(height: 12),
 
-              // Item 2: Storage & Local Cache Usage Card
-              Container(
+            // Item 2: Storage & Local Cache Usage Card
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: activePalette.cardBackground,
+                borderRadius: AppTheme.asymmetricCardRadius,
+                border: Border.all(color: activePalette.cardBorder, width: 1.0),
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    width: 44,
+                    height: 44,
+                    decoration: BoxDecoration(
+                      gradient: activePalette.badgeGradient,
+                      borderRadius: AppTheme.asymmetricBadgeRadius,
+                      border: Border.all(
+                        color: activePalette.cardBorder,
+                        width: 1.0,
+                      ),
+                    ),
+                    child: Center(
+                      child: Icon(
+                        PhosphorIcons.hardDrivesBold,
+                        color: activePalette.isDark
+                            ? activePalette.primaryText
+                            : Colors.white,
+                        size: 22,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Storage & Local Cache',
+                          style: TextStyle(
+                            fontFamily: AppTheme.serifFontFamily,
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: activePalette.primaryText,
+                          ),
+                        ),
+                        const SizedBox(height: 3),
+                        Text(
+                          _isLoadingSettings
+                              ? 'Calculating storage usage...'
+                              : '${AppSettingsService.formatBytes(_storageBytes)} used by imported documents & media',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: activePalette.secondaryText,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  TextButton(
+                    onPressed: _clearCache,
+                    child: Text(
+                      'Clear Cache',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.bold,
+                        color: activePalette.primaryAccent,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            const SizedBox(height: 12),
+
+            // Item 3: Hide / Unhide Shelves Selector
+            GestureDetector(
+              onTap: () => _showHideShelvesModal(context, activePalette),
+              child: Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
                   color: activePalette.cardBackground,
@@ -288,7 +527,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       ),
                       child: Center(
                         child: Icon(
-                          PhosphorIcons.hardDrivesBold,
+                          PhosphorIcons.stackBold,
                           color: activePalette.isDark
                               ? activePalette.primaryText
                               : Colors.white,
@@ -302,7 +541,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            'Storage & Local Cache',
+                            'Hide / Unhide Shelves',
                             style: TextStyle(
                               fontFamily: AppTheme.serifFontFamily,
                               fontSize: 16,
@@ -312,9 +551,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           ),
                           const SizedBox(height: 3),
                           Text(
-                            _isLoadingSettings
-                                ? 'Calculating storage usage...'
-                                : '${AppSettingsService.formatBytes(_storageBytes)} used by imported documents & media',
+                            _hiddenShelves.isEmpty
+                                ? 'All 21 categories visible on home screen'
+                                : '${_hiddenShelves.length} ${_hiddenShelves.length == 1 ? 'category' : 'categories'} hidden from home screen',
                             style: TextStyle(
                               fontSize: 12,
                               color: activePalette.secondaryText,
@@ -323,256 +562,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         ],
                       ),
                     ),
-                    TextButton(
-                      onPressed: _clearCache,
-                      child: Text(
-                        'Clear Cache',
-                        style: TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.bold,
-                          color: activePalette.primaryAccent,
-                        ),
-                      ),
+                    Icon(
+                      PhosphorIcons.caretRightBold,
+                      size: 16,
+                      color: activePalette.secondaryText,
                     ),
                   ],
                 ),
               ),
+            ),
 
-              const SizedBox(height: 12),
-
-              // Item 3: Hide / Unhide Shelves Selector
-              GestureDetector(
-                onTap: () => _showHideShelvesModal(context, activePalette),
-                child: Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: activePalette.cardBackground,
-                    borderRadius: AppTheme.asymmetricCardRadius,
-                    border: Border.all(color: activePalette.cardBorder, width: 1.0),
-                  ),
-                  child: Row(
-                    children: [
-                      Container(
-                        width: 44,
-                        height: 44,
-                        decoration: BoxDecoration(
-                          gradient: activePalette.badgeGradient,
-                          borderRadius: AppTheme.asymmetricBadgeRadius,
-                          border: Border.all(
-                            color: activePalette.cardBorder,
-                            width: 1.0,
-                          ),
-                        ),
-                        child: Center(
-                          child: Icon(
-                            PhosphorIcons.stackBold,
-                            color: activePalette.isDark
-                              ? activePalette.primaryText
-                              : Colors.white,
-                            size: 22,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 14),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Hide / Unhide Shelves',
-                              style: TextStyle(
-                                fontFamily: AppTheme.serifFontFamily,
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                                color: activePalette.primaryText,
-                              ),
-                            ),
-                            const SizedBox(height: 3),
-                            Text(
-                              _hiddenShelves.isEmpty
-                                  ? 'All 21 categories visible on home screen'
-                                  : '${_hiddenShelves.length} ${_hiddenShelves.length == 1 ? 'category' : 'categories'} hidden from home screen',
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: activePalette.secondaryText,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      Icon(
-                        PhosphorIcons.caretRightBold,
-                        size: 16,
-                        color: activePalette.secondaryText,
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-
-              const SizedBox(height: 24),
-
-              // --- Section 2: Appearance & Theme ---
-              Text(
-                'APPEARANCE & THEME',
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.bold,
-                  letterSpacing: 1.2,
-                  color: activePalette.secondaryText,
-                ),
-              ),
-              const SizedBox(height: 12),
-
-              // Theme Mode Selector (Light / Dark / System)
-              Container(
-                padding: const EdgeInsets.all(4),
-                decoration: BoxDecoration(
-                  color: activePalette.cardBackground,
-                  borderRadius: BorderRadius.circular(14),
-                  border: Border.all(color: activePalette.cardBorder),
-                ),
-                child: Row(
-                  children: [
-                    _buildThemeModeOption(
-                      context: context,
-                      activePalette: activePalette,
-                      currentBrightness: themeState.brightness,
-                      mode: ThemeBrightness.light,
-                      label: 'Light',
-                      icon: PhosphorIcons.sunBold,
-                    ),
-                    _buildThemeModeOption(
-                      context: context,
-                      activePalette: activePalette,
-                      currentBrightness: themeState.brightness,
-                      mode: ThemeBrightness.dark,
-                      label: 'Dark',
-                      icon: PhosphorIcons.moonBold,
-                    ),
-                    _buildThemeModeOption(
-                      context: context,
-                      activePalette: activePalette,
-                      currentBrightness: themeState.brightness,
-                      mode: ThemeBrightness.system,
-                      label: 'System',
-                      icon: PhosphorIcons.gearSixBold,
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 16),
-
-              // Theme Family Cards (Terracotta, Teal, Aurora)
-              Column(
-                children: AppColorPalette.families.map((family) {
-                  final bool isSelected = themeState.familyId == family.id;
-                  final palette = family.getPalette(isDark: activePalette.isDark);
-
-                  return GestureDetector(
-                    onTap: () {
-                      context.read<ThemeCubit>().setFamily(family.id);
-                    },
-                    child: Container(
-                      margin: const EdgeInsets.only(bottom: 12),
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: palette.cardBackground,
-                        borderRadius: AppTheme.asymmetricCardRadius,
-                        border: Border.all(
-                          color: isSelected
-                              ? activePalette.primaryAccent
-                              : palette.cardBorder,
-                          width: isSelected ? 2.0 : 1.0,
-                        ),
-                      ),
-                      child: Row(
-                        children: [
-                          // Color Swatches Preview
-                          Container(
-                            width: 48,
-                            height: 48,
-                            decoration: BoxDecoration(
-                              gradient: palette.badgeGradient,
-                              borderRadius: AppTheme.asymmetricBadgeRadius,
-                            ),
-                            child: Center(
-                                child: Icon(
-                                  PhosphorIcons.palette,
-                                  color: palette.isDark
-                                      ? palette.primaryText
-                                      : Colors.white,
-                                  size: 24,
-                                ),
-                            ),
-                          ),
-                          const SizedBox(width: 14),
-
-                          // Palette Details
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  family.name,
-                                  style: TextStyle(
-                                    fontFamily: AppTheme.serifFontFamily,
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.bold,
-                                    color: palette.primaryText,
-                                  ),
-                                ),
-                                const SizedBox(height: 4),
-                                Row(
-                                  children: [
-                                    _buildColorDot(palette.primaryAccent),
-                                    const SizedBox(width: 6),
-                                    _buildColorDot(palette.background),
-                                    const SizedBox(width: 6),
-                                    _buildColorDot(palette.primaryText),
-                                    const SizedBox(width: 8),
-                                    Text(
-                                      isSelected ? 'Active' : 'Tap to apply',
-                                      style: TextStyle(
-                                        fontSize: 12,
-                                        color: isSelected
-                                            ? activePalette.primaryAccent
-                                            : palette.secondaryText,
-                                        fontWeight: isSelected
-                                            ? FontWeight.bold
-                                            : FontWeight.normal,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ],
-                            ),
-                          ),
-
-                          // Checkmark Status Badge
-                          if (isSelected)
-                            Container(
-                              padding: const EdgeInsets.all(6),
-                              decoration: BoxDecoration(
-                                color: activePalette.primaryAccent,
-                                shape: BoxShape.circle,
-                              ),
-                              child: Icon(
-                                PhosphorIcons.checkBold,
-                                color: activePalette.isDark
-                                    ? activePalette.primaryText
-                                    : Colors.white,
-                                size: 14,
-                              ),
-                            ),
-                        ],
-                      ),
-                    ),
-                  );
-                }).toList(),
-              ),
-
-              const SizedBox(height: 24),
+            const SizedBox(height: 24),
 
               // --- Section 3: About ---
               Text(
