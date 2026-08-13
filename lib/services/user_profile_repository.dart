@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/foundation.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:the_shelf/models/user_profile.dart';
 
@@ -35,6 +36,26 @@ class UserProfileRepository {
       return FirebaseStorage.instance;
     } catch (_) {
       return null;
+    }
+  }
+
+  /// Copies a temporary picked media file to permanent application documents directory.
+  Future<File> savePermanentLocalMedia({
+    required File tempFile,
+    required String mediaType, // 'avatar' or 'banner'
+  }) async {
+    try {
+      final docsDir = await getApplicationDocumentsDirectory();
+      final profileDir = Directory('${docsDir.path}/profile');
+      if (!await profileDir.exists()) {
+        await profileDir.create(recursive: true);
+      }
+      final String filename = '${mediaType}_${DateTime.now().millisecondsSinceEpoch}.jpg';
+      final String permanentPath = '${profileDir.path}/$filename';
+      return await tempFile.copy(permanentPath);
+    } catch (e) {
+      debugPrint('Error copying media to permanent storage: $e');
+      return tempFile;
     }
   }
 
@@ -109,20 +130,26 @@ class UserProfileRepository {
   }
 
   /// Uploads profile media (avatar or cover banner) to Firebase Storage.
-  /// Returns download URL if upload succeeds, or local file path if offline/unconfigured.
+  /// Returns download URL if upload succeeds, or permanent local file path if offline.
   Future<String> uploadProfileMedia({
     required String uid,
     required File imageFile,
     required String mediaType, // 'avatar' or 'banner'
   }) async {
-    if (uid.isEmpty) return imageFile.path;
+    // Save to permanent local application directory first
+    final permanentLocalFile = await savePermanentLocalMedia(
+      tempFile: imageFile,
+      mediaType: mediaType,
+    );
+
+    if (uid.isEmpty) return permanentLocalFile.path;
 
     try {
       final st = _storage;
       if (st != null) {
         final ref = st.ref().child('users').child(uid).child('$mediaType.jpg');
         final uploadTask = await ref.putFile(
-          imageFile,
+          permanentLocalFile,
           SettableMetadata(contentType: 'image/jpeg'),
         );
         final downloadUrl = await uploadTask.ref.getDownloadURL();
@@ -130,8 +157,9 @@ class UserProfileRepository {
         return downloadUrl;
       }
     } catch (e) {
-      debugPrint('Firebase Storage upload error: $e. Returning local file path.');
+      debugPrint('Firebase Storage upload error: $e. Returning permanent local file path.');
     }
-    return imageFile.path;
+
+    return permanentLocalFile.path;
   }
 }

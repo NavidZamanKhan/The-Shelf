@@ -344,29 +344,24 @@ class _EditProfileModalState extends State<EditProfileModal> {
   }
 
   Widget _buildMediaPickerHeader(AppColorPalette activePalette) {
-    ImageProvider? bannerImage;
-    if (_selectedBannerPath != null) {
-      bannerImage = FileImage(File(_selectedBannerPath!));
-    } else if (widget.profile.bannerUrl != null &&
-        widget.profile.bannerUrl!.isNotEmpty) {
-      if (widget.profile.bannerUrl!.startsWith('http')) {
-        bannerImage = NetworkImage(widget.profile.bannerUrl!);
-      } else {
-        bannerImage = FileImage(File(widget.profile.bannerUrl!));
+    ImageProvider? resolveSafeImageProvider(String? urlStr) {
+      if (urlStr == null || urlStr.trim().isEmpty) return null;
+      if (urlStr.startsWith('http://') || urlStr.startsWith('https://')) {
+        return NetworkImage(urlStr);
       }
+      try {
+        final file = File(urlStr);
+        if (file.existsSync()) {
+          return FileImage(file);
+        }
+      } catch (_) {}
+      return null;
     }
 
-    ImageProvider? avatarImage;
-    if (_selectedPhotoPath != null) {
-      avatarImage = FileImage(File(_selectedPhotoPath!));
-    } else if (widget.profile.photoUrl != null &&
-        widget.profile.photoUrl!.isNotEmpty) {
-      if (widget.profile.photoUrl!.startsWith('http')) {
-        avatarImage = NetworkImage(widget.profile.photoUrl!);
-      } else {
-        avatarImage = FileImage(File(widget.profile.photoUrl!));
-      }
-    }
+    final ImageProvider? bannerImage =
+        resolveSafeImageProvider(_selectedBannerPath ?? widget.profile.bannerUrl);
+    final ImageProvider? avatarImage =
+        resolveSafeImageProvider(_selectedPhotoPath ?? widget.profile.photoUrl);
 
     return SizedBox(
       height: 145,

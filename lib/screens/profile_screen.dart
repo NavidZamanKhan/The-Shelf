@@ -142,23 +142,22 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final UserProfile? profile =
         authState is Authenticated ? authState.profile : null;
 
-    ImageProvider? bannerImage;
-    if (profile?.bannerUrl != null && profile!.bannerUrl!.isNotEmpty) {
-      if (profile.bannerUrl!.startsWith('http')) {
-        bannerImage = NetworkImage(profile.bannerUrl!);
-      } else {
-        bannerImage = FileImage(File(profile.bannerUrl!));
+    ImageProvider? resolveSafeImageProvider(String? urlStr) {
+      if (urlStr == null || urlStr.trim().isEmpty) return null;
+      if (urlStr.startsWith('http://') || urlStr.startsWith('https://')) {
+        return NetworkImage(urlStr);
       }
+      try {
+        final file = File(urlStr);
+        if (file.existsSync()) {
+          return FileImage(file);
+        }
+      } catch (_) {}
+      return null;
     }
 
-    ImageProvider? avatarImage;
-    if (profile?.photoUrl != null && profile!.photoUrl!.isNotEmpty) {
-      if (profile.photoUrl!.startsWith('http')) {
-        avatarImage = NetworkImage(profile.photoUrl!);
-      } else {
-        avatarImage = FileImage(File(profile.photoUrl!));
-      }
-    }
+    final ImageProvider? bannerImage = resolveSafeImageProvider(profile?.bannerUrl);
+    final ImageProvider? avatarImage = resolveSafeImageProvider(profile?.photoUrl);
 
     final initial = profile?.initials ?? 'U';
 
