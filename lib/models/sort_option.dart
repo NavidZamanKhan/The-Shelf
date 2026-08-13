@@ -1,5 +1,6 @@
 /// Sorting options available for library shelves and document lists.
 enum SortOption {
+  recentlyAdded('Recently Modified', 'Shelves that received items most recently first'),
   populatedFirst('Populated First', 'Shelves with items first (Default)'),
   alphabeticalAsc('Alphabetical (A to Z)', 'Sort shelves alphabetically from A to Z'),
   alphabeticalDesc('Alphabetical (Z to A)', 'Sort shelves alphabetically from Z to A'),

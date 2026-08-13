@@ -41,6 +41,8 @@ class SortOptionsModal extends StatelessWidget {
 
   IconData _getIconForOption(SortOption option) {
     switch (option) {
+      case SortOption.recentlyAdded:
+        return PhosphorIcons.clockCounterClockwise;
       case SortOption.populatedFirst:
         return PhosphorIcons.sparkle;
       case SortOption.alphabeticalAsc:

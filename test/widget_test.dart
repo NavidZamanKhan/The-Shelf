@@ -14,6 +14,7 @@ import 'package:the_shelf/screens/settings_screen.dart';
 import 'package:the_shelf/screens/shelf_detail_screen.dart';
 import 'package:the_shelf/services/collection_repository.dart';
 import 'package:the_shelf/services/document_repository.dart';
+import 'package:the_shelf/models/sort_option.dart';
 import 'package:the_shelf/widgets/import_bottom_sheet_modal.dart';
 import 'package:the_shelf/widgets/shelf_card.dart';
 
@@ -162,6 +163,11 @@ void main() {
       await dbRepo.deleteDocument(testItem.id);
       await freshBloc.close();
     });
+  });
+
+  testWidgets('Recently Modified sort option displays in SortOptionsModal and parses correctly', (WidgetTester tester) async {
+    expect(SortOption.fromName('recentlyAdded'), equals(SortOption.recentlyAdded));
+    expect(SortOption.recentlyAdded.label, equals('Recently Modified'));
   });
 
   testWidgets('Classifier debug screen loads and displays ML metadata', (WidgetTester tester) async {

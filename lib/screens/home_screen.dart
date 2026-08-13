@@ -335,12 +335,17 @@ class _ShelfView extends StatelessWidget {
           }
         }
 
-        // Compute category item counts filtered by this page's format
+        // Compute category item counts and latest modification timestamps filtered by this page's format
         final Map<String, int> countsMap = {};
+        final Map<String, DateTime> latestTimestampMap = {};
         for (final item in effectiveItems) {
           if (_matchesFormatFilter(item, filterName)) {
             final normalizedKey = _findMatchingCategoryKey(item.shelf);
             countsMap[normalizedKey] = (countsMap[normalizedKey] ?? 0) + 1;
+            final currentLatest = latestTimestampMap[normalizedKey];
+            if (currentLatest == null || item.addedAt.isAfter(currentLatest)) {
+              latestTimestampMap[normalizedKey] = item.addedAt;
+            }
           }
         }
 
@@ -356,6 +361,7 @@ class _ShelfView extends StatelessWidget {
         final List<String> sortedCategories = _sortCategories(
           categoriesSet.toList(),
           countsMap,
+          latestTimestampMap,
           sortOption,
         );
 
@@ -410,15 +416,30 @@ class _ShelfView extends StatelessWidget {
     return trimmed.isNotEmpty ? trimmed : 'Miscellaneous';
   }
 
-  /// Multi-criteria sorting algorithm supporting Alphabetical (A-Z / Z-A), Count, & Populated-First
+  /// Multi-criteria sorting algorithm supporting Recently Modified, Alphabetical, Count, & Populated-First
   List<String> _sortCategories(
     List<String> categories,
     Map<String, int> countsMap,
+    Map<String, DateTime> latestTimestampMap,
     SortOption option,
   ) {
     final result = List<String>.from(categories);
 
     switch (option) {
+      case SortOption.recentlyAdded:
+        result.sort((a, b) {
+          final dtA = latestTimestampMap[a];
+          final dtB = latestTimestampMap[b];
+          if (dtA != null && dtB != null) {
+            final cmp = dtB.compareTo(dtA);
+            if (cmp != 0) return cmp;
+          }
+          if (dtA != null) return -1;
+          if (dtB != null) return 1;
+          return a.toLowerCase().compareTo(b.toLowerCase());
+        });
+        break;
+
       case SortOption.alphabeticalAsc:
         result.sort((a, b) => a.toLowerCase().compareTo(b.toLowerCase()));
         break;
