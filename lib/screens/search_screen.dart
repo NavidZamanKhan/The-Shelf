@@ -227,7 +227,11 @@ class _SearchScreenState extends State<SearchScreen> {
           query: query,
           activePalette: activePalette,
           onTap: () {
-            FileLauncherService.instance.openFile(context, item.filePath);
+            FileLauncherService.instance.openFile(
+              context,
+              item.filePath,
+              documentId: item.id,
+            );
           },
         );
       },

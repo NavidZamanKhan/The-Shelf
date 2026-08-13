@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:open_filex/open_filex.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
+import 'package:the_shelf/services/cloud_library_service.dart';
 import 'package:the_shelf/services/document_repository.dart';
 
 /// Service for opening documents/PDFs using the OS's native viewer.
@@ -48,7 +49,7 @@ class FileLauncherService {
 
     File targetFile = File(trimmedPath);
     if (!await targetFile.exists()) {
-      // Attempt path healing from permanent application storage
+      // 1. Attempt path healing from permanent application storage
       final File? healedFile = await _resolveHealedFile(trimmedPath);
       if (healedFile != null) {
         targetFile = healedFile;
@@ -58,14 +59,32 @@ class FileLauncherService {
           } catch (_) {}
         }
       } else {
+        // 2. Attempt on-demand cloud download if synced
         if (context.mounted) {
-          _showSnackBar(
-            context,
-            'File not found on device (cleared by OS temp cleanup). Tap + to re-import!',
-            isError: true,
-          );
+          _showSnackBar(context, 'Downloading document from cloud...', isError: false);
         }
-        return;
+        final downloadedFile = await CloudLibraryService.instance.downloadDocumentFile(
+          docId: documentId ?? p.basenameWithoutExtension(trimmedPath),
+          originalFileName: p.basename(trimmedPath),
+        );
+
+        if (downloadedFile != null && await downloadedFile.exists()) {
+          targetFile = downloadedFile;
+          if (documentId != null) {
+            try {
+              await DocumentRepository.instance.updateDocumentFilePath(documentId, targetFile.path);
+            } catch (_) {}
+          }
+        } else {
+          if (context.mounted) {
+            _showSnackBar(
+              context,
+              'File not found locally or in cloud. Tap + to re-import!',
+              isError: true,
+            );
+          }
+          return;
+        }
       }
     }
 

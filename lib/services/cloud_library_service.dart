@@ -4,6 +4,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/foundation.dart';
 import 'package:path/path.dart' as p;
+import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:the_shelf/blocs/shelf/shelf_state.dart';
 import 'package:the_shelf/services/document_repository.dart';
@@ -62,12 +63,14 @@ class CloudLibraryService {
     final safeDocId = item.id.replaceAll('/', '_').replaceAll('\\', '_');
 
     // 1. Try uploading the physical file to Firebase Storage if exists
+    String? storagePath;
     try {
       final file = File(item.filePath);
       final storage = _storage;
       if (storage != null && await file.exists()) {
         final filename = p.basename(item.filePath);
-        final ref = storage.ref().child('users/$effectiveUid/documents/$safeDocId/$filename');
+        storagePath = 'users/$effectiveUid/documents/$safeDocId/$filename';
+        final ref = storage.ref().child(storagePath);
         final uploadTask = await ref.putFile(file);
         cloudFileUrl = await uploadTask.ref.getDownloadURL();
       }
@@ -90,6 +93,7 @@ class CloudLibraryService {
           'shelf': item.shelf,
           'file_path': item.filePath,
           'file_url': cloudFileUrl,
+          'storage_path': storagePath,
           'added_at': item.addedAt.toIso8601String(),
           'synced_at': DateTime.now().toIso8601String(),
           'user_id': effectiveUid,
@@ -104,6 +108,74 @@ class CloudLibraryService {
     // 3. Mark document as synced locally
     await _markDocumentSynced(item.id);
     return true;
+  }
+
+  /// Downloads a cloud document file (from Firebase Storage or HTTP URL) to local app storage.
+  /// Returns the local File if successful, or null.
+  Future<File?> downloadDocumentFile({
+    required String docId,
+    String? cloudFileUrl,
+    String? storagePath,
+    String? originalFileName,
+    String? uid,
+  }) async {
+    try {
+      final effectiveUid = await resolveUid(uid: uid);
+      final docsDir = await getApplicationDocumentsDirectory();
+      final importsDir = Directory('${docsDir.path}/imports');
+      if (!await importsDir.exists()) {
+        await importsDir.create(recursive: true);
+      }
+
+      final safeDocId = docId.replaceAll('/', '_').replaceAll('\\', '_');
+      final fileName = (originalFileName != null && originalFileName.isNotEmpty)
+          ? p.basename(originalFileName)
+          : '$safeDocId.pdf';
+      final localFile = File('${importsDir.path}/$fileName');
+
+      // 1. If storage path is provided or derivable, download via Firebase Storage SDK
+      final storage = _storage;
+      if (storage != null) {
+        final path = (storagePath != null && storagePath.isNotEmpty)
+            ? storagePath
+            : 'users/$effectiveUid/documents/$safeDocId/$fileName';
+        try {
+          final ref = storage.ref().child(path);
+          await ref.writeToFile(localFile);
+          if (await localFile.exists() && await localFile.length() > 0) {
+            debugPrint('Downloaded document file from Firebase Storage to: ${localFile.path}');
+            return localFile;
+          }
+        } catch (e) {
+          debugPrint('Firebase Storage writeToFile skipped: $e');
+        }
+      }
+
+      // 2. If HTTP download URL is available, download via HttpClient
+      if (cloudFileUrl != null && cloudFileUrl.startsWith('http')) {
+        try {
+          final client = HttpClient();
+          final request = await client.getUrl(Uri.parse(cloudFileUrl));
+          final response = await request.close();
+          if (response.statusCode == 200) {
+            final sink = localFile.openWrite();
+            await response.pipe(sink);
+            await sink.close();
+            client.close();
+            if (await localFile.exists() && await localFile.length() > 0) {
+              debugPrint('Downloaded document file from HTTP URL to: ${localFile.path}');
+              return localFile;
+            }
+          }
+          client.close();
+        } catch (e) {
+          debugPrint('HTTP download error: $e');
+        }
+      }
+    } catch (e) {
+      debugPrint('Error downloading cloud document file: $e');
+    }
+    return null;
   }
 
   /// Checks if a document has been synced to cloud.
@@ -175,23 +247,44 @@ class CloudLibraryService {
           final id = data['id'] as String? ?? doc.id;
           final title = data['title'] as String? ?? 'Untitled';
           final shelf = data['shelf'] as String? ?? 'Miscellaneous';
-          final filePath = data['file_path'] as String? ?? '';
+          final remoteFilePath = data['file_path'] as String? ?? '';
+          final cloudFileUrl = data['file_url'] as String?;
+          final storagePath = data['storage_path'] as String?;
           final addedAtStr = data['added_at'] as String?;
           final addedAt = addedAtStr != null
               ? DateTime.tryParse(addedAtStr) ?? DateTime.now()
               : DateTime.now();
+
+          // Check if file exists locally, otherwise download immediately!
+          String effectiveFilePath = remoteFilePath;
+          File localCheck = File(remoteFilePath);
+          if (!localCheck.existsSync()) {
+            final downloadedFile = await downloadDocumentFile(
+              docId: id,
+              cloudFileUrl: cloudFileUrl,
+              storagePath: storagePath,
+              originalFileName: p.basename(remoteFilePath),
+              uid: effectiveUid,
+            );
+            if (downloadedFile != null) {
+              effectiveFilePath = downloadedFile.path;
+            }
+          }
 
           if (!localDocIds.contains(id)) {
             final item = ShelfItem(
               id: id,
               title: title,
               shelf: shelf,
-              filePath: filePath,
+              filePath: effectiveFilePath,
               addedAt: addedAt,
             );
             await DocumentRepository.instance.insertDocument(item);
             await _markDocumentSynced(id);
             restoredCount++;
+          } else if (effectiveFilePath != remoteFilePath) {
+            // Update existing SQLite record with downloaded local path
+            await DocumentRepository.instance.updateDocumentFilePath(id, effectiveFilePath);
           }
         }
         debugPrint('Restored $restoredCount cloud documents for user $effectiveUid (found ${snapshot.docs.length} total in cloud)');
