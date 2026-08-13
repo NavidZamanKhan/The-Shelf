@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -60,14 +61,30 @@ class CloudLibraryService {
   Future<bool> uploadDocument(ShelfItem item, {String? uid}) async {
     final effectiveUid = await resolveUid(uid: uid);
     String? cloudFileUrl;
+    String? storagePath;
+    String? embeddedFileData;
     final safeDocId = item.id.replaceAll('/', '_').replaceAll('\\', '_');
 
-    // 1. Try uploading the physical file to Firebase Storage if exists
-    String? storagePath;
+    final file = File(item.filePath);
+    final bool fileExists = await file.exists();
+
+    // 1. If file is small (< 700KB), embed Base64 in Firestore document for instant sync
+    if (fileExists) {
+      try {
+        final length = await file.length();
+        if (length > 0 && length <= 700 * 1024) {
+          final bytes = await file.readAsBytes();
+          embeddedFileData = base64Encode(bytes);
+        }
+      } catch (e) {
+        debugPrint('Error embedding base64 file data: $e');
+      }
+    }
+
+    // 2. Try uploading the physical file to Firebase Storage
     try {
-      final file = File(item.filePath);
       final storage = _storage;
-      if (storage != null && await file.exists()) {
+      if (storage != null && fileExists) {
         final filename = p.basename(item.filePath);
         storagePath = 'users/$effectiveUid/documents/$safeDocId/$filename';
         final ref = storage.ref().child(storagePath);
@@ -78,16 +95,11 @@ class CloudLibraryService {
       debugPrint('Firebase Storage upload skipped/fallback: $e');
     }
 
-    // 2. Write metadata record to Cloud Firestore `users/{uid}/documents/{docId}`
+    // 3. Write metadata record to Cloud Firestore `users/{uid}/documents/{docId}`
     try {
       final db = _firestore;
       if (db != null) {
-        await db
-            .collection('users')
-            .doc(effectiveUid)
-            .collection('documents')
-            .doc(safeDocId)
-            .set({
+        final Map<String, dynamic> docMap = {
           'id': item.id,
           'title': item.title,
           'shelf': item.shelf,
@@ -97,7 +109,17 @@ class CloudLibraryService {
           'added_at': item.addedAt.toIso8601String(),
           'synced_at': DateTime.now().toIso8601String(),
           'user_id': effectiveUid,
-        }, SetOptions(merge: true));
+        };
+        if (embeddedFileData != null) {
+          docMap['file_data'] = embeddedFileData;
+        }
+
+        await db
+            .collection('users')
+            .doc(effectiveUid)
+            .collection('documents')
+            .doc(safeDocId)
+            .set(docMap, SetOptions(merge: true));
         debugPrint('Synced document "${item.title}" ($safeDocId) to Cloud Firestore for user $effectiveUid');
       }
     } catch (e) {
@@ -105,12 +127,12 @@ class CloudLibraryService {
       return false;
     }
 
-    // 3. Mark document as synced locally
+    // 4. Mark document as synced locally
     await _markDocumentSynced(item.id);
     return true;
   }
 
-  /// Downloads a cloud document file (from Firebase Storage or HTTP URL) to local app storage.
+  /// Downloads a cloud document file (from Firestore embedded base64, Firebase Storage, or HTTP URL).
   /// Returns the local File if successful, or null.
   Future<File?> downloadDocumentFile({
     required String docId,
@@ -133,29 +155,79 @@ class CloudLibraryService {
           : '$safeDocId.pdf';
       final localFile = File('${importsDir.path}/$fileName');
 
-      // 1. If storage path is provided or derivable, download via Firebase Storage SDK
-      final storage = _storage;
-      if (storage != null) {
-        final path = (storagePath != null && storagePath.isNotEmpty)
-            ? storagePath
-            : 'users/$effectiveUid/documents/$safeDocId/$fileName';
+      // 1. Fetch latest metadata from Cloud Firestore if URL or storage path is missing
+      String? resolvedUrl = cloudFileUrl;
+      String? resolvedStoragePath = storagePath;
+      String? embeddedData;
+
+      try {
+        final db = _firestore;
+        if (db != null) {
+          final docSnap = await db
+              .collection('users')
+              .doc(effectiveUid)
+              .collection('documents')
+              .doc(safeDocId)
+              .get();
+          if (docSnap.exists && docSnap.data() != null) {
+            final data = docSnap.data()!;
+            resolvedUrl ??= data['file_url'] as String?;
+            resolvedStoragePath ??= data['storage_path'] as String?;
+            embeddedData ??= data['file_data'] as String?;
+          }
+        }
+      } catch (e) {
+        debugPrint('Error querying Firestore for document metadata: $e');
+      }
+
+      // 2. If Base64 embedded data is in Firestore, write bytes directly!
+      if (embeddedData != null && embeddedData.isNotEmpty) {
         try {
-          final ref = storage.ref().child(path);
-          await ref.writeToFile(localFile);
-          if (await localFile.exists() && await localFile.length() > 0) {
-            debugPrint('Downloaded document file from Firebase Storage to: ${localFile.path}');
+          final bytes = base64Decode(embeddedData);
+          if (bytes.isNotEmpty) {
+            await localFile.writeAsBytes(bytes, flush: true);
+            debugPrint('Restored document file from embedded Firestore Data URL: ${localFile.path}');
             return localFile;
           }
         } catch (e) {
-          debugPrint('Firebase Storage writeToFile skipped: $e');
+          debugPrint('Error decoding embedded base64 file data: $e');
         }
       }
 
-      // 2. If HTTP download URL is available, download via HttpClient
-      if (cloudFileUrl != null && cloudFileUrl.startsWith('http')) {
+      // 3. If storage path is available, download via Firebase Storage SDK
+      final storage = _storage;
+      if (storage != null) {
+        final path = (resolvedStoragePath != null && resolvedStoragePath.isNotEmpty)
+            ? resolvedStoragePath
+            : 'users/$effectiveUid/documents/$safeDocId/$fileName';
+        try {
+          final ref = storage.ref().child(path);
+          // Try writeToFile first
+          try {
+            await ref.writeToFile(localFile);
+            if (await localFile.exists() && await localFile.length() > 0) {
+              debugPrint('Downloaded document file from Firebase Storage writeToFile: ${localFile.path}');
+              return localFile;
+            }
+          } catch (_) {}
+
+          // Fallback to getData
+          final data = await ref.getData(50 * 1024 * 1024); // up to 50MB
+          if (data != null && data.isNotEmpty) {
+            await localFile.writeAsBytes(data, flush: true);
+            debugPrint('Downloaded document file from Firebase Storage getData: ${localFile.path}');
+            return localFile;
+          }
+        } catch (e) {
+          debugPrint('Firebase Storage download error: $e');
+        }
+      }
+
+      // 4. If HTTP download URL is available, download via HttpClient
+      if (resolvedUrl != null && resolvedUrl.startsWith('http')) {
         try {
           final client = HttpClient();
-          final request = await client.getUrl(Uri.parse(cloudFileUrl));
+          final request = await client.getUrl(Uri.parse(resolvedUrl));
           final response = await request.close();
           if (response.statusCode == 200) {
             final sink = localFile.openWrite();
@@ -163,7 +235,7 @@ class CloudLibraryService {
             await sink.close();
             client.close();
             if (await localFile.exists() && await localFile.length() > 0) {
-              debugPrint('Downloaded document file from HTTP URL to: ${localFile.path}');
+              debugPrint('Downloaded document file from HTTP URL: ${localFile.path}');
               return localFile;
             }
           }
