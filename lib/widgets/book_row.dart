@@ -189,7 +189,7 @@ class _BookRowState extends State<BookRow> {
 
   @override
   Widget build(BuildContext context) {
-    final activePalette = context.watch<ThemeCubit>().state;
+    final activePalette = context.watch<ThemeCubit>().state.resolvedPalette;
     final ext = _getFileExtension(widget.item.filePath);
     final iconData = AppTheme.getCategoryIcon(widget.item.shelf);
 

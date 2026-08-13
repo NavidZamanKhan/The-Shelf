@@ -177,8 +177,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return BlocBuilder<ThemeCubit, AppColorPalette>(
-      builder: (context, activePalette) {
+    return BlocBuilder<ThemeCubit, ThemeState>(
+      builder: (context, themeState) {
+        final activePalette = themeState.resolvedPalette;
         return Scaffold(
           backgroundColor: activePalette.background,
           appBar: AppBar(
@@ -225,11 +226,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       decoration: BoxDecoration(
                         gradient: activePalette.badgeGradient,
                         borderRadius: AppTheme.asymmetricBadgeRadius,
+                        border: Border.all(
+                          color: activePalette.cardBorder,
+                          width: 1.0,
+                        ),
                       ),
                       child: Center(
                         child: Icon(
-                          PhosphorIcons.lightning,
-                          color: activePalette.primaryText,
+                          PhosphorIcons.lightningBold,
+                          color: activePalette.isDark
+                              ? activePalette.primaryText
+                              : Colors.white,
                           size: 22,
                         ),
                       ),
@@ -289,11 +296,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       decoration: BoxDecoration(
                         gradient: activePalette.badgeGradient,
                         borderRadius: AppTheme.asymmetricBadgeRadius,
+                        border: Border.all(
+                          color: activePalette.cardBorder,
+                          width: 1.0,
+                        ),
                       ),
                       child: Center(
                         child: Icon(
-                          PhosphorIcons.hardDrive,
-                          color: activePalette.primaryText,
+                          PhosphorIcons.hardDrivesBold,
+                          color: activePalette.isDark
+                              ? activePalette.primaryText
+                              : Colors.white,
                           size: 22,
                         ),
                       ),
@@ -360,11 +373,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         decoration: BoxDecoration(
                           gradient: activePalette.badgeGradient,
                           borderRadius: AppTheme.asymmetricBadgeRadius,
+                          border: Border.all(
+                            color: activePalette.cardBorder,
+                            width: 1.0,
+                          ),
                         ),
                         child: Center(
                           child: Icon(
-                            PhosphorIcons.eyeClosed,
-                            color: activePalette.primaryText,
+                            PhosphorIcons.stackBold,
+                            color: activePalette.isDark
+                              ? activePalette.primaryText
+                              : Colors.white,
                             size: 22,
                           ),
                         ),
@@ -420,14 +439,54 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ),
               const SizedBox(height: 12),
 
-              // Theme Swatch Selector Cards
+              // Theme Mode Selector (Light / Dark / System)
+              Container(
+                padding: const EdgeInsets.all(4),
+                decoration: BoxDecoration(
+                  color: activePalette.cardBackground,
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: activePalette.cardBorder),
+                ),
+                child: Row(
+                  children: [
+                    _buildThemeModeOption(
+                      context: context,
+                      activePalette: activePalette,
+                      currentBrightness: themeState.brightness,
+                      mode: ThemeBrightness.light,
+                      label: 'Light',
+                      icon: PhosphorIcons.sunBold,
+                    ),
+                    _buildThemeModeOption(
+                      context: context,
+                      activePalette: activePalette,
+                      currentBrightness: themeState.brightness,
+                      mode: ThemeBrightness.dark,
+                      label: 'Dark',
+                      icon: PhosphorIcons.moonBold,
+                    ),
+                    _buildThemeModeOption(
+                      context: context,
+                      activePalette: activePalette,
+                      currentBrightness: themeState.brightness,
+                      mode: ThemeBrightness.system,
+                      label: 'System',
+                      icon: PhosphorIcons.gearSixBold,
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+
+              // Theme Family Cards (Terracotta, Teal, Aurora)
               Column(
-                children: AppColorPalette.allPalettes.map((palette) {
-                  final bool isSelected = activePalette.id == palette.id;
+                children: AppColorPalette.families.map((family) {
+                  final bool isSelected = themeState.familyId == family.id;
+                  final palette = family.getPalette(isDark: activePalette.isDark);
 
                   return GestureDetector(
                     onTap: () {
-                      context.read<ThemeCubit>().setPalette(palette.id);
+                      context.read<ThemeCubit>().setFamily(family.id);
                     },
                     child: Container(
                       margin: const EdgeInsets.only(bottom: 12),
@@ -437,7 +496,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         borderRadius: AppTheme.asymmetricCardRadius,
                         border: Border.all(
                           color: isSelected
-                              ? palette.primaryAccent
+                              ? activePalette.primaryAccent
                               : palette.cardBorder,
                           width: isSelected ? 2.0 : 1.0,
                         ),
@@ -453,11 +512,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               borderRadius: AppTheme.asymmetricBadgeRadius,
                             ),
                             child: Center(
-                              child: Icon(
-                                PhosphorIcons.palette,
-                                color: palette.primaryText,
-                                size: 24,
-                              ),
+                                child: Icon(
+                                  PhosphorIcons.palette,
+                                  color: palette.isDark
+                                      ? palette.primaryText
+                                      : Colors.white,
+                                  size: 24,
+                                ),
                             ),
                           ),
                           const SizedBox(width: 14),
@@ -468,7 +529,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                  palette.name,
+                                  family.name,
                                   style: TextStyle(
                                     fontFamily: AppTheme.serifFontFamily,
                                     fontSize: 16,
@@ -490,7 +551,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                       style: TextStyle(
                                         fontSize: 12,
                                         color: isSelected
-                                            ? palette.primaryAccent
+                                            ? activePalette.primaryAccent
                                             : palette.secondaryText,
                                         fontWeight: isSelected
                                             ? FontWeight.bold
@@ -508,12 +569,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             Container(
                               padding: const EdgeInsets.all(6),
                               decoration: BoxDecoration(
-                                color: palette.primaryAccent,
+                                color: activePalette.primaryAccent,
                                 shape: BoxShape.circle,
                               ),
-                              child: const Icon(
+                              child: Icon(
                                 PhosphorIcons.checkBold,
-                                color: Colors.white,
+                                color: activePalette.isDark
+                                    ? activePalette.primaryText
+                                    : Colors.white,
                                 size: 14,
                               ),
                             ),
@@ -663,6 +726,57 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
         );
       },
+    );
+  }
+
+  Widget _buildThemeModeOption({
+    required BuildContext context,
+    required AppColorPalette activePalette,
+    required ThemeBrightness currentBrightness,
+    required ThemeBrightness mode,
+    required String label,
+    required IconData icon,
+  }) {
+    final bool isSelected = currentBrightness == mode;
+    return Expanded(
+      child: GestureDetector(
+        onTap: () {
+          context.read<ThemeCubit>().setBrightness(mode);
+        },
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          padding: const EdgeInsets.symmetric(vertical: 10),
+          decoration: BoxDecoration(
+            color: isSelected
+                ? activePalette.primaryAccent
+                : Colors.transparent,
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                icon,
+                size: 16,
+                color: isSelected
+                    ? (activePalette.isDark ? activePalette.primaryText : Colors.white)
+                    : activePalette.secondaryText,
+              ),
+              const SizedBox(width: 6),
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                  color: isSelected
+                      ? (activePalette.isDark ? activePalette.primaryText : Colors.white)
+                      : activePalette.secondaryText,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 

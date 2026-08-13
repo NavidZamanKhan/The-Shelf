@@ -46,7 +46,7 @@ class _SearchScreenState extends State<SearchScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final activePalette = context.watch<ThemeCubit>().state;
+    final activePalette = context.watch<ThemeCubit>().state.resolvedPalette;
 
     return Scaffold(
       backgroundColor: activePalette.background,

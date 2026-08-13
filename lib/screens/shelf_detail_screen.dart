@@ -19,7 +19,7 @@ class ShelfDetailScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final activePalette = context.watch<ThemeCubit>().state;
+    final activePalette = context.watch<ThemeCubit>().state.resolvedPalette;
     final iconData = AppTheme.getCategoryIcon(category);
 
     return Scaffold(

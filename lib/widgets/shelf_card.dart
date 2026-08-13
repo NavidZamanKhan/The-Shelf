@@ -87,13 +87,19 @@ class _ShelfCardState extends State<ShelfCard> {
                             gradient: isEmpty ? null : activePalette.badgeGradient,
                             color: isEmpty ? activePalette.desaturatedEmptyBadge : null,
                             borderRadius: AppTheme.asymmetricBadgeRadius,
+                            border: Border.all(
+                              color: isEmpty
+                                  ? activePalette.dashedBorderColor
+                                  : activePalette.cardBorder,
+                              width: 1,
+                            ),
                           ),
                           child: Center(
                             child: Icon(
                               iconData,
                               color: isEmpty
                                   ? activePalette.desaturatedEmptyText
-                                  : activePalette.primaryText,
+                                  : (activePalette.isDark ? activePalette.primaryText : Colors.white),
                               size: 22,
                             ),
                           ),

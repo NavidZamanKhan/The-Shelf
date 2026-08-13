@@ -14,7 +14,6 @@ import 'package:the_shelf/screens/auth_screen.dart';
 import 'package:the_shelf/screens/home_screen.dart';
 import 'package:the_shelf/screens/splash_screen.dart';
 import 'package:the_shelf/services/shelf_classifier_service.dart';
-import 'package:the_shelf/theme/app_color_palette.dart';
 import 'package:the_shelf/theme/app_theme.dart';
 
 void main() async {
@@ -56,28 +55,72 @@ class TheShelfApp extends StatelessWidget {
           create: (context) => ThemeCubit()..loadTheme(),
         ),
       ],
-      child: BlocBuilder<ThemeCubit, AppColorPalette>(
-        builder: (context, activePalette) {
-          return MaterialApp(
-            title: 'The Shelf',
-            debugShowCheckedModeBanner: false,
-            theme: AppTheme.getThemeData(activePalette),
-            home: BlocBuilder<AuthBloc, AuthState>(
-              builder: (context, authState) {
-                // Polished startup navigation gate
-                if (authState is Authenticated) {
-                  return const HomeScreen();
-                }
-                if (authState is Unauthenticated) {
-                  return const AuthScreen();
-                }
-                // Show clean splash screen during session check (never flickers AuthScreen)
-                return const SplashScreen();
-              },
+      child: BlocBuilder<ThemeCubit, ThemeState>(
+        builder: (context, themeState) {
+          return _SystemBrightnessObserver(
+            child: MaterialApp(
+              title: 'The Shelf',
+              debugShowCheckedModeBanner: false,
+              theme: AppTheme.getThemeData(themeState.resolvedPalette),
+              home: BlocBuilder<AuthBloc, AuthState>(
+                builder: (context, authState) {
+                  // Polished startup navigation gate
+                  if (authState is Authenticated) {
+                    return const HomeScreen();
+                  }
+                  if (authState is Unauthenticated) {
+                    return const AuthScreen();
+                  }
+                  // Show clean splash screen during session check (never flickers AuthScreen)
+                  return const SplashScreen();
+                },
+              ),
             ),
           );
         },
       ),
     );
   }
+}
+
+/// Observes system brightness changes and feeds them into ThemeCubit
+/// for "System" mode auto-switching.
+class _SystemBrightnessObserver extends StatefulWidget {
+  final Widget child;
+  const _SystemBrightnessObserver({required this.child});
+
+  @override
+  State<_SystemBrightnessObserver> createState() =>
+      _SystemBrightnessObserverState();
+}
+
+class _SystemBrightnessObserverState extends State<_SystemBrightnessObserver>
+    with WidgetsBindingObserver {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    // Feed initial platform brightness
+    _updateBrightness();
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangePlatformBrightness() {
+    _updateBrightness();
+  }
+
+  void _updateBrightness() {
+    final brightness =
+        WidgetsBinding.instance.platformDispatcher.platformBrightness;
+    context.read<ThemeCubit>().updatePlatformBrightness(brightness);
+  }
+
+  @override
+  Widget build(BuildContext context) => widget.child;
 }

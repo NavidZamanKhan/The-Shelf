@@ -167,7 +167,7 @@ class _CollectionDetailScreenState extends State<CollectionDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final activePalette = context.watch<ThemeCubit>().state;
+    final activePalette = context.watch<ThemeCubit>().state.resolvedPalette;
     final accentColor = CollectionCard.parseHexColor(_currentCollection.colorHex, activePalette.primaryAccent);
     final iconData = CollectionCard.getCollectionIcon(_currentCollection.iconName);
 

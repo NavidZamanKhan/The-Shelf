@@ -6,6 +6,7 @@ import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'package:the_shelf/blocs/shelf/shelf_bloc.dart';
 import 'package:the_shelf/blocs/shelf/shelf_event.dart';
 import 'package:the_shelf/blocs/shelf/shelf_state.dart';
+import 'package:the_shelf/blocs/theme/theme_cubit.dart';
 import 'package:the_shelf/main.dart';
 import 'package:the_shelf/screens/classifier_debug_screen.dart';
 import 'package:the_shelf/screens/home_screen.dart';
@@ -180,5 +181,65 @@ void main() {
     await tester.pump();
 
     expect(find.text('Classifier Debug & Verification'), findsOneWidget);
+  });
+
+  testWidgets('ThemeCubit switches families and brightness modes with persistence', (WidgetTester tester) async {
+    SharedPreferences.setMockInitialValues({});
+    final cubit = ThemeCubit();
+
+    // Default is Terracotta Light
+    expect(cubit.state.familyId, equals('terracotta'));
+    expect(cubit.state.brightness, equals(ThemeBrightness.light));
+    expect(cubit.state.resolvedPalette.isDark, isFalse);
+
+    // Switch to Moonbow
+    await cubit.setFamily('moonbow');
+    expect(cubit.state.familyId, equals('moonbow'));
+    expect(cubit.state.resolvedPalette.id, equals('moonbow_light'));
+    expect(cubit.state.primaryAccent, equals(const Color(0xFF1C1C1E)));
+
+    // Switch to Dark mode
+    await cubit.setBrightness(ThemeBrightness.dark);
+    expect(cubit.state.brightness, equals(ThemeBrightness.dark));
+    expect(cubit.state.resolvedPalette.isDark, isTrue);
+    expect(cubit.state.resolvedPalette.id, equals('moonbow_dark'));
+    expect(cubit.state.primaryAccent, equals(const Color(0xFFE5E5EA)));
+
+    // Switch to Teal in Dark mode
+    await cubit.setFamily('teal');
+    expect(cubit.state.familyId, equals('teal'));
+    expect(cubit.state.resolvedPalette.id, equals('teal_dark'));
+    expect(cubit.state.resolvedPalette.isDark, isTrue);
+
+    // Switch back to Light mode
+    await cubit.setBrightness(ThemeBrightness.light);
+    expect(cubit.state.resolvedPalette.id, equals('teal_light'));
+    expect(cubit.state.resolvedPalette.isDark, isFalse);
+
+    // Switch to Sakura Hanafubuki
+    await cubit.setFamily('sakura');
+    expect(cubit.state.familyId, equals('sakura'));
+    expect(cubit.state.resolvedPalette.id, equals('sakura_light'));
+    expect(cubit.state.primaryAccent, equals(const Color(0xFFE27396)));
+
+    // Verify Sakura Dark (flat color, no gradient)
+    await cubit.setBrightness(ThemeBrightness.dark);
+    expect(cubit.state.resolvedPalette.id, equals('sakura_dark'));
+    expect(cubit.state.primaryAccent, equals(const Color(0xFFF095B0)));
+
+    // Switch to Kyoto Moss
+    await cubit.setFamily('kyoto_moss');
+    expect(cubit.state.familyId, equals('kyoto_moss'));
+    expect(cubit.state.resolvedPalette.id, equals('kyoto_moss_dark'));
+    expect(cubit.state.primaryAccent, equals(const Color(0xFF5E9C72)));
+
+    // Switch to Wisteria Twilight in Light mode
+    await cubit.setBrightness(ThemeBrightness.light);
+    await cubit.setFamily('wisteria');
+    expect(cubit.state.familyId, equals('wisteria'));
+    expect(cubit.state.resolvedPalette.id, equals('wisteria_light'));
+    expect(cubit.state.primaryAccent, equals(const Color(0xFF6A4C9C)));
+
+    await cubit.close();
   });
 }

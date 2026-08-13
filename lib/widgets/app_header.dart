@@ -27,7 +27,7 @@ class AppHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final activePalette = context.watch<ThemeCubit>().state;
+    final activePalette = context.watch<ThemeCubit>().state.resolvedPalette;
 
     if (isSliver) {
       return SliverAppBar(

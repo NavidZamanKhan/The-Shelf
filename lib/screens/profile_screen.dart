@@ -117,7 +117,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final activePalette = context.watch<ThemeCubit>().state;
+    final activePalette = context.watch<ThemeCubit>().state.resolvedPalette;
 
     return SingleChildScrollView(
       padding: const EdgeInsets.only(bottom: 32),
@@ -178,16 +178,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 fit: BoxFit.cover,
               )
             : null,
-        gradient: bannerImage == null
-            ? LinearGradient(
-                colors: [
-                  activePalette.gradientStart,
-                  activePalette.primaryAccent.withValues(alpha: 0.7),
-                ],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              )
-            : null,
+        color: bannerImage == null ? activePalette.subtleBadgeBackground : null,
       ),
       child: Stack(
         clipBehavior: Clip.none,

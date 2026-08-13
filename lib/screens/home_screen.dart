@@ -143,7 +143,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final activePalette = context.watch<ThemeCubit>().state;
+    final activePalette = context.watch<ThemeCubit>().state.resolvedPalette;
 
     return Scaffold(
       backgroundColor: activePalette.background,
@@ -182,8 +182,8 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                   builder: (modalContext) => ImportConfirmationSheet(summary: summary),
                 );
-
-                if (result != null && result['confirmed'] == true && context.mounted) {
+                if (!context.mounted) return;
+                if (result != null && result['confirmed'] == true) {
                   final String title = result['title'] as String;
                   final String shelf = result['shelf'] as String;
 
@@ -540,7 +540,7 @@ class _CollectionsView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final activePalette = context.watch<ThemeCubit>().state;
+    final activePalette = context.watch<ThemeCubit>().state.resolvedPalette;
 
     return BlocBuilder<CollectionBloc, CollectionState>(
       builder: (context, state) {

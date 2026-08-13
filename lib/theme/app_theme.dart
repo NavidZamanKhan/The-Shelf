@@ -19,7 +19,7 @@ class AppTheme {
   static const Color navInactiveColor = Color(0xFFA08575);
 
   static const LinearGradient badgeGradient = LinearGradient(
-    colors: [gradientStartApricot, terracottaLightAccent],
+    colors: [terracottaPrimary, terracottaPrimary],
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
   );
@@ -42,16 +42,17 @@ class AppTheme {
 
   /// Dynamically builds ThemeData tailored to an active AppColorPalette
   static ThemeData getThemeData(AppColorPalette palette) {
+    final brightness = palette.isDark ? Brightness.dark : Brightness.light;
     return ThemeData(
       useMaterial3: true,
       scaffoldBackgroundColor: palette.background,
       fontFamily: null,
       colorScheme: ColorScheme(
-        brightness: Brightness.light,
+        brightness: brightness,
         primary: palette.primaryAccent,
-        onPrimary: Colors.white,
+        onPrimary: palette.isDark ? palette.primaryText : Colors.white,
         secondary: palette.secondaryText,
-        onSecondary: Colors.white,
+        onSecondary: palette.isDark ? palette.primaryText : Colors.white,
         error: const Color(0xFFB00020),
         onError: Colors.white,
         surface: palette.cardBackground,

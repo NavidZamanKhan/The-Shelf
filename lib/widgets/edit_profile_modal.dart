@@ -149,7 +149,7 @@ class _EditProfileModalState extends State<EditProfileModal> {
 
   @override
   Widget build(BuildContext context) {
-    final activePalette = context.watch<ThemeCubit>().state;
+    final activePalette = context.watch<ThemeCubit>().state.resolvedPalette;
 
     return Container(
       padding: EdgeInsets.only(
@@ -389,16 +389,7 @@ class _EditProfileModalState extends State<EditProfileModal> {
                       fit: BoxFit.cover,
                     )
                   : null,
-              gradient: bannerImage == null
-                  ? LinearGradient(
-                      colors: [
-                        activePalette.gradientStart,
-                        activePalette.primaryAccent.withValues(alpha: 0.7),
-                      ],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                    )
-                  : null,
+              color: bannerImage == null ? activePalette.subtleBadgeBackground : null,
             ),
           ),
 
