@@ -8,6 +8,7 @@ import 'package:the_shelf/models/local_user.dart';
 /// Authentication repository fully connected to Firebase Authentication,
 /// with SharedPreferences session caching for offline persistence.
 class AuthRepository {
+  static const _keyUid = 'auth_firebase_uid';
   static const _keyEmail = 'auth_email';
   static const _keyPassword = 'auth_password';
   static const _keyDisplayName = 'auth_display_name';
@@ -35,6 +36,7 @@ class AuthRepository {
 
         // Sync to local cache
         final prefs = await SharedPreferences.getInstance();
+        await prefs.setString(_keyUid, fbUser.uid);
         await prefs.setString(_keyEmail, email);
         await prefs.setString(_keyDisplayName, name);
         await prefs.setInt(_keyCreatedAt, creationTime.millisecondsSinceEpoch);
@@ -89,6 +91,9 @@ class AuthRepository {
       final now = fbUser?.metadata.creationTime ?? DateTime.now();
 
       final prefs = await SharedPreferences.getInstance();
+      if (fbUser != null) {
+        await prefs.setString(_keyUid, fbUser.uid);
+      }
       await prefs.setString(_keyEmail, userEmail);
       await prefs.setString(_keyPassword, password);
       await prefs.setString(_keyDisplayName, userName);
@@ -160,6 +165,9 @@ class AuthRepository {
       final now = fbUser?.metadata.creationTime ?? DateTime.now();
 
       final prefs = await SharedPreferences.getInstance();
+      if (fbUser != null) {
+        await prefs.setString(_keyUid, fbUser.uid);
+      }
       await prefs.setString(_keyEmail, trimmedEmail);
       await prefs.setString(_keyPassword, password);
       await prefs.setString(_keyDisplayName, trimmedName);
@@ -255,6 +263,10 @@ class AuthRepository {
 
       final now = DateTime.now();
       final prefs = await SharedPreferences.getInstance();
+      try {
+        final fbUid = FirebaseAuth.instance.currentUser?.uid;
+        if (fbUid != null) await prefs.setString(_keyUid, fbUid);
+      } catch (_) {}
       await prefs.setString(_keyEmail, email);
       await prefs.setString(_keyDisplayName, displayName);
       await prefs.setInt(_keyCreatedAt, now.millisecondsSinceEpoch);

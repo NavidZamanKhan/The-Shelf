@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:the_shelf/blocs/auth/auth_event.dart';
 import 'package:the_shelf/blocs/auth/auth_state.dart';
 import 'package:the_shelf/models/user_profile.dart';
@@ -28,11 +29,18 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     on<SignOutRequested>(_onSignOutRequested);
   }
 
-  String _resolveUid(String email) {
+  Future<String> _resolveUid(String email) async {
     try {
       final fbUid = FirebaseAuth.instance.currentUser?.uid;
       if (fbUid != null && fbUid.isNotEmpty) return fbUid;
     } catch (_) {}
+
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final cachedUid = prefs.getString('auth_firebase_uid');
+      if (cachedUid != null && cachedUid.isNotEmpty) return cachedUid;
+    } catch (_) {}
+
     return email.trim().replaceAll('.', '_').replaceAll('@', '_at_');
   }
 
@@ -42,7 +50,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
   ) async {
     final user = await _authRepository.getCurrentUser();
     if (user != null) {
-      final uid = _resolveUid(user.email);
+      final uid = await _resolveUid(user.email);
       final profile = await _userProfileRepository.getUserProfile(
         uid: uid,
         email: user.email,
@@ -71,7 +79,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         email: event.email,
         password: event.password,
       );
-      final uid = _resolveUid(user.email);
+      final uid = await _resolveUid(user.email);
       final profile = await _userProfileRepository.getUserProfile(
         uid: uid,
         email: user.email,
@@ -105,7 +113,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         displayName: event.displayName,
       );
 
-      final uid = _resolveUid(user.email);
+      final uid = await _resolveUid(user.email);
       final newProfile = UserProfile(
         uid: uid,
         email: user.email,
@@ -152,7 +160,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     emit(const AuthLoading());
     try {
       final user = await _authRepository.signInWithGoogle();
-      final uid = _resolveUid(user.email);
+      final uid = await _resolveUid(user.email);
       final profile = await _userProfileRepository.getUserProfile(
         uid: uid,
         email: user.email,
@@ -219,7 +227,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       // Save to Cloud Firestore & Firebase Auth
       await _userProfileRepository.saveUserProfile(updatedProfile);
       await _authRepository.updateDisplayName(updatedProfile.displayName);
-      if (newPhotoUrl != null && newPhotoUrl.isNotEmpty) {
+      if (newPhotoUrl != null && newPhotoUrl.isNotEmpty && newPhotoUrl.startsWith('http')) {
         try {
           await FirebaseAuth.instance.currentUser?.updatePhotoURL(newPhotoUrl);
         } catch (e) {
