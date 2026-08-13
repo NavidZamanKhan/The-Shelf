@@ -5,6 +5,7 @@ import 'package:the_shelf/blocs/collection/collection_bloc.dart';
 import 'package:the_shelf/blocs/collection/collection_state.dart';
 import 'package:the_shelf/blocs/shelf/shelf_state.dart';
 import 'package:the_shelf/blocs/theme/theme_cubit.dart';
+import 'package:the_shelf/services/file_launcher_service.dart';
 import 'package:the_shelf/theme/app_theme.dart';
 import 'package:the_shelf/widgets/add_to_collection_sheet.dart';
 
@@ -51,7 +52,8 @@ class _BookRowState extends State<BookRow> {
         onTapDown: (_) => setState(() => _isPressed = true),
         onTapUp: (_) => setState(() => _isPressed = false),
         onTapCancel: () => setState(() => _isPressed = false),
-        onTap: widget.onTap,
+        onTap: widget.onTap ??
+            () => FileLauncherService.instance.openFile(context, widget.item.filePath),
         onLongPress: () => AddToCollectionSheet.show(context, widget.item),
         behavior: HitTestBehavior.opaque,
         child: Padding(

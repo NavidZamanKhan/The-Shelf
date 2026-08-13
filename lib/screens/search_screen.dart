@@ -5,7 +5,7 @@ import 'package:the_shelf/blocs/shelf/shelf_bloc.dart';
 import 'package:the_shelf/blocs/shelf/shelf_state.dart';
 import 'package:the_shelf/blocs/theme/theme_cubit.dart';
 import 'package:the_shelf/models/mock_shelf_items.dart';
-import 'package:the_shelf/screens/shelf_detail_screen.dart';
+import 'package:the_shelf/services/file_launcher_service.dart';
 import 'package:the_shelf/theme/app_color_palette.dart';
 import 'package:the_shelf/theme/app_theme.dart';
 
@@ -227,11 +227,7 @@ class _SearchScreenState extends State<SearchScreen> {
           query: query,
           activePalette: activePalette,
           onTap: () {
-            Navigator.of(context).push(
-              MaterialPageRoute(
-                builder: (context) => ShelfDetailScreen(category: item.shelf),
-              ),
-            );
+            FileLauncherService.instance.openFile(context, item.filePath);
           },
         );
       },
