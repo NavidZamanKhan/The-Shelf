@@ -2,12 +2,16 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:phosphoricons_flutter/phosphoricons_flutter.dart';
+import 'package:the_shelf/blocs/auth/auth_bloc.dart';
+import 'package:the_shelf/blocs/auth/auth_state.dart';
 import 'package:the_shelf/blocs/theme/theme_cubit.dart';
 import 'package:the_shelf/screens/classifier_debug_screen.dart';
 import 'package:the_shelf/screens/home_screen.dart';
 import 'package:the_shelf/services/app_settings_service.dart';
+import 'package:the_shelf/services/auth_repository.dart';
 import 'package:the_shelf/theme/app_color_palette.dart';
 import 'package:the_shelf/theme/app_theme.dart';
+import 'package:the_shelf/widgets/account_security_modal.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -21,6 +25,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Set<String> _hiddenShelves = {};
   int _storageBytes = 0;
   bool _isLoadingSettings = true;
+  bool _isGoogleOnlyUser = false;
 
   @override
   void initState() {
@@ -33,12 +38,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
       final instant = await AppSettingsService.instance.getInstantAutoFile();
       final hidden = await AppSettingsService.instance.getHiddenShelves();
       final bytes = await AppSettingsService.instance.getStorageUsageBytes();
+      final isGoogleOnly = await AuthRepository().isGoogleOnlyUser();
 
       if (mounted) {
         setState(() {
           _instantAutoFile = instant;
           _hiddenShelves = hidden;
           _storageBytes = bytes;
+          _isGoogleOnlyUser = isGoogleOnly;
           _isLoadingSettings = false;
         });
       }
@@ -177,6 +184,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final authState = context.watch<AuthBloc>().state;
+    final String userEmail = authState is Authenticated ? authState.profile.email : '';
+
     return BlocBuilder<ThemeCubit, ThemeState>(
       builder: (context, themeState) {
         final activePalette = themeState.resolvedPalette;
@@ -345,7 +355,254 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
             const SizedBox(height: 24),
 
-            // --- Section 2: Library & Smart Import ---
+            // --- Section 2: Account & Security ---
+            Text(
+              'ACCOUNT & SECURITY',
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.bold,
+                letterSpacing: 1.2,
+                color: activePalette.secondaryText,
+              ),
+            ),
+            const SizedBox(height: 12),
+
+            // Item 1: Signed-in User Info & Auth Provider Card
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: activePalette.cardBackground,
+                borderRadius: AppTheme.asymmetricCardRadius,
+                border: Border.all(color: activePalette.cardBorder, width: 1.0),
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    width: 44,
+                    height: 44,
+                    decoration: BoxDecoration(
+                      color: activePalette.subtleBadgeBackground,
+                      borderRadius: AppTheme.asymmetricBadgeRadius,
+                      border: Border.all(color: activePalette.cardBorder, width: 1.0),
+                    ),
+                    child: Center(
+                      child: Icon(
+                        _isGoogleOnlyUser
+                            ? PhosphorIcons.googleLogoBold
+                            : PhosphorIcons.userBold,
+                        color: activePalette.primaryAccent,
+                        size: 22,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          userEmail.isNotEmpty ? userEmail : 'Account Security',
+                          style: TextStyle(
+                            fontFamily: AppTheme.serifFontFamily,
+                            fontSize: 15,
+                            fontWeight: FontWeight.bold,
+                            color: activePalette.primaryText,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        const SizedBox(height: 4),
+                        Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: activePalette.subtleBadgeBackground,
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                              child: Text(
+                                _isGoogleOnlyUser ? 'Google Account' : 'Email & Password',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w600,
+                                  color: activePalette.primaryAccent,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            const SizedBox(height: 12),
+
+            // Item 2: Password Security (Change or Set Password)
+            GestureDetector(
+              onTap: () async {
+                await AccountSecurityModal.show(
+                  context: context,
+                  userEmail: userEmail,
+                  isGoogleUser: _isGoogleOnlyUser,
+                );
+                _loadSettings();
+              },
+              child: Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: activePalette.cardBackground,
+                  borderRadius: AppTheme.asymmetricCardRadius,
+                  border: Border.all(color: activePalette.cardBorder, width: 1.0),
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 44,
+                      height: 44,
+                      decoration: BoxDecoration(
+                        color: activePalette.subtleBadgeBackground,
+                        borderRadius: AppTheme.asymmetricBadgeRadius,
+                        border: Border.all(color: activePalette.cardBorder, width: 1.0),
+                      ),
+                      child: Center(
+                        child: Icon(
+                          PhosphorIcons.lockKeyBold,
+                          color: activePalette.primaryAccent,
+                          size: 22,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            _isGoogleOnlyUser ? 'Set Account Password' : 'Change Password',
+                            style: TextStyle(
+                              fontFamily: AppTheme.serifFontFamily,
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              color: activePalette.primaryText,
+                            ),
+                          ),
+                          const SizedBox(height: 3),
+                          Text(
+                            _isGoogleOnlyUser
+                                ? 'Create a password to enable email & password sign-in'
+                                : 'Update your account security password',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: activePalette.secondaryText,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Icon(
+                      PhosphorIcons.caretRightBold,
+                      size: 16,
+                      color: activePalette.secondaryText,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+
+            const SizedBox(height: 12),
+
+            // Item 3: Quick Password Reset Link
+            GestureDetector(
+              onTap: () async {
+                if (userEmail.isEmpty) return;
+                try {
+                  await AuthRepository().sendPasswordResetEmail(email: userEmail);
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('Password reset link sent to $userEmail'),
+                        backgroundColor: activePalette.primaryAccent,
+                        behavior: SnackBarBehavior.floating,
+                      ),
+                    );
+                  }
+                } catch (e) {
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Failed to send password reset email.'),
+                        backgroundColor: Colors.redAccent,
+                        behavior: SnackBarBehavior.floating,
+                      ),
+                    );
+                  }
+                }
+              },
+              child: Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: activePalette.cardBackground,
+                  borderRadius: AppTheme.asymmetricCardRadius,
+                  border: Border.all(color: activePalette.cardBorder, width: 1.0),
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 44,
+                      height: 44,
+                      decoration: BoxDecoration(
+                        color: activePalette.subtleBadgeBackground,
+                        borderRadius: AppTheme.asymmetricBadgeRadius,
+                        border: Border.all(color: activePalette.cardBorder, width: 1.0),
+                      ),
+                      child: Center(
+                        child: Icon(
+                          PhosphorIcons.envelopeSimpleBold,
+                          color: activePalette.primaryAccent,
+                          size: 22,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Send Password Reset Link',
+                            style: TextStyle(
+                              fontFamily: AppTheme.serifFontFamily,
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              color: activePalette.primaryText,
+                            ),
+                          ),
+                          const SizedBox(height: 3),
+                          Text(
+                            'Send a secure reset link to your email inbox',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: activePalette.secondaryText,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Icon(
+                      PhosphorIcons.caretRightBold,
+                      size: 16,
+                      color: activePalette.secondaryText,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+
+            const SizedBox(height: 24),
+
+            // --- Section 3: Library & Smart Import ---
             Text(
               'LIBRARY & SMART IMPORT',
               style: TextStyle(

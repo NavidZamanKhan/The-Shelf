@@ -302,6 +302,121 @@ class AuthRepository {
     return getCurrentUser();
   }
 
+  /// Check which providers are linked to the current user (e.g., 'google.com', 'password').
+  Future<List<String>> getAuthProviderIds() async {
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user != null) {
+        final providers = user.providerData.map((p) => p.providerId).toList();
+        if (providers.isNotEmpty) return providers;
+      }
+    } catch (e) {
+      debugPrint('Firebase getAuthProviderIds skipped: $e');
+    }
+
+    final prefs = await SharedPreferences.getInstance();
+    final hasPassword = prefs.getString(_keyPassword)?.isNotEmpty ?? false;
+    if (hasPassword) return ['password'];
+    return ['google.com'];
+  }
+
+  /// Returns true if the user is authenticated via Google and has no password yet.
+  Future<bool> isGoogleOnlyUser() async {
+    try {
+      final providers = await getAuthProviderIds();
+      return providers.contains('google.com') && !providers.contains('password');
+    } catch (_) {
+      return false;
+    }
+  }
+
+  /// Change existing account password for email/password users.
+  Future<void> changePassword({
+    required String currentPassword,
+    required String newPassword,
+  }) async {
+    if (newPassword.length < 6) {
+      throw const AuthException('New password must be at least 6 characters.');
+    }
+
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user != null && user.email != null) {
+        // Re-authenticate first
+        final credential = EmailAuthProvider.credential(
+          email: user.email!,
+          password: currentPassword,
+        );
+        await user.reauthenticateWithCredential(credential);
+        await user.updatePassword(newPassword);
+      }
+    } on FirebaseAuthException catch (e) {
+      debugPrint('FirebaseAuthException during changePassword: ${e.code}');
+      throw AuthException(_mapFirebaseAuthError(e));
+    } catch (e) {
+      debugPrint('Fallback local changePassword: $e');
+      final prefs = await SharedPreferences.getInstance();
+      final stored = prefs.getString(_keyPassword);
+      if (stored != null && stored != currentPassword) {
+        throw const AuthException('Current password is incorrect.');
+      }
+    }
+
+    // Save new password locally
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_keyPassword, newPassword);
+  }
+
+  /// Set a new password for a user who previously logged in via Google.
+  Future<void> setPasswordForGoogleUser({
+    required String newPassword,
+  }) async {
+    if (newPassword.length < 6) {
+      throw const AuthException('New password must be at least 6 characters.');
+    }
+
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user != null && user.email != null) {
+        final credential = EmailAuthProvider.credential(
+          email: user.email!,
+          password: newPassword,
+        );
+        try {
+          await user.linkWithCredential(credential);
+        } catch (_) {
+          // If already linked, update password
+          await user.updatePassword(newPassword);
+        }
+      }
+    } on FirebaseAuthException catch (e) {
+      debugPrint('FirebaseAuthException during setPasswordForGoogleUser: ${e.code}');
+      throw AuthException(_mapFirebaseAuthError(e));
+    } catch (e) {
+      debugPrint('Fallback local setPasswordForGoogleUser: $e');
+    }
+
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_keyPassword, newPassword);
+  }
+
+  /// Send password reset email.
+  Future<void> sendPasswordResetEmail({required String email}) async {
+    final trimmed = email.trim();
+    if (trimmed.isEmpty) {
+      throw const AuthException('Please enter a valid email address.');
+    }
+
+    try {
+      await FirebaseAuth.instance.sendPasswordResetEmail(email: trimmed);
+    } on FirebaseAuthException catch (e) {
+      debugPrint('FirebaseAuthException during sendPasswordResetEmail: ${e.code}');
+      throw AuthException(_mapFirebaseAuthError(e));
+    } catch (e) {
+      debugPrint('Password reset email skipped in offline/test environment: $e');
+    }
+  }
+
   /// Sign out (clear session & Firebase/Google sign out).
   Future<void> signOut() async {
     final prefs = await SharedPreferences.getInstance();
