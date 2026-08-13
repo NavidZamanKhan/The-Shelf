@@ -30,9 +30,13 @@ class CloudLibraryService {
 
   FirebaseStorage? get _storage {
     try {
-      return FirebaseStorage.instance;
+      return FirebaseStorage.instanceFor(bucket: 'the-shelf-39f9d.firebasestorage.app');
     } catch (_) {
-      return null;
+      try {
+        return FirebaseStorage.instance;
+      } catch (_) {
+        return null;
+      }
     }
   }
 

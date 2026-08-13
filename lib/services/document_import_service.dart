@@ -20,11 +20,17 @@ class DocumentImportService {
       }
       final String filename = '${DateTime.now().millisecondsSinceEpoch}_$rawFileName';
       final String permanentPath = '${importsDir.path}/$filename';
-      final File savedFile = await File(sourcePath).copy(permanentPath);
-      return savedFile.path;
+      
+      final sourceFile = File(sourcePath);
+      if (await sourceFile.exists()) {
+        final bytes = await sourceFile.readAsBytes();
+        final savedFile = await File(permanentPath).writeAsBytes(bytes, flush: true);
+        return savedFile.path;
+      }
     } catch (e) {
-      return sourcePath;
+      // Fallback
     }
+    return sourcePath;
   }
 
   /// Cleans raw file name into a human-readable title.
