@@ -12,6 +12,7 @@ class ShelfBloc extends Bloc<ShelfEvent, ShelfState> {
         super(const ShelfLoaded(items: [])) {
     on<LoadShelfItemsEvent>(_onLoadShelfItems);
     on<AddDocumentToShelfEvent>(_onAddDocumentToShelf);
+    on<DeleteDocumentEvent>(_onDeleteDocument);
   }
 
   Future<void> _onLoadShelfItems(
@@ -41,12 +42,24 @@ class ShelfBloc extends Bloc<ShelfEvent, ShelfState> {
     );
 
     try {
-      // Persist real imported document to SQLite DB
       await _repository.insertDocument(newItem);
       _items.insert(0, newItem);
       emit(ShelfLoaded(items: List.unmodifiable(_items)));
     } catch (e) {
       emit(ShelfError('Failed to save document to database: ${e.toString()}'));
+    }
+  }
+
+  Future<void> _onDeleteDocument(
+    DeleteDocumentEvent event,
+    Emitter<ShelfState> emit,
+  ) async {
+    try {
+      await _repository.deleteDocument(event.id);
+      _items.removeWhere((item) => item.id == event.id);
+      emit(ShelfLoaded(items: List.unmodifiable(_items)));
+    } catch (e) {
+      emit(ShelfError('Failed to delete document: ${e.toString()}'));
     }
   }
 }

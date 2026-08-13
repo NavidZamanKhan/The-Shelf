@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:phosphoricons_flutter/phosphoricons_flutter.dart';
 import 'package:the_shelf/blocs/shelf/shelf_bloc.dart';
+import 'package:the_shelf/blocs/shelf/shelf_event.dart';
 import 'package:the_shelf/blocs/shelf/shelf_state.dart';
 import 'package:the_shelf/blocs/theme/theme_cubit.dart';
 import 'package:the_shelf/models/mock_shelf_items.dart';
@@ -213,7 +214,30 @@ class ShelfDetailScreen extends StatelessWidget {
                       ),
                       itemBuilder: (context, index) {
                         final item = shelfItems[index];
-                        return BookRow(item: item);
+                        return Dismissible(
+                          key: Key(item.id),
+                          direction: DismissDirection.endToStart,
+                          background: Container(
+                            alignment: Alignment.centerRight,
+                            padding: const EdgeInsets.only(right: 20),
+                            color: Colors.redAccent.withValues(alpha: 0.9),
+                            child: const Icon(
+                              PhosphorIcons.trash,
+                              color: Colors.white,
+                              size: 20,
+                            ),
+                          ),
+                          onDismissed: (_) {
+                            context.read<ShelfBloc>().add(DeleteDocumentEvent(item.id));
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text('Deleted "${item.title}"'),
+                                behavior: SnackBarBehavior.floating,
+                              ),
+                            );
+                          },
+                          child: BookRow(item: item),
+                        );
                       },
                     ),
                   ),

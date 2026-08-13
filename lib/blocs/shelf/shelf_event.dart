@@ -25,3 +25,12 @@ class AddDocumentToShelfEvent extends ShelfEvent {
   @override
   List<Object?> get props => [title, shelf, filePath];
 }
+
+class DeleteDocumentEvent extends ShelfEvent {
+  final String id;
+
+  const DeleteDocumentEvent(this.id);
+
+  @override
+  List<Object?> get props => [id];
+}
