@@ -2,11 +2,13 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:phosphoricons_flutter/phosphoricons_flutter.dart';
 import 'package:the_shelf/blocs/auth/auth_bloc.dart';
 import 'package:the_shelf/blocs/auth/auth_event.dart';
 import 'package:the_shelf/blocs/theme/theme_cubit.dart';
 import 'package:the_shelf/models/user_profile.dart';
+import 'package:the_shelf/services/user_profile_repository.dart';
 import 'package:the_shelf/theme/app_color_palette.dart';
 import 'package:the_shelf/theme/app_theme.dart';
 
@@ -43,11 +45,26 @@ class _EditProfileModalState extends State<EditProfileModal> {
 
   final ImagePicker _picker = ImagePicker();
 
+  Directory? _docsDir;
+
   @override
   void initState() {
     super.initState();
     _nameController = TextEditingController(text: widget.profile.displayName);
     _bioController = TextEditingController(text: widget.profile.bio ?? '');
+    _loadDocsDir();
+  }
+
+  Future<void> _loadDocsDir() async {
+    Directory? docs;
+    try {
+      docs = await getApplicationDocumentsDirectory();
+    } catch (_) {}
+    if (mounted) {
+      setState(() {
+        _docsDir = docs;
+      });
+    }
   }
 
   @override
@@ -344,24 +361,14 @@ class _EditProfileModalState extends State<EditProfileModal> {
   }
 
   Widget _buildMediaPickerHeader(AppColorPalette activePalette) {
-    ImageProvider? resolveSafeImageProvider(String? urlStr) {
-      if (urlStr == null || urlStr.trim().isEmpty) return null;
-      if (urlStr.startsWith('http://') || urlStr.startsWith('https://')) {
-        return NetworkImage(urlStr);
-      }
-      try {
-        final file = File(urlStr);
-        if (file.existsSync()) {
-          return FileImage(file);
-        }
-      } catch (_) {}
-      return null;
-    }
-
-    final ImageProvider? bannerImage =
-        resolveSafeImageProvider(_selectedBannerPath ?? widget.profile.bannerUrl);
-    final ImageProvider? avatarImage =
-        resolveSafeImageProvider(_selectedPhotoPath ?? widget.profile.photoUrl);
+    final ImageProvider? bannerImage = UserProfileRepository.resolveSafeImageProvider(
+      _selectedBannerPath ?? widget.profile.bannerUrl,
+      docsDir: _docsDir,
+    );
+    final ImageProvider? avatarImage = UserProfileRepository.resolveSafeImageProvider(
+      _selectedPhotoPath ?? widget.profile.photoUrl,
+      docsDir: _docsDir,
+    );
 
     return SizedBox(
       height: 145,

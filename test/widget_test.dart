@@ -39,6 +39,7 @@ void main() {
     await tester.runAsync(() async {
       await DocumentRepository.instance.database;
       await CollectionRepository.instance.getAllCollections();
+      await DocumentRepository.instance.getGenreDistribution();
     });
     await tester.pumpWidget(const TheShelfApp());
     await tester.pump();

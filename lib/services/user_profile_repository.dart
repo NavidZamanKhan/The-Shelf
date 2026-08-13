@@ -1,7 +1,8 @@
 import 'dart:io';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
-import 'package:flutter/foundation.dart';
+import 'package:flutter/widgets.dart';
+import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:the_shelf/models/user_profile.dart';
@@ -146,7 +147,7 @@ class UserProfileRepository {
   }
 
   /// Uploads profile media (avatar or cover banner) to Firebase Storage.
-  /// Returns download URL if upload succeeds, or permanent local file path if offline.
+  /// Returns public HTTPS download URL if upload succeeds, or relative local path if offline.
   Future<String> uploadProfileMedia({
     required String uid,
     required File imageFile,
@@ -158,7 +159,9 @@ class UserProfileRepository {
       mediaType: mediaType,
     );
 
-    if (uid.isEmpty) return permanentLocalFile.path;
+    final String relativePath = 'relative:profile/${p.basename(permanentLocalFile.path)}';
+
+    if (uid.isEmpty) return relativePath;
 
     try {
       final st = _storage;
@@ -174,9 +177,59 @@ class UserProfileRepository {
         return downloadUrl;
       }
     } catch (e) {
-      debugPrint('Firebase Storage upload error: $e. Returning permanent local file path.');
+      debugPrint('Firebase Storage upload error: $e. Returning relative local file path.');
     }
 
-    return permanentLocalFile.path;
+    return relativePath;
+  }
+
+  /// Helper utility for resolving safe ImageProvider across web URLs, relative paths, and local files.
+  static ImageProvider? resolveSafeImageProvider(String? urlStr, {Directory? docsDir}) {
+    if (urlStr == null || urlStr.trim().isEmpty) return null;
+    final trimmed = urlStr.trim();
+
+    // 1. Remote HTTP/HTTPS image URL (Firebase Storage CDN)
+    if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
+      return NetworkImage(trimmed);
+    }
+
+    try {
+      // 2. Relative path relative:profile/avatar_xxx.jpg or profile/avatar_xxx.jpg
+      String relPath = trimmed;
+      if (relPath.startsWith('relative:')) {
+        relPath = relPath.substring('relative:'.length);
+      }
+
+      if (docsDir != null) {
+        final fileInDocs = File('${docsDir.path}/$relPath');
+        if (fileInDocs.existsSync()) {
+          return FileImage(fileInDocs);
+        }
+
+        final fileName = p.basename(trimmed);
+        final profileFallback = File('${docsDir.path}/profile/$fileName');
+        if (profileFallback.existsSync()) {
+          return FileImage(profileFallback);
+        }
+      }
+
+      // 3. Absolute local file path (with fallback to basename if iOS container UUID changed)
+      final directFile = File(trimmed);
+      if (directFile.existsSync()) {
+        return FileImage(directFile);
+      }
+
+      if (docsDir != null) {
+        final baseName = p.basename(trimmed);
+        final healedFile = File('${docsDir.path}/profile/$baseName');
+        if (healedFile.existsSync()) {
+          return FileImage(healedFile);
+        }
+      }
+    } catch (e) {
+      debugPrint('Error resolving profile image provider: $e');
+    }
+
+    return null;
   }
 }
