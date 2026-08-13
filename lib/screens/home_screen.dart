@@ -220,28 +220,31 @@ class _HomeScreenState extends State<HomeScreen> {
           },
           child: Column(
             children: [
-              // Static App Header (magGlass triggers SearchScreen, funnel triggers SortOptionsModal)
+              // Static App Header (actions only shown on Shelf and Collections tabs)
               AppHeader(
                 isSliver: false,
-                onAddItemPressed: _selectedNavIndex == 1
-                    ? null
-                    : () {
-                        ImportBottomSheetModal.show(context);
-                      },
-                onSearchPressed: () {
-                  Navigator.of(context).push(
-                    MaterialPageRoute(builder: (context) => const SearchScreen()),
-                  );
-                },
-                onFilterPressed: () {
-                  SortOptionsModal.show(
-                    context: context,
-                    currentOption: _currentSortOption,
-                    onOptionSelected: (newOption) {
-                      _updateSortOption(newOption);
-                    },
-                  );
-                },
+                showActions: _selectedNavIndex < 2,
+                onAddItemPressed: _selectedNavIndex == 0
+                    ? () => ImportBottomSheetModal.show(context)
+                    : null,
+                onSearchPressed: _selectedNavIndex < 2
+                    ? () {
+                        Navigator.of(context).push(
+                          MaterialPageRoute(builder: (context) => const SearchScreen()),
+                        );
+                      }
+                    : null,
+                onFilterPressed: _selectedNavIndex < 2
+                    ? () {
+                        SortOptionsModal.show(
+                          context: context,
+                          currentOption: _currentSortOption,
+                          onOptionSelected: (newOption) {
+                            _updateSortOption(newOption);
+                          },
+                        );
+                      }
+                    : null,
               ),
 
             // Tab navigation body or Settings tab

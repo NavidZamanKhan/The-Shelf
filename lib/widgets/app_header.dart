@@ -14,6 +14,7 @@ class AppHeader extends StatelessWidget {
   final VoidCallback? onAddItemPressed;
   final VoidCallback? onSearchPressed;
   final VoidCallback? onFilterPressed;
+  final bool showActions;
   final bool isSliver;
 
   const AppHeader({
@@ -22,6 +23,7 @@ class AppHeader extends StatelessWidget {
     this.onAddItemPressed,
     this.onSearchPressed,
     this.onFilterPressed,
+    this.showActions = true,
     this.isSliver = true,
   });
 
@@ -38,7 +40,7 @@ class AppHeader extends StatelessWidget {
         toolbarHeight: 56.0,
         backgroundColor: activePalette.background,
         title: _buildTitle(activePalette),
-        actions: _buildActions(activePalette),
+        actions: showActions ? _buildActions(activePalette) : null,
       );
     }
 
@@ -52,7 +54,7 @@ class AppHeader extends StatelessWidget {
         child: Row(
           children: [
             Expanded(child: _buildTitle(activePalette)),
-            ..._buildActions(activePalette),
+            if (showActions) ..._buildActions(activePalette),
           ],
         ),
       ),
@@ -84,24 +86,26 @@ class AppHeader extends StatelessWidget {
           tooltip: 'Add Document',
           onPressed: onAddItemPressed,
         ),
-      IconButton(
-        icon: Icon(
-          PhosphorIcons.magnifyingGlass,
-          size: 22,
-          color: palette.primaryText,
+      if (onSearchPressed != null)
+        IconButton(
+          icon: Icon(
+            PhosphorIcons.magnifyingGlass,
+            size: 22,
+            color: palette.primaryText,
+          ),
+          tooltip: 'Search Library',
+          onPressed: onSearchPressed,
         ),
-        tooltip: 'Search Library',
-        onPressed: onSearchPressed ?? () {},
-      ),
-      IconButton(
-        icon: Icon(
-          PhosphorIcons.funnel,
-          size: 22,
-          color: palette.primaryText,
+      if (onFilterPressed != null)
+        IconButton(
+          icon: Icon(
+            PhosphorIcons.funnel,
+            size: 22,
+            color: palette.primaryText,
+          ),
+          tooltip: 'Filter Shelves',
+          onPressed: onFilterPressed,
         ),
-        tooltip: 'Filter Shelves',
-        onPressed: onFilterPressed ?? () {},
-      ),
       const SizedBox(width: 8),
     ];
   }

@@ -180,25 +180,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
     return BlocBuilder<ThemeCubit, ThemeState>(
       builder: (context, themeState) {
         final activePalette = themeState.resolvedPalette;
-        return Scaffold(
-          backgroundColor: activePalette.background,
-          appBar: AppBar(
-            backgroundColor: activePalette.background,
-            elevation: 0,
-            title: Text(
-              'Settings',
-              style: TextStyle(
-                fontFamily: AppTheme.serifFontFamily,
-                fontSize: 24,
-                fontWeight: FontWeight.bold,
-                color: activePalette.primaryText,
-              ),
-            ),
-          ),
-          body: ListView(
-            padding: const EdgeInsets.all(16),
-            children: [
-              // --- Section 1: Library & Smart Import ---
+        return ListView(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          children: [
+            // --- Section 1: Library & Smart Import ---
               Text(
                 'LIBRARY & SMART IMPORT',
                 style: TextStyle(
@@ -723,11 +708,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ),
               ],
             ],
-          ),
-        );
-      },
-    );
-  }
+          );
+        },
+      );
+    }
 
   Widget _buildThemeModeOption({
     required BuildContext context,
