@@ -14,30 +14,62 @@ class FileLauncherService {
   FileLauncherService._internal();
 
   /// Attempts to resolve a broken path by searching permanent app imports directory or current app container.
-  Future<File?> _resolveHealedFile(String originalPath) async {
+  Future<File?> _resolveHealedFile(String originalPath, {String? title}) async {
     final String trimmed = originalPath.trim();
-    if (trimmed.isEmpty) return null;
-    final direct = File(trimmed);
-    if (await direct.exists()) return direct;
+    if (trimmed.isNotEmpty) {
+      final direct = File(trimmed);
+      if (await direct.exists()) return direct;
+    }
 
-    final String fileName = p.basename(trimmed);
+    final String fileName = trimmed.isNotEmpty ? p.basename(trimmed) : '';
+    final String rawBase = fileName.isNotEmpty ? p.basenameWithoutExtension(fileName) : '';
+    final String cleanTitle = (title ?? '').trim().toLowerCase();
+
     try {
       final docsDir = await getApplicationDocumentsDirectory();
-      final inDocs = File('${docsDir.path}/$fileName');
-      if (await inDocs.exists()) return inDocs;
 
+      // 1. Check in Documents root
+      if (fileName.isNotEmpty) {
+        final inDocs = File('${docsDir.path}/$fileName');
+        if (await inDocs.exists()) return inDocs;
+      }
+
+      // 2. Check in Documents/imports
       final importsDir = Directory('${docsDir.path}/imports');
-      final exactImportFile = File('${importsDir.path}/$fileName');
-      if (await exactImportFile.exists()) return exactImportFile;
+      if (fileName.isNotEmpty) {
+        final exactImportFile = File('${importsDir.path}/$fileName');
+        if (await exactImportFile.exists()) return exactImportFile;
+      }
 
+      // 3. Search inside importsDir
       if (await importsDir.exists()) {
         final List<FileSystemEntity> files = importsDir.listSync();
         for (final entity in files) {
           if (entity is File) {
-            final base = p.basename(entity.path);
-            if (base == fileName || base.endsWith('_$fileName') || base.endsWith(fileName)) {
+            final base = p.basename(entity.path).toLowerCase();
+            if (fileName.isNotEmpty && (base == fileName.toLowerCase() || base.endsWith(fileName.toLowerCase()) || base.endsWith('_$fileName'.toLowerCase()))) {
               return entity;
             }
+            if (rawBase.isNotEmpty && base.contains(rawBase.toLowerCase())) {
+              return entity;
+            }
+            if (cleanTitle.isNotEmpty && base.contains(cleanTitle)) {
+              return entity;
+            }
+          }
+        }
+      }
+
+      // 4. Search inside docsDir root
+      final List<FileSystemEntity> docFiles = docsDir.listSync();
+      for (final entity in docFiles) {
+        if (entity is File) {
+          final base = p.basename(entity.path).toLowerCase();
+          if (fileName.isNotEmpty && (base == fileName.toLowerCase() || base.endsWith(fileName.toLowerCase()))) {
+            return entity;
+          }
+          if (cleanTitle.isNotEmpty && base.contains(cleanTitle)) {
+            return entity;
           }
         }
       }
@@ -48,51 +80,52 @@ class FileLauncherService {
   }
 
   /// Opens local file at [filePath] using native OS default application.
-  Future<void> openFile(BuildContext context, String filePath, {String? documentId}) async {
+  Future<void> openFile(BuildContext context, String filePath, {String? documentId, String? title}) async {
     final String trimmedPath = filePath.trim();
-    if (trimmedPath.isEmpty) {
-      _showSnackBar(context, 'No file path recorded for this document.', isError: true);
-      return;
+
+    // 1. Attempt local file check and on-device path healing first!
+    File? targetFile;
+    if (trimmedPath.isNotEmpty) {
+      final directFile = File(trimmedPath);
+      if (await directFile.exists()) {
+        targetFile = directFile;
+      }
     }
 
-    File targetFile = File(trimmedPath);
-    if (!await targetFile.exists()) {
-      // 1. Attempt path healing from permanent application storage
-      final File? healedFile = await _resolveHealedFile(trimmedPath);
-      if (healedFile != null) {
-        targetFile = healedFile;
+    targetFile ??= await _resolveHealedFile(trimmedPath, title: title);
+
+    if (targetFile != null && await targetFile.exists()) {
+      if (documentId != null && targetFile.path != trimmedPath) {
+        try {
+          await DocumentRepository.instance.updateDocumentFilePath(documentId, targetFile.path);
+        } catch (_) {}
+      }
+    } else {
+      // 2. Only if genuine local file is missing, attempt cloud fallback
+      if (context.mounted) {
+        _showSnackBar(context, 'Downloading document from cloud...', isError: false);
+      }
+      final downloadedFile = await CloudLibraryService.instance.downloadDocumentFile(
+        docId: documentId ?? p.basenameWithoutExtension(trimmedPath),
+        originalFileName: trimmedPath.isNotEmpty ? p.basename(trimmedPath) : '$title.pdf',
+      );
+
+      if (downloadedFile != null && await downloadedFile.exists()) {
+        targetFile = downloadedFile;
         if (documentId != null) {
           try {
             await DocumentRepository.instance.updateDocumentFilePath(documentId, targetFile.path);
           } catch (_) {}
         }
       } else {
-        // 2. Attempt on-demand cloud download if synced
         if (context.mounted) {
-          _showSnackBar(context, 'Downloading document from cloud...', isError: false);
+          _showSnackBar(
+            context,
+            'File not found locally or in cloud. Tap + to re-import!',
+            isError: true,
+          );
         }
-        final downloadedFile = await CloudLibraryService.instance.downloadDocumentFile(
-          docId: documentId ?? p.basenameWithoutExtension(trimmedPath),
-          originalFileName: p.basename(trimmedPath),
-        );
-
-        if (downloadedFile != null && await downloadedFile.exists()) {
-          targetFile = downloadedFile;
-          if (documentId != null) {
-            try {
-              await DocumentRepository.instance.updateDocumentFilePath(documentId, targetFile.path);
-            } catch (_) {}
-          }
-        } else {
-          if (context.mounted) {
-            _showSnackBar(
-              context,
-              'File not found locally or in cloud. Tap + to re-import!',
-              isError: true,
-            );
-          }
-          return;
-        }
+        return;
       }
     }
 

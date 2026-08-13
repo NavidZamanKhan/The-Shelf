@@ -360,7 +360,7 @@ class CloudLibraryService {
   }
 
   /// Restores cloud documents for the signed-in user into local SQLite storage.
-  /// Used when logging into a new device.
+  /// Strictly checks local device storage and SQLite first; only downloads missing files.
   Future<int> restoreCloudLibrary({String? uid}) async {
     final effectiveUid = await resolveUid(uid: uid);
     int restoredCount = 0;
@@ -375,7 +375,7 @@ class CloudLibraryService {
             .get();
 
         final localDocs = await DocumentRepository.instance.getAllDocuments();
-        final localDocIds = localDocs.map((d) => d.id).toSet();
+        final localDocMap = {for (var d in localDocs) d.id: d};
 
         for (final doc in snapshot.docs) {
           final data = doc.data();
@@ -390,10 +390,19 @@ class CloudLibraryService {
               ? DateTime.tryParse(addedAtStr) ?? DateTime.now()
               : DateTime.now();
 
-          // Check if file exists locally, otherwise download immediately!
-          String effectiveFilePath = remoteFilePath;
-          File localCheck = File(remoteFilePath);
-          if (!localCheck.existsSync()) {
+          final existingLocal = localDocMap[id];
+
+          // 1. Check if the physical file already exists locally on this device
+          File? localFile;
+          if (existingLocal != null && existingLocal.filePath.isNotEmpty) {
+            localFile = await _resolveLocalFile(existingLocal.filePath);
+          }
+          localFile ??= await _resolveLocalFile(remoteFilePath);
+
+          String effectiveFilePath = localFile?.path ?? remoteFilePath;
+
+          // 2. Only download if genuinely NOT present on this device
+          if (localFile == null || !await localFile.exists()) {
             final downloadedFile = await downloadDocumentFile(
               docId: id,
               cloudFileUrl: cloudFileUrl,
@@ -401,12 +410,14 @@ class CloudLibraryService {
               originalFileName: p.basename(remoteFilePath),
               uid: effectiveUid,
             );
-            if (downloadedFile != null) {
+            if (downloadedFile != null && await downloadedFile.exists()) {
               effectiveFilePath = downloadedFile.path;
+              localFile = downloadedFile;
             }
           }
 
-          if (!localDocIds.contains(id)) {
+          // 3. Insert or heal in SQLite
+          if (existingLocal == null) {
             final item = ShelfItem(
               id: id,
               title: title,
@@ -417,9 +428,8 @@ class CloudLibraryService {
             await DocumentRepository.instance.insertDocument(item);
             await _markDocumentSynced(id);
             restoredCount++;
-          } else if (effectiveFilePath != remoteFilePath) {
-            // Update existing SQLite record with downloaded local path
-            await DocumentRepository.instance.updateDocumentFilePath(id, effectiveFilePath);
+          } else if (localFile != null && existingLocal.filePath != localFile.path) {
+            await DocumentRepository.instance.updateDocumentFilePath(id, localFile.path);
           }
         }
         debugPrint('Restored $restoredCount cloud documents for user $effectiveUid (found ${snapshot.docs.length} total in cloud)');

@@ -267,6 +267,7 @@ class _BookRowState extends State<BookRow> {
                   context,
                   widget.item.filePath,
                   documentId: widget.item.id,
+                  title: widget.item.title,
                 ),
         onLongPress: () => _showOptionsModal(context),
         behavior: HitTestBehavior.opaque,

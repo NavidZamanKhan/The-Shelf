@@ -231,6 +231,7 @@ class _SearchScreenState extends State<SearchScreen> {
               context,
               item.filePath,
               documentId: item.id,
+              title: item.title,
             );
           },
         );
