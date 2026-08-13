@@ -53,7 +53,11 @@ class _BookRowState extends State<BookRow> {
         onTapUp: (_) => setState(() => _isPressed = false),
         onTapCancel: () => setState(() => _isPressed = false),
         onTap: widget.onTap ??
-            () => FileLauncherService.instance.openFile(context, widget.item.filePath),
+            () => FileLauncherService.instance.openFile(
+                  context,
+                  widget.item.filePath,
+                  documentId: widget.item.id,
+                ),
         onLongPress: () => AddToCollectionSheet.show(context, widget.item),
         behavior: HitTestBehavior.opaque,
         child: Padding(

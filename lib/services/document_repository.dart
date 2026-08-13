@@ -165,6 +165,17 @@ class DocumentRepository {
     );
   }
 
+  /// Updates file path for a document (used for path healing when iOS container UUIDs change)
+  Future<void> updateDocumentFilePath(String id, String newFilePath) async {
+    final db = await database;
+    await db.update(
+      _tableName,
+      {'file_path': newFilePath},
+      where: 'id = ?',
+      whereArgs: [id],
+    );
+  }
+
   /// Clears all stored documents (used primarily for test cleanup)
   Future<void> clearAllDocuments() async {
     final db = await database;
