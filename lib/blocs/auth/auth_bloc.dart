@@ -6,6 +6,7 @@ import 'package:the_shelf/blocs/auth/auth_event.dart';
 import 'package:the_shelf/blocs/auth/auth_state.dart';
 import 'package:the_shelf/models/user_profile.dart';
 import 'package:the_shelf/services/auth_repository.dart';
+import 'package:the_shelf/services/cloud_library_service.dart';
 import 'package:the_shelf/services/user_profile_repository.dart';
 
 class AuthBloc extends Bloc<AuthEvent, AuthState> {
@@ -54,6 +55,12 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       _userProfileRepository.saveUserProfile(profile).catchError((e) {
         debugPrint('Background Firestore save error: $e');
       });
+
+      // Restore cloud documents across devices in background
+      CloudLibraryService.instance.restoreCloudLibrary(uid: uid).catchError((e) {
+        debugPrint('Background cloud library restore error: $e');
+        return 0;
+      });
     } else {
       emit(const Unauthenticated());
     }
@@ -78,6 +85,12 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       // Auto-persist profile to Cloud Firestore
       await _userProfileRepository.saveUserProfile(profile);
       emit(Authenticated(profile));
+
+      // Restore cloud documents across devices in background
+      CloudLibraryService.instance.restoreCloudLibrary(uid: uid).catchError((e) {
+        debugPrint('Background cloud library restore error: $e');
+        return 0;
+      });
     } on AuthException catch (e) {
       emit(AuthError(e.message));
     } catch (e) {
@@ -153,6 +166,12 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       // Auto-persist profile to Cloud Firestore
       await _userProfileRepository.saveUserProfile(profile);
       emit(Authenticated(profile));
+
+      // Restore cloud documents across devices in background
+      CloudLibraryService.instance.restoreCloudLibrary(uid: uid).catchError((e) {
+        debugPrint('Background cloud library restore error: $e');
+        return 0;
+      });
     } on AuthException catch (e) {
       emit(AuthError(e.message));
     } catch (e) {

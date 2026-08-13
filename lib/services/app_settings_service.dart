@@ -10,6 +10,18 @@ class AppSettingsService {
 
   static const String _keyInstantAutoFile = 'settings_auto_file_instant';
   static const String _keyHiddenShelves = 'settings_hidden_shelves';
+  static const String _keyAutoCloudBackup = 'settings_auto_cloud_backup';
+
+  /// Whether automatic cloud backup is enabled (off by default).
+  Future<bool> getAutoCloudBackup() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getBool(_keyAutoCloudBackup) ?? false;
+  }
+
+  Future<void> setAutoCloudBackup(bool value) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_keyAutoCloudBackup, value);
+  }
 
   /// Whether instant auto-filing (skip confirmation modal) is enabled.
   Future<bool> getInstantAutoFile() async {

@@ -4,11 +4,14 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:phosphoricons_flutter/phosphoricons_flutter.dart';
 import 'package:the_shelf/blocs/auth/auth_bloc.dart';
 import 'package:the_shelf/blocs/auth/auth_state.dart';
+import 'package:the_shelf/blocs/shelf/shelf_bloc.dart';
+import 'package:the_shelf/blocs/shelf/shelf_event.dart';
 import 'package:the_shelf/blocs/theme/theme_cubit.dart';
 import 'package:the_shelf/screens/classifier_debug_screen.dart';
 import 'package:the_shelf/screens/home_screen.dart';
 import 'package:the_shelf/services/app_settings_service.dart';
 import 'package:the_shelf/services/auth_repository.dart';
+import 'package:the_shelf/services/cloud_library_service.dart';
 import 'package:the_shelf/theme/app_color_palette.dart';
 import 'package:the_shelf/theme/app_theme.dart';
 import 'package:the_shelf/widgets/account_security_modal.dart';
@@ -22,10 +25,13 @@ class SettingsScreen extends StatefulWidget {
 
 class _SettingsScreenState extends State<SettingsScreen> {
   bool _instantAutoFile = false;
+  bool _autoCloudBackup = false;
   Set<String> _hiddenShelves = {};
   int _storageBytes = 0;
   bool _isLoadingSettings = true;
   bool _isGoogleOnlyUser = false;
+  bool _isBackingUp = false;
+  bool _isRestoring = false;
 
   @override
   void initState() {
@@ -36,6 +42,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Future<void> _loadSettings() async {
     try {
       final instant = await AppSettingsService.instance.getInstantAutoFile();
+      final autoBackup = await AppSettingsService.instance.getAutoCloudBackup();
       final hidden = await AppSettingsService.instance.getHiddenShelves();
       final bytes = await AppSettingsService.instance.getStorageUsageBytes();
       final isGoogleOnly = await AuthRepository().isGoogleOnlyUser();
@@ -43,6 +50,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       if (mounted) {
         setState(() {
           _instantAutoFile = instant;
+          _autoCloudBackup = autoBackup;
           _hiddenShelves = hidden;
           _storageBytes = bytes;
           _isGoogleOnlyUser = isGoogleOnly;
@@ -69,6 +77,89 @@ class _SettingsScreenState extends State<SettingsScreen> {
           behavior: SnackBarBehavior.floating,
         ),
       );
+    }
+  }
+
+  Future<void> _handleBackupEntireLibrary(AppColorPalette activePalette) async {
+    setState(() => _isBackingUp = true);
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Backing up library to cloud...'),
+        behavior: SnackBarBehavior.floating,
+        duration: Duration(seconds: 1),
+      ),
+    );
+
+    try {
+      final count = await CloudLibraryService.instance.backupAllDocuments();
+      if (mounted) {
+        setState(() => _isBackingUp = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              count > 0
+                  ? 'Successfully backed up $count ${count == 1 ? 'document' : 'documents'} to Cloud!'
+                  : 'Library is up to date with Cloud.',
+            ),
+            backgroundColor: activePalette.primaryAccent,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isBackingUp = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Backup failed: $e'),
+            backgroundColor: Colors.redAccent,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _handleRestoreLibraryFromCloud(AppColorPalette activePalette) async {
+    setState(() => _isRestoring = true);
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Checking cloud for backed up library...'),
+        behavior: SnackBarBehavior.floating,
+        duration: Duration(seconds: 1),
+      ),
+    );
+
+    try {
+      final restoredCount = await CloudLibraryService.instance.restoreCloudLibrary();
+      if (mounted) {
+        setState(() => _isRestoring = false);
+        if (restoredCount > 0) {
+          context.read<ShelfBloc>().add(const LoadShelfItemsEvent());
+        }
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              restoredCount > 0
+                  ? 'Restored $restoredCount ${restoredCount == 1 ? 'document' : 'documents'} from Cloud!'
+                  : 'Library is already up to date with Cloud.',
+            ),
+            backgroundColor: activePalette.primaryAccent,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isRestoring = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Restore failed: $e'),
+            backgroundColor: Colors.redAccent,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
     }
   }
 
@@ -831,16 +922,269 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
             const SizedBox(height: 24),
 
-              // --- Section 3: About ---
-              Text(
-                'ABOUT',
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.bold,
-                  letterSpacing: 1.2,
-                  color: activePalette.secondaryText,
+            // --- Section 4: Cloud Backup & Sync ---
+            Text(
+              'CLOUD BACKUP & SYNC',
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.bold,
+                letterSpacing: 1.2,
+                color: activePalette.secondaryText,
+              ),
+            ),
+            const SizedBox(height: 12),
+
+            // Item 1: Auto-Backup Toggle Switch
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              decoration: BoxDecoration(
+                color: activePalette.cardBackground,
+                borderRadius: AppTheme.asymmetricCardRadius,
+                border: Border.all(color: activePalette.cardBorder, width: 1.0),
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    width: 44,
+                    height: 44,
+                    decoration: BoxDecoration(
+                      color: activePalette.subtleBadgeBackground,
+                      borderRadius: AppTheme.asymmetricBadgeRadius,
+                      border: Border.all(
+                        color: activePalette.cardBorder,
+                        width: 1.0,
+                      ),
+                    ),
+                    child: Center(
+                      child: Icon(
+                        PhosphorIcons.cloudArrowUpBold,
+                        color: activePalette.primaryAccent,
+                        size: 22,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Auto-Backup to Cloud',
+                          style: TextStyle(
+                            fontFamily: AppTheme.serifFontFamily,
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: activePalette.primaryText,
+                          ),
+                        ),
+                        const SizedBox(height: 3),
+                        Text(
+                          _autoCloudBackup
+                              ? 'Automatically syncs every imported file to cloud'
+                              : 'Disabled (manual backup only)',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: activePalette.secondaryText,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Switch.adaptive(
+                    value: _autoCloudBackup,
+                    activeTrackColor: activePalette.primaryAccent,
+                    onChanged: (val) async {
+                      setState(() => _autoCloudBackup = val);
+                      await AppSettingsService.instance.setAutoCloudBackup(val);
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(
+                              val
+                                  ? 'Auto-backup enabled! New imports will sync to cloud.'
+                                  : 'Auto-backup disabled.',
+                            ),
+                            backgroundColor: activePalette.primaryAccent,
+                            behavior: SnackBarBehavior.floating,
+                          ),
+                        );
+                      }
+                    },
+                  ),
+                ],
+              ),
+            ),
+
+            const SizedBox(height: 12),
+
+            // Item 2: Backup Entire Library Now
+            GestureDetector(
+              onTap: _isBackingUp ? null : () => _handleBackupEntireLibrary(activePalette),
+              child: Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: activePalette.cardBackground,
+                  borderRadius: AppTheme.asymmetricCardRadius,
+                  border: Border.all(color: activePalette.cardBorder, width: 1.0),
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 44,
+                      height: 44,
+                      decoration: BoxDecoration(
+                        color: activePalette.subtleBadgeBackground,
+                        borderRadius: AppTheme.asymmetricBadgeRadius,
+                        border: Border.all(
+                          color: activePalette.cardBorder,
+                          width: 1.0,
+                        ),
+                      ),
+                      child: Center(
+                        child: _isBackingUp
+                            ? SizedBox(
+                                width: 20,
+                                height: 20,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  valueColor: AlwaysStoppedAnimation<Color>(
+                                    activePalette.primaryAccent,
+                                  ),
+                                ),
+                              )
+                            : Icon(
+                                PhosphorIcons.cloudCheckBold,
+                                color: activePalette.primaryAccent,
+                                size: 22,
+                              ),
+                      ),
+                    ),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Backup Entire Library Now',
+                            style: TextStyle(
+                              fontFamily: AppTheme.serifFontFamily,
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              color: activePalette.primaryText,
+                            ),
+                          ),
+                          const SizedBox(height: 3),
+                          Text(
+                            'Upload all local documents to Cloud Firestore',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: activePalette.secondaryText,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Icon(
+                      PhosphorIcons.caretRightBold,
+                      size: 16,
+                      color: activePalette.secondaryText,
+                    ),
+                  ],
                 ),
               ),
+            ),
+
+            const SizedBox(height: 12),
+
+            // Item 3: Restore Library from Cloud
+            GestureDetector(
+              onTap: _isRestoring ? null : () => _handleRestoreLibraryFromCloud(activePalette),
+              child: Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: activePalette.cardBackground,
+                  borderRadius: AppTheme.asymmetricCardRadius,
+                  border: Border.all(color: activePalette.cardBorder, width: 1.0),
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 44,
+                      height: 44,
+                      decoration: BoxDecoration(
+                        color: activePalette.subtleBadgeBackground,
+                        borderRadius: AppTheme.asymmetricBadgeRadius,
+                        border: Border.all(
+                          color: activePalette.cardBorder,
+                          width: 1.0,
+                        ),
+                      ),
+                      child: Center(
+                        child: _isRestoring
+                            ? SizedBox(
+                                width: 20,
+                                height: 20,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  valueColor: AlwaysStoppedAnimation<Color>(
+                                    activePalette.primaryAccent,
+                                  ),
+                                ),
+                              )
+                            : Icon(
+                                PhosphorIcons.cloudArrowDownBold,
+                                color: activePalette.primaryAccent,
+                                size: 22,
+                              ),
+                      ),
+                    ),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Restore Library from Cloud',
+                            style: TextStyle(
+                              fontFamily: AppTheme.serifFontFamily,
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              color: activePalette.primaryText,
+                            ),
+                          ),
+                          const SizedBox(height: 3),
+                          Text(
+                            'Download documents synced on your other devices',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: activePalette.secondaryText,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Icon(
+                      PhosphorIcons.caretRightBold,
+                      size: 16,
+                      color: activePalette.secondaryText,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+
+            const SizedBox(height: 24),
+
+            // --- Section 5: About ---
+            Text(
+              'ABOUT',
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.bold,
+                letterSpacing: 1.2,
+                color: activePalette.secondaryText,
+              ),
+            ),
               const SizedBox(height: 12),
               Container(
                 padding: const EdgeInsets.all(16),

@@ -15,6 +15,7 @@ import 'package:the_shelf/screens/search_screen.dart';
 import 'package:the_shelf/screens/settings_screen.dart';
 import 'package:the_shelf/screens/shelf_detail_screen.dart';
 import 'package:the_shelf/services/app_settings_service.dart';
+import 'package:the_shelf/services/cloud_library_service.dart';
 import 'package:the_shelf/theme/app_color_palette.dart';
 import 'package:the_shelf/theme/app_theme.dart';
 import 'package:the_shelf/widgets/app_bottom_navigation_bar.dart';
@@ -171,6 +172,19 @@ class _HomeScreenState extends State<HomeScreen> {
                       behavior: SnackBarBehavior.floating,
                     ),
                   );
+
+                  final isAutoBackup = await AppSettingsService.instance.getAutoCloudBackup();
+                  if (isAutoBackup) {
+                    CloudLibraryService.instance.uploadDocument(
+                      ShelfItem(
+                        id: '${summary.title}_${DateTime.now().millisecondsSinceEpoch}',
+                        title: summary.title,
+                        shelf: topShelf,
+                        filePath: summary.filePath,
+                        addedAt: DateTime.now(),
+                      ),
+                    );
+                  }
                 }
               } else {
                 final result = await showModalBottomSheet<Map<String, dynamic>>(
@@ -201,6 +215,19 @@ class _HomeScreenState extends State<HomeScreen> {
                       behavior: SnackBarBehavior.floating,
                     ),
                   );
+
+                  final isAutoBackup = await AppSettingsService.instance.getAutoCloudBackup();
+                  if (isAutoBackup) {
+                    CloudLibraryService.instance.uploadDocument(
+                      ShelfItem(
+                        id: '${title}_${DateTime.now().millisecondsSinceEpoch}',
+                        title: title,
+                        shelf: shelf,
+                        filePath: summary.filePath,
+                        addedAt: DateTime.now(),
+                      ),
+                    );
+                  }
                 }
               }
 

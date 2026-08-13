@@ -7,6 +7,7 @@ import 'package:the_shelf/blocs/shelf/shelf_bloc.dart';
 import 'package:the_shelf/blocs/shelf/shelf_event.dart';
 import 'package:the_shelf/blocs/shelf/shelf_state.dart';
 import 'package:the_shelf/blocs/theme/theme_cubit.dart';
+import 'package:the_shelf/services/cloud_library_service.dart';
 import 'package:the_shelf/services/file_launcher_service.dart';
 import 'package:the_shelf/theme/app_theme.dart';
 import 'package:the_shelf/widgets/add_to_collection_sheet.dart';
@@ -113,6 +114,62 @@ class _BookRowState extends State<BookRow> {
                   onTap: () {
                     Navigator.pop(modalContext);
                     AddToCollectionSheet.show(context, widget.item);
+                  },
+                ),
+
+                // Option 2: Backup to Cloud
+                ListTile(
+                  leading: Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: activePalette.primaryAccent.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Icon(
+                      PhosphorIcons.cloudArrowUpBold,
+                      color: activePalette.primaryAccent,
+                      size: 20,
+                    ),
+                  ),
+                  title: Text(
+                    'Backup to Cloud',
+                    style: TextStyle(
+                      fontWeight: FontWeight.w600,
+                      color: activePalette.primaryText,
+                    ),
+                  ),
+                  subtitle: const Text('Sync with your account across devices'),
+                  onTap: () async {
+                    Navigator.pop(modalContext);
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('Backing up "${widget.item.title}" to Cloud...'),
+                        behavior: SnackBarBehavior.floating,
+                        duration: const Duration(seconds: 1),
+                      ),
+                    );
+                    try {
+                      await CloudLibraryService.instance.uploadDocument(widget.item);
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text('Backed up "${widget.item.title}" to Cloud!'),
+                            backgroundColor: activePalette.primaryAccent,
+                            behavior: SnackBarBehavior.floating,
+                          ),
+                        );
+                      }
+                    } catch (e) {
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text('Failed to backup: $e'),
+                            backgroundColor: Colors.redAccent,
+                            behavior: SnackBarBehavior.floating,
+                          ),
+                        );
+                      }
+                    }
                   },
                 ),
 
