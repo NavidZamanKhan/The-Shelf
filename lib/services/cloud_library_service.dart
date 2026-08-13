@@ -174,6 +174,31 @@ class CloudLibraryService {
             resolvedUrl ??= data['file_url'] as String?;
             resolvedStoragePath ??= data['storage_path'] as String?;
             embeddedData ??= data['file_data'] as String?;
+          } else {
+            // Fallback: search all documents in user collection by title or filename
+            final allDocs = await db
+                .collection('users')
+                .doc(effectiveUid)
+                .collection('documents')
+                .get();
+            for (final d in allDocs.docs) {
+              final dData = d.data();
+              final dTitle = (dData['title'] as String? ?? '').toLowerCase();
+              final dPath = (dData['file_path'] as String? ?? '').toLowerCase();
+              final targetName = fileName.toLowerCase();
+              final targetBase = p.basenameWithoutExtension(fileName).toLowerCase();
+
+              if (dTitle == targetBase ||
+                  dTitle == targetName ||
+                  p.basename(dPath) == targetName ||
+                  p.basenameWithoutExtension(dPath) == targetBase) {
+                resolvedUrl ??= dData['file_url'] as String?;
+                resolvedStoragePath ??= dData['storage_path'] as String?;
+                embeddedData ??= dData['file_data'] as String?;
+                debugPrint('Matched document in cloud by name fallback: ${d.id}');
+                break;
+              }
+            }
           }
         }
       } catch (e) {

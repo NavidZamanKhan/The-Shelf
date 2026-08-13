@@ -172,10 +172,13 @@ class _HomeScreenState extends State<HomeScreen> {
 
                   if (!context.mounted) return;
 
+                  final String docId = DateTime.now().millisecondsSinceEpoch.toString();
+
                   if (isInstant) {
                     final topShelf = summary.classification.label;
                     context.read<ShelfBloc>().add(
                           AddDocumentToShelfEvent(
+                            id: docId,
                             title: summary.title,
                             shelf: topShelf,
                             filePath: summary.filePath,
@@ -192,7 +195,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     if (isAutoBackup) {
                       CloudLibraryService.instance.uploadDocument(
                         ShelfItem(
-                          id: '${summary.title}_${DateTime.now().millisecondsSinceEpoch}',
+                          id: docId,
                           title: summary.title,
                           shelf: topShelf,
                           filePath: summary.filePath,
@@ -217,6 +220,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
                       context.read<ShelfBloc>().add(
                             AddDocumentToShelfEvent(
+                              id: docId,
                               title: title,
                               shelf: shelf,
                               filePath: summary.filePath,
@@ -234,7 +238,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       if (isAutoBackup) {
                         CloudLibraryService.instance.uploadDocument(
                           ShelfItem(
-                            id: '${title}_${DateTime.now().millisecondsSinceEpoch}',
+                            id: docId,
                             title: title,
                             shelf: shelf,
                             filePath: summary.filePath,

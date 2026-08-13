@@ -12,18 +12,20 @@ class LoadShelfItemsEvent extends ShelfEvent {
 }
 
 class AddDocumentToShelfEvent extends ShelfEvent {
+  final String? id;
   final String title;
   final String shelf;
   final String filePath;
 
   const AddDocumentToShelfEvent({
+    this.id,
     required this.title,
     required this.shelf,
     required this.filePath,
   });
 
   @override
-  List<Object?> get props => [title, shelf, filePath];
+  List<Object?> get props => [id, title, shelf, filePath];
 }
 
 class DeleteDocumentEvent extends ShelfEvent {

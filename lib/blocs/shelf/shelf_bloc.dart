@@ -34,7 +34,7 @@ class ShelfBloc extends Bloc<ShelfEvent, ShelfState> {
     Emitter<ShelfState> emit,
   ) async {
     final newItem = ShelfItem(
-      id: DateTime.now().millisecondsSinceEpoch.toString(),
+      id: event.id ?? DateTime.now().millisecondsSinceEpoch.toString(),
       title: event.title,
       shelf: event.shelf,
       filePath: event.filePath,
