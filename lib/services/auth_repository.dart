@@ -433,6 +433,14 @@ class AuthRepository {
   Future<void> signOut() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(_keyLoggedIn, false);
+    await prefs.remove(_keyEmail);
+    await prefs.remove(_keyUid);
+    await prefs.remove(_keyDisplayName);
+    await prefs.remove(_keyPassword);
+    await prefs.remove(_keyCreatedAt);
+    await prefs.remove('auth_user_bio');
+    await prefs.remove('auth_photo_url');
+    await prefs.remove('auth_banner_url');
     try {
       await GoogleSignIn.instance.signOut();
     } catch (_) {}

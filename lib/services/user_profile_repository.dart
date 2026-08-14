@@ -10,9 +10,9 @@ import 'package:the_shelf/models/user_profile.dart';
 
 /// Repository for Cloud Firestore & Firebase Storage user profile synchronization.
 class UserProfileRepository {
-  static const _keyBio = 'auth_user_bio';
-  static const _keyPhotoUrl = 'auth_photo_url';
-  static const _keyBannerUrl = 'auth_banner_url';
+  String _userBioKey(String uid) => 'auth_user_bio_$uid';
+  String _userPhotoKey(String uid) => 'auth_photo_url_$uid';
+  String _userBannerKey(String uid) => 'auth_banner_url_$uid';
 
   final FirebaseFirestore? _customFirestore;
   final FirebaseStorage? _customStorage;
@@ -35,20 +35,25 @@ class UserProfileRepository {
   FirebaseStorage? get _storage {
     if (_customStorage != null) return _customStorage;
     try {
-      return FirebaseStorage.instance;
+      return FirebaseStorage.instanceFor(bucket: 'the-shelf-39f9d.firebasestorage.app');
     } catch (_) {
-      return null;
+      try {
+        return FirebaseStorage.instance;
+      } catch (_) {
+        return null;
+      }
     }
   }
 
   /// Copies a temporary picked media file to permanent application documents directory.
   Future<File> savePermanentLocalMedia({
+    required String uid,
     required File tempFile,
     required String mediaType, // 'avatar' or 'banner'
   }) async {
     try {
       final docsDir = await getApplicationDocumentsDirectory();
-      final profileDir = Directory('${docsDir.path}/profile');
+      final profileDir = Directory('${docsDir.path}/profile/$uid');
       if (!await profileDir.exists()) {
         await profileDir.create(recursive: true);
       }
@@ -61,16 +66,22 @@ class UserProfileRepository {
     }
   }
 
-  /// Fetches the user profile from Cloud Firestore `users/{uid}` with local cache fallback.
+  /// Fetches the user profile from Cloud Firestore `users/{uid}` with strict per-user local cache fallback.
   Future<UserProfile> getUserProfile({
     required String uid,
     required String email,
     required String displayName,
   }) async {
     final prefs = await SharedPreferences.getInstance();
-    final cachedBio = prefs.getString(_keyBio);
-    final cachedPhotoUrl = prefs.getString(_keyPhotoUrl);
-    final cachedBannerUrl = prefs.getString(_keyBannerUrl);
+    
+    // Purge any legacy un-namespaced keys to avoid cross-profile pollution
+    await prefs.remove('auth_user_bio');
+    await prefs.remove('auth_photo_url');
+    await prefs.remove('auth_banner_url');
+
+    final cachedBio = prefs.getString(_userBioKey(uid));
+    final cachedPhotoUrl = prefs.getString(_userPhotoKey(uid));
+    final cachedBannerUrl = prefs.getString(_userBannerKey(uid));
 
     UserProfile localFallback = UserProfile(
       uid: uid,
@@ -108,12 +119,36 @@ class UserProfileRepository {
             bio: mergedBio,
           );
 
-          // Cache to SharedPreferences
-          if (mergedBio != null) await prefs.setString(_keyBio, mergedBio);
-          if (mergedPhotoUrl != null) await prefs.setString(_keyPhotoUrl, mergedPhotoUrl);
-          if (mergedBannerUrl != null) await prefs.setString(_keyBannerUrl, mergedBannerUrl);
+          // Cache to SharedPreferences strictly under this user's UID
+          if (mergedBio != null) {
+            await prefs.setString(_userBioKey(uid), mergedBio);
+          } else {
+            await prefs.remove(_userBioKey(uid));
+          }
+          if (mergedPhotoUrl != null) {
+            await prefs.setString(_userPhotoKey(uid), mergedPhotoUrl);
+          } else {
+            await prefs.remove(_userPhotoKey(uid));
+          }
+          if (mergedBannerUrl != null) {
+            await prefs.setString(_userBannerKey(uid), mergedBannerUrl);
+          } else {
+            await prefs.remove(_userBannerKey(uid));
+          }
 
           return mergedProfile;
+        } else {
+          // Document does not exist in Firestore for this new user - return completely pristine profile
+          return UserProfile(
+            uid: uid,
+            email: email,
+            displayName: displayName,
+            photoUrl: null,
+            bannerUrl: null,
+            bio: null,
+            createdAt: DateTime.now(),
+            updatedAt: DateTime.now(),
+          );
         }
       }
     } catch (e) {
@@ -127,11 +162,23 @@ class UserProfileRepository {
   Future<void> saveUserProfile(UserProfile profile) async {
     if (profile.uid.isEmpty) return;
 
-    // Cache locally
+    // Cache locally scoped to this UID
     final prefs = await SharedPreferences.getInstance();
-    if (profile.bio != null) await prefs.setString(_keyBio, profile.bio!);
-    if (profile.photoUrl != null) await prefs.setString(_keyPhotoUrl, profile.photoUrl!);
-    if (profile.bannerUrl != null) await prefs.setString(_keyBannerUrl, profile.bannerUrl!);
+    if (profile.bio != null && profile.bio!.isNotEmpty) {
+      await prefs.setString(_userBioKey(profile.uid), profile.bio!);
+    } else {
+      await prefs.remove(_userBioKey(profile.uid));
+    }
+    if (profile.photoUrl != null && profile.photoUrl!.isNotEmpty) {
+      await prefs.setString(_userPhotoKey(profile.uid), profile.photoUrl!);
+    } else {
+      await prefs.remove(_userPhotoKey(profile.uid));
+    }
+    if (profile.bannerUrl != null && profile.bannerUrl!.isNotEmpty) {
+      await prefs.setString(_userBannerKey(profile.uid), profile.bannerUrl!);
+    } else {
+      await prefs.remove(_userBannerKey(profile.uid));
+    }
 
     try {
       final db = _firestore;
@@ -154,8 +201,9 @@ class UserProfileRepository {
     required File imageFile,
     required String mediaType, // 'avatar' or 'banner'
   }) async {
-    // 1. Save to permanent local application directory
+    // 1. Save to permanent local application directory scoped to this UID
     final permanentLocalFile = await savePermanentLocalMedia(
+      uid: uid,
       tempFile: imageFile,
       mediaType: mediaType,
     );
