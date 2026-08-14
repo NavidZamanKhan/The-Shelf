@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:the_shelf/services/ocr_service.dart';
 import 'package:the_shelf/services/shelf_classifier_service.dart';
 
 class ClassifierDebugScreen extends StatefulWidget {
@@ -148,20 +149,54 @@ class _ClassifierDebugScreenState extends State<ClassifierDebugScreen> {
 
             const SizedBox(height: 12),
 
-            // Action Button
-            ElevatedButton.icon(
-              onPressed: _isLoading ? null : _runClassification,
-              icon: _isLoading
-                  ? const SizedBox(
-                      width: 18,
-                      height: 18,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : const Icon(Icons.auto_awesome),
-              label: Text(_isLoading ? 'Classifying...' : 'Classify Shelf'),
-              style: ElevatedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(vertical: 12),
-              ),
+            // Action Buttons
+            Row(
+              children: [
+                Expanded(
+                  child: ElevatedButton.icon(
+                    onPressed: _isLoading ? null : _runClassification,
+                    icon: _isLoading
+                        ? const SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Icon(Icons.auto_awesome),
+                    label: Text(_isLoading ? 'Classifying...' : 'Classify Text'),
+                    style: ElevatedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: _isLoading
+                        ? null
+                        : () async {
+                            setState(() => _isLoading = true);
+                            const path = '/Users/navidzamankhan/Downloads/test_scanned_english.pdf';
+                            final sw = Stopwatch()..start();
+                            final ocr = await OcrService.instance.extractTextFromScannedPdf(path);
+                            sw.stop();
+                            if (mounted) {
+                              _textController.text = 'The Time Machine $ocr';
+                              await _runClassification();
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text('OCR completed in ${sw.elapsedMilliseconds} ms (${ocr.length} chars)'),
+                                ),
+                              );
+                            }
+                          },
+                    icon: const Icon(Icons.document_scanner),
+                    label: const Text('Test Real OCR PDF'),
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                    ),
+                  ),
+                ),
+              ],
             ),
 
             const SizedBox(height: 24),

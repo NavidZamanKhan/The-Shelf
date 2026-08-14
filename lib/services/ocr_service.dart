@@ -3,14 +3,17 @@ import 'dart:io';
 import 'dart:math';
 import 'dart:ui' as ui;
 import 'package:flutter/foundation.dart';
-import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart';
+import 'package:flutter/services.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:pdf_render/pdf_render.dart';
 
-/// On-device OCR fallback service using PDF page rasterization and Google ML Kit.
+/// On-device OCR fallback service using Apple Vision Framework (VNRecognizeTextRequest)
+/// and memory-safe PDF page rasterization.
 class OcrService {
   static final OcrService instance = OcrService._internal();
   OcrService._internal();
+
+  static const MethodChannel _ocrChannel = MethodChannel('com.navidzamankhan.theshelf/ocr');
 
   /// Checks if extracted PDF text has insufficient real content and needs OCR fallback.
   bool needsOcrFallback(String rawExtractedText) {
@@ -34,7 +37,21 @@ class OcrService {
     return sanitized.length < 80;
   }
 
-  /// Rasterizes up to 3 pages and runs on-device Google ML Kit text recognition.
+  /// Recognizes text from a single image file via native Apple Vision MethodChannel.
+  Future<String> _recognizeImageText(String imagePath) async {
+    try {
+      final result = await _ocrChannel.invokeMethod<String>(
+        'recognizeText',
+        {'imagePath': imagePath},
+      );
+      return result ?? '';
+    } catch (e) {
+      debugPrint('[OcrService] Native recognition error for $imagePath: $e');
+      return '';
+    }
+  }
+
+  /// Rasterizes up to 3 pages and runs on-device OCR recognition.
   Future<String> extractTextFromScannedPdf(
     String filePath, {
     int maxPages = 3,
@@ -56,7 +73,6 @@ class OcrService {
     required int earlyExitCharCount,
   }) async {
     PdfDocument? doc;
-    TextRecognizer? textRecognizer;
     final textBuffer = StringBuffer();
     final List<File> tempFiles = [];
 
@@ -67,7 +83,6 @@ class OcrService {
 
       if (pagesToScan == 0) return '';
 
-      textRecognizer = TextRecognizer(script: TextRecognitionScript.latin);
       final tempDir = await getTemporaryDirectory();
 
       for (int pageNum = 1; pageNum <= pagesToScan; pageNum++) {
@@ -91,10 +106,7 @@ class OcrService {
           await tempFile.writeAsBytes(byteData.buffer.asUint8List(), flush: true);
           tempFiles.add(tempFile);
 
-          final inputImage = InputImage.fromFilePath(tempFile.path);
-          final RecognizedText recognized = await textRecognizer.processImage(inputImage);
-
-          final String pageText = recognized.text
+          final String pageText = (await _recognizeImageText(tempFile.path))
               .replaceAll(RegExp(r'\s+'), ' ')
               .trim();
 
@@ -103,7 +115,6 @@ class OcrService {
             textBuffer.write(pageText);
           }
         }
-        image.dispose();
         pageImage.dispose();
 
         // Early exit if enough representative text has been gathered
@@ -124,9 +135,6 @@ class OcrService {
       }
       try {
         await doc?.dispose();
-      } catch (_) {}
-      try {
-        await textRecognizer?.close();
       } catch (_) {}
     }
 
