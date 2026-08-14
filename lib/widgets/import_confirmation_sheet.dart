@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:phosphoricons_flutter/phosphoricons_flutter.dart';
+import 'package:the_shelf/blocs/theme/theme_cubit.dart';
 import 'package:the_shelf/models/imported_document_summary.dart';
+import 'package:the_shelf/theme/app_theme.dart';
 
 /// Modal bottom sheet for reviewing extracted document metadata, recommended shelf prediction,
 /// and confirming shelf assignment.
@@ -37,12 +41,13 @@ class _ImportConfirmationSheetState extends State<ImportConfirmationSheet> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+    final activePalette = context.watch<ThemeCubit>().state;
     final classification = widget.summary.classification;
     final String recommendedShelf = classification.label;
     final double confidence = classification.confidence;
     final bool isLowConfidence = widget.summary.isLowConfidence;
     final bool isRecommendedSelected = _selectedShelf == recommendedShelf;
+    final bool isEpub = widget.summary.fileName.toLowerCase().endsWith('.epub');
 
     return SafeArea(
       child: Padding(
@@ -60,11 +65,11 @@ class _ImportConfirmationSheetState extends State<ImportConfirmationSheet> {
               // Top Drag Handle
               Center(
                 child: Container(
-                  width: 40,
+                  width: 36,
                   height: 4,
                   margin: const EdgeInsets.only(bottom: 16),
                   decoration: BoxDecoration(
-                    color: theme.colorScheme.outlineVariant,
+                    color: activePalette.cardBorder,
                     borderRadius: BorderRadius.circular(2),
                   ),
                 ),
@@ -74,17 +79,22 @@ class _ImportConfirmationSheetState extends State<ImportConfirmationSheet> {
               Row(
                 children: [
                   Container(
-                    padding: const EdgeInsets.all(12),
+                    width: 48,
+                    height: 48,
                     decoration: BoxDecoration(
-                      color: theme.colorScheme.primaryContainer,
-                      borderRadius: BorderRadius.circular(12),
+                      color: activePalette.subtleBadgeBackground,
+                      borderRadius: AppTheme.asymmetricBadgeRadius,
+                      border: Border.all(
+                        color: activePalette.cardBorder,
+                        width: 1.0,
+                      ),
                     ),
-                    child: Icon(
-                      widget.summary.fileName.toLowerCase().endsWith('.epub')
-                          ? Icons.book
-                          : Icons.picture_as_pdf,
-                      color: theme.colorScheme.primary,
-                      size: 28,
+                    child: Center(
+                      child: Icon(
+                        isEpub ? PhosphorIcons.bookBookmarkBold : PhosphorIcons.filePdfBold,
+                        color: activePalette.primaryAccent,
+                        size: 24,
+                      ),
                     ),
                   ),
                   const SizedBox(width: 14),
@@ -94,34 +104,39 @@ class _ImportConfirmationSheetState extends State<ImportConfirmationSheet> {
                       children: [
                         Text(
                           'Import Document',
-                          style: theme.textTheme.titleMedium?.copyWith(
+                          style: TextStyle(
+                            fontFamily: AppTheme.serifFontFamily,
+                            fontSize: 18,
                             fontWeight: FontWeight.bold,
+                            color: activePalette.primaryText,
                           ),
                         ),
+                        const SizedBox(height: 2),
                         Text(
                           widget.summary.fileName,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: theme.textTheme.bodySmall?.copyWith(
-                            color: theme.colorScheme.onSurfaceVariant,
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: activePalette.secondaryText,
                           ),
                         ),
                         if (widget.summary.isOcrUsed) ...[
-                          const SizedBox(height: 3),
+                          const SizedBox(height: 4),
                           Row(
                             children: [
                               Icon(
-                                Icons.document_scanner,
-                                size: 12,
-                                color: theme.colorScheme.primary,
+                                PhosphorIcons.scanBold,
+                                size: 13,
+                                color: activePalette.primaryAccent,
                               ),
                               const SizedBox(width: 4),
                               Text(
                                 'Extracted via On-Device OCR',
-                                style: theme.textTheme.labelSmall?.copyWith(
-                                  fontSize: 10,
+                                style: TextStyle(
+                                  fontSize: 11,
                                   fontWeight: FontWeight.w600,
-                                  color: theme.colorScheme.primary,
+                                  color: activePalette.primaryAccent,
                                 ),
                               ),
                             ],
@@ -153,20 +168,20 @@ class _ImportConfirmationSheetState extends State<ImportConfirmationSheet> {
                   padding: const EdgeInsets.all(14),
                   decoration: BoxDecoration(
                     color: isRecommendedSelected
-                        ? theme.colorScheme.secondaryContainer.withAlpha(128)
-                        : theme.colorScheme.surfaceContainerHighest,
+                        ? activePalette.primaryAccent.withAlpha(25)
+                        : activePalette.background,
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(
                       color: isRecommendedSelected
-                          ? theme.colorScheme.secondary
-                          : theme.colorScheme.outlineVariant,
+                          ? activePalette.primaryAccent
+                          : activePalette.cardBorder,
                     ),
                   ),
                   child: Row(
                     children: [
                       Icon(
-                        Icons.auto_awesome,
-                        color: theme.colorScheme.secondary,
+                        PhosphorIcons.sparkleBold,
+                        color: activePalette.primaryAccent,
                         size: 22,
                       ),
                       const SizedBox(width: 10),
@@ -176,15 +191,18 @@ class _ImportConfirmationSheetState extends State<ImportConfirmationSheet> {
                           children: [
                             Text(
                               'Smart Recommendation',
-                              style: theme.textTheme.labelSmall?.copyWith(
-                                color: theme.colorScheme.onSurfaceVariant,
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: activePalette.secondaryText,
                               ),
                             ),
+                            const SizedBox(height: 2),
                             Text(
                               '$recommendedShelf (${(confidence * 100).toStringAsFixed(1)}% confidence)',
-                              style: theme.textTheme.titleSmall?.copyWith(
+                              style: TextStyle(
+                                fontSize: 14,
                                 fontWeight: FontWeight.bold,
-                                color: theme.colorScheme.onSecondaryContainer,
+                                color: activePalette.primaryText,
                               ),
                             ),
                           ],
@@ -197,17 +215,17 @@ class _ImportConfirmationSheetState extends State<ImportConfirmationSheet> {
                 Container(
                   padding: const EdgeInsets.all(14),
                   decoration: BoxDecoration(
-                    color: theme.colorScheme.surfaceContainerHighest,
+                    color: activePalette.background,
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(
-                      color: theme.colorScheme.outlineVariant,
+                      color: activePalette.cardBorder,
                     ),
                   ),
                   child: Row(
                     children: [
                       Icon(
-                        Icons.info_outline,
-                        color: theme.colorScheme.primary,
+                        PhosphorIcons.infoBold,
+                        color: activePalette.primaryAccent,
                         size: 22,
                       ),
                       const SizedBox(width: 10),
@@ -217,15 +235,18 @@ class _ImportConfirmationSheetState extends State<ImportConfirmationSheet> {
                           children: [
                             Text(
                               'Select Shelf Required',
-                              style: theme.textTheme.labelSmall?.copyWith(
-                                color: theme.colorScheme.primary,
+                              style: TextStyle(
+                                fontSize: 12,
                                 fontWeight: FontWeight.bold,
+                                color: activePalette.primaryAccent,
                               ),
                             ),
+                            const SizedBox(height: 2),
                             Text(
                               'Low text clarity detected • Please select the best shelf category below.',
-                              style: theme.textTheme.bodySmall?.copyWith(
-                                color: theme.colorScheme.onSurfaceVariant,
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: activePalette.secondaryText,
                               ),
                             ),
                           ],
@@ -274,7 +295,7 @@ class _ImportConfirmationSheetState extends State<ImportConfirmationSheet> {
                   title: const Text('Extracted Text Preview'),
                   subtitle: Text(
                     '${widget.summary.textSnippet.length} characters excerpt used for classification',
-                    style: theme.textTheme.bodySmall,
+                    style: TextStyle(fontSize: 12, color: activePalette.secondaryText),
                   ),
                   children: [
                     Padding(
@@ -283,9 +304,10 @@ class _ImportConfirmationSheetState extends State<ImportConfirmationSheet> {
                         widget.summary.textSnippet,
                         maxLines: 6,
                         overflow: TextOverflow.ellipsis,
-                        style: theme.textTheme.bodySmall?.copyWith(
+                        style: TextStyle(
+                          fontSize: 12,
                           fontFamily: 'monospace',
-                          color: theme.colorScheme.onSurfaceVariant,
+                          color: activePalette.secondaryText,
                         ),
                       ),
                     ),
@@ -325,8 +347,6 @@ class _ImportConfirmationSheetState extends State<ImportConfirmationSheet> {
                       label: const Text('Add to Shelf'),
                       style: ElevatedButton.styleFrom(
                         padding: const EdgeInsets.symmetric(vertical: 14),
-                        backgroundColor: theme.colorScheme.primary,
-                        foregroundColor: theme.colorScheme.onPrimary,
                       ),
                     ),
                   ),

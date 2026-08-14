@@ -19,5 +19,5 @@ class ImportedDocumentSummary {
     this.isOcrUsed = false,
     bool? isLowConfidence,
   }) : isLowConfidence = isLowConfidence ??
-            (classification.confidence < 0.20 || textSnippet.trim().length < 50);
+            (textSnippet.trim().length < 50 || classification.confidence < 0.15);
 }
