@@ -95,7 +95,9 @@ class ImportBottomSheetModal extends StatelessWidget {
                       child: Center(
                         child: Icon(
                           PhosphorIcons.filePlus,
-                          color: activePalette.primaryText,
+                          color: activePalette.isDark
+                              ? activePalette.primaryText
+                              : Colors.white,
                           size: 22,
                         ),
                       ),

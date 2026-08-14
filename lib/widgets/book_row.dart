@@ -346,7 +346,9 @@ class _BookRowState extends State<BookRow> {
                 child: Center(
                   child: Icon(
                     iconData,
-                    color: activePalette.primaryText,
+                    color: activePalette.isDark
+                        ? activePalette.primaryText
+                        : Colors.white,
                     size: 22,
                   ),
                 ),

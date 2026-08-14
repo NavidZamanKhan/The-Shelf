@@ -154,7 +154,9 @@ class ShelfDetailScreen extends StatelessWidget {
                             child: Icon(
                               iconData,
                               size: 24,
-                              color: activePalette.primaryText,
+                              color: activePalette.isDark
+                                  ? activePalette.primaryText
+                                  : Colors.white,
                             ),
                           ),
                         ),
