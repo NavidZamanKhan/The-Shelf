@@ -43,56 +43,82 @@ class DocumentImportService {
     if (lastDot != -1) {
       nameWithoutExt = fileName.substring(0, lastDot);
     }
-    // Replace underscores, dashes, and dots with spaces
-    String cleaned = nameWithoutExt.replaceAll(RegExp(r'[_.-]+'), ' ');
-    // Remove common unwanted download prefixes/suffixes
-    cleaned = cleaned.replaceAll(RegExp(r'\b(v\d+|\d+p|pdf|epub|vol\d+)\b', caseSensitive: false), '');
-    // Collapse spaces
-    cleaned = cleaned.replaceAll(RegExp(r'\s+'), ' ').trim();
+    // Remove website tags, brackets, download suffixes
+    String cleaned = nameWithoutExt
+        .replaceAll(RegExp(r'\((?:bdebooks|pdfdrive|z-library|oceanofpdf|bdebooks\s*com|download)[^\)]*\)', caseSensitive: false), '')
+        .replaceAll(RegExp(r'\[(?:bdebooks|pdfdrive|z-library|oceanofpdf)[^\]]*\]', caseSensitive: false), '')
+        .replaceAll(RegExp(r'[_.-]+'), ' ')
+        .replaceAll(RegExp(r'\b(v\d+|\d+p|pdf|epub|vol\d+|bdebooks|com)\b', caseSensitive: false), '')
+        .replaceAll(RegExp(r'\s+'), ' ')
+        .trim();
     return cleaned.isEmpty ? fileName : cleaned;
   }
 
-  /// Extracts text and metadata (title, chapter text) from an EPUB file using archive.
-  Future<({String? title, String text})> _extractEpubData(String filePath, {int textLimit = 1500}) async {
+  /// Extracts text and rich metadata (title, subjects, description, chapter text) from an EPUB file.
+  Future<({String? title, String text})> _extractEpubData(String filePath, {int textLimit = 3000}) async {
     try {
       final bytes = await File(filePath).readAsBytes();
-      final archive = ZipDecoder().decodeBytes(bytes);
+      final archive = ZipDecoder().decodeBytes(bytes, verify: false);
       
       String? extractedTitle;
+      final subjects = <String>[];
+      String? description;
       final textBuffer = StringBuffer();
 
-      // 1. Search for .opf file for metadata (dc:title, dc:description)
-      for (final file in archive) {
-        if (file.name.endsWith('.opf')) {
+      // 1. Search for .opf file for metadata (dc:title, dc:subject, dc:description, dc:creator)
+      for (final file in archive.files) {
+        if (file.name.toLowerCase().endsWith('.opf')) {
           final content = utf8.decode(file.content as List<int>, allowMalformed: true);
+          
           final titleMatch = RegExp(r'<dc:title[^>]*>(.*?)</dc:title>', caseSensitive: false, dotAll: true).firstMatch(content);
           if (titleMatch != null) {
-            final t = titleMatch.group(1)?.trim();
-            if (t != null && t.isNotEmpty) {
-              extractedTitle = t.replaceAll(RegExp(r'<[^>]*>'), '').trim();
+            final raw = titleMatch.group(1);
+            if (raw != null) {
+              final t = raw.replaceAll(RegExp(r'<[^>]*>'), '').trim();
+              if (t.isNotEmpty) extractedTitle = t;
             }
           }
+
+          final subjectMatches = RegExp(r'<dc:subject[^>]*>(.*?)</dc:subject>', caseSensitive: false, dotAll: true).allMatches(content);
+          for (final m in subjectMatches) {
+            final raw = m.group(1);
+            if (raw != null) {
+              final s = raw.replaceAll(RegExp(r'<[^>]*>'), '').trim();
+              if (s.isNotEmpty) subjects.add(s);
+            }
+          }
+
           final descMatch = RegExp(r'<dc:description[^>]*>(.*?)</dc:description>', caseSensitive: false, dotAll: true).firstMatch(content);
           if (descMatch != null) {
-            final desc = descMatch.group(1)?.replaceAll(RegExp(r'<[^>]*>'), '') ?? '';
-            if (desc.isNotEmpty) {
-              textBuffer.write(' ');
-              textBuffer.write(desc);
+            final raw = descMatch.group(1);
+            if (raw != null) {
+              final d = raw.replaceAll(RegExp(r'<[^>]*>'), '').trim();
+              if (d.isNotEmpty) description = d;
             }
           }
           break;
         }
       }
 
+      if (subjects.isNotEmpty) {
+        textBuffer.write(subjects.join(' '));
+        textBuffer.write(' ');
+      }
+      if (description != null && description.isNotEmpty) {
+        textBuffer.write(description);
+        textBuffer.write(' ');
+      }
+
       // 2. Read chapters (html/xhtml files)
-      for (final file in archive) {
+      for (final file in archive.files) {
         final lowerName = file.name.toLowerCase();
         if (lowerName.endsWith('.xhtml') || lowerName.endsWith('.html') || lowerName.endsWith('.htm')) {
-          if (lowerName.contains('nav') || lowerName.contains('toc')) continue;
+          if (lowerName.contains('nav') || lowerName.contains('toc') || lowerName.contains('cover') || lowerName.contains('license')) continue;
           
           final content = utf8.decode(file.content as List<int>, allowMalformed: true);
-          // Strip HTML tags & scripts & styles
+          // Strip HTML tags & boilerplate legal notices
           final cleanHtml = content
+              .replaceAll(RegExp(r'the project gutenberg ebook.*?(?=chapter|section|\n\n)', caseSensitive: false, dotAll: true), '')
               .replaceAll(RegExp(r'<style[^>]*>.*?</style>', caseSensitive: false, dotAll: true), '')
               .replaceAll(RegExp(r'<script[^>]*>.*?</script>', caseSensitive: false, dotAll: true), '')
               .replaceAll(RegExp(r'<[^>]*>'), ' ')
