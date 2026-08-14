@@ -1,11 +1,14 @@
+import 'dart:convert';
 import 'dart:io';
+import 'package:archive/archive.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:read_pdf_text/read_pdf_text.dart';
 import 'package:the_shelf/models/imported_document_summary.dart';
 import 'package:the_shelf/services/shelf_classifier_service.dart';
 
-/// Service for picking PDF files, extracting text, and predicting shelf classification.
+/// Service for picking PDF and EPUB files, extracting text, and predicting shelf classification.
 class DocumentImportService {
   static final DocumentImportService instance = DocumentImportService._internal();
   DocumentImportService._internal();
@@ -49,11 +52,82 @@ class DocumentImportService {
     return cleaned.isEmpty ? fileName : cleaned;
   }
 
-  /// Picks a PDF document, extracts plain text, and runs on-device classification.
+  /// Extracts text and metadata (title, chapter text) from an EPUB file using archive.
+  Future<({String? title, String text})> _extractEpubData(String filePath, {int textLimit = 1500}) async {
+    try {
+      final bytes = await File(filePath).readAsBytes();
+      final archive = ZipDecoder().decodeBytes(bytes);
+      
+      String? extractedTitle;
+      final textBuffer = StringBuffer();
+
+      // 1. Search for .opf file for metadata (dc:title, dc:description)
+      for (final file in archive) {
+        if (file.name.endsWith('.opf')) {
+          final content = utf8.decode(file.content as List<int>, allowMalformed: true);
+          final titleMatch = RegExp(r'<dc:title[^>]*>(.*?)</dc:title>', caseSensitive: false, dotAll: true).firstMatch(content);
+          if (titleMatch != null) {
+            final t = titleMatch.group(1)?.trim();
+            if (t != null && t.isNotEmpty) {
+              extractedTitle = t.replaceAll(RegExp(r'<[^>]*>'), '').trim();
+            }
+          }
+          final descMatch = RegExp(r'<dc:description[^>]*>(.*?)</dc:description>', caseSensitive: false, dotAll: true).firstMatch(content);
+          if (descMatch != null) {
+            final desc = descMatch.group(1)?.replaceAll(RegExp(r'<[^>]*>'), '') ?? '';
+            if (desc.isNotEmpty) {
+              textBuffer.write(' ');
+              textBuffer.write(desc);
+            }
+          }
+          break;
+        }
+      }
+
+      // 2. Read chapters (html/xhtml files)
+      for (final file in archive) {
+        final lowerName = file.name.toLowerCase();
+        if (lowerName.endsWith('.xhtml') || lowerName.endsWith('.html') || lowerName.endsWith('.htm')) {
+          if (lowerName.contains('nav') || lowerName.contains('toc')) continue;
+          
+          final content = utf8.decode(file.content as List<int>, allowMalformed: true);
+          // Strip HTML tags & scripts & styles
+          final cleanHtml = content
+              .replaceAll(RegExp(r'<style[^>]*>.*?</style>', caseSensitive: false, dotAll: true), '')
+              .replaceAll(RegExp(r'<script[^>]*>.*?</script>', caseSensitive: false, dotAll: true), '')
+              .replaceAll(RegExp(r'<[^>]*>'), ' ')
+              .replaceAll('&nbsp;', ' ')
+              .replaceAll('&amp;', '&')
+              .replaceAll('&lt;', '<')
+              .replaceAll('&gt;', '>')
+              .replaceAll('&quot;', '"')
+              .replaceAll('&#39;', "'")
+              .replaceAll(RegExp(r'\s+'), ' ')
+              .trim();
+
+          if (cleanHtml.isNotEmpty) {
+            textBuffer.write(' ');
+            textBuffer.write(cleanHtml);
+          }
+
+          if (textBuffer.length >= textLimit * 2) {
+            break;
+          }
+        }
+      }
+
+      return (title: extractedTitle, text: textBuffer.toString().trim());
+    } catch (e) {
+      debugPrint('Error extracting EPUB data: $e');
+      return (title: null, text: '');
+    }
+  }
+
+  /// Picks a PDF or EPUB document, extracts plain text, and runs on-device classification.
   Future<ImportedDocumentSummary?> pickAndExtractPdf({int textLimit = 1000}) async {
     final FilePickerResult? result = await FilePicker.pickFiles(
       type: FileType.custom,
-      allowedExtensions: ['pdf'],
+      allowedExtensions: ['pdf', 'epub'],
       allowMultiple: false,
     );
 
@@ -69,19 +143,31 @@ class DocumentImportService {
     }
 
     final String rawFileName = platformFile.name;
-    final String cleanedTitle = cleanFileName(rawFileName);
+    final bool isEpub = rawFileName.toLowerCase().endsWith('.epub');
 
     // Copy file to permanent storage directory so it survives temp folder cleanups
     final String permanentPath = await _copyToPermanentStorage(filePath, rawFileName);
 
-    // Extract text using read_pdf_text plugin
     String extractedRawText = '';
-    try {
-      extractedRawText = await ReadPdfText.getPDFtext(permanentPath);
-    } catch (e) {
-      // Fallback if PDF text extraction encounters encrypted or non-text streams
-      extractedRawText = '';
+    String? metadataTitle;
+
+    if (isEpub) {
+      final epubData = await _extractEpubData(permanentPath, textLimit: textLimit);
+      extractedRawText = epubData.text;
+      metadataTitle = epubData.title;
+    } else {
+      // Extract text using read_pdf_text plugin
+      try {
+        extractedRawText = await ReadPdfText.getPDFtext(permanentPath);
+      } catch (e) {
+        // Fallback if PDF text extraction encounters encrypted or non-text streams
+        extractedRawText = '';
+      }
     }
+
+    final String cleanedTitle = (metadataTitle != null && metadataTitle.isNotEmpty)
+        ? metadataTitle
+        : cleanFileName(rawFileName);
 
     // Clean extracted body text
     String cleanedBodyText = extractedRawText.replaceAll(RegExp(r'\s+'), ' ').trim();
