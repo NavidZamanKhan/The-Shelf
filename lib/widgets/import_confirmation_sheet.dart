@@ -77,6 +77,7 @@ class _ImportConfirmationSheetState extends State<ImportConfirmationSheet> {
 
               // Document Header
               Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Container(
                     width: 48,
