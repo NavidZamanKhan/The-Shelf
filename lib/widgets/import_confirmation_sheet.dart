@@ -77,7 +77,7 @@ class _ImportConfirmationSheetState extends State<ImportConfirmationSheet> {
 
               // Document Header
               Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
+                crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
                   Container(
                     width: 48,
@@ -112,35 +112,38 @@ class _ImportConfirmationSheetState extends State<ImportConfirmationSheet> {
                             color: activePalette.primaryText,
                           ),
                         ),
-                        const SizedBox(height: 2),
-                        Text(
-                          widget.summary.fileName,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            fontSize: 13,
-                            color: activePalette.secondaryText,
-                          ),
-                        ),
                         if (widget.summary.isOcrUsed) ...[
-                          const SizedBox(height: 4),
-                          Row(
-                            children: [
-                              Icon(
-                                PhosphorIcons.scanBold,
-                                size: 13,
-                                color: activePalette.primaryAccent,
+                          const SizedBox(height: 6),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                            decoration: BoxDecoration(
+                              color: activePalette.primaryAccent.withAlpha(20),
+                              borderRadius: BorderRadius.circular(6),
+                              border: Border.all(
+                                color: activePalette.primaryAccent.withAlpha(50),
+                                width: 0.8,
                               ),
-                              const SizedBox(width: 4),
-                              Text(
-                                'Extracted via On-Device OCR',
-                                style: TextStyle(
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w600,
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  PhosphorIcons.scanBold,
+                                  size: 12,
                                   color: activePalette.primaryAccent,
                                 ),
-                              ),
-                            ],
+                                const SizedBox(width: 5),
+                                Text(
+                                  'On-Device OCR Recognized',
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w600,
+                                    letterSpacing: 0.2,
+                                    color: activePalette.primaryAccent,
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
                         ],
                       ],
