@@ -12,6 +12,8 @@ import 'package:the_shelf/services/user_profile_repository.dart';
 import 'package:the_shelf/theme/app_color_palette.dart';
 import 'package:the_shelf/theme/app_theme.dart';
 
+import 'package:the_shelf/widgets/image_crop_modal.dart';
+
 /// Modal bottom sheet allowing users to update display name, reading motto/bio,
 /// avatar profile picture, and cover banner photo with Cloud Firestore sync.
 class EditProfileModal extends StatefulWidget {
@@ -78,30 +80,39 @@ class _EditProfileModalState extends State<EditProfileModal> {
     try {
       final XFile? pickedFile = await _picker.pickImage(
         source: ImageSource.gallery,
-        maxWidth: isBanner ? 1200 : 600,
-        maxHeight: isBanner ? 600 : 600,
-        imageQuality: 85,
+        maxWidth: 2400,
+        maxHeight: 2400,
+        imageQuality: 95,
       );
 
       if (pickedFile != null && mounted) {
-        setState(() {
-          if (isBanner) {
-            _selectedBannerPath = pickedFile.path;
-          } else {
-            _selectedPhotoPath = pickedFile.path;
-          }
-        });
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              isBanner
-                  ? 'Cover photo selected! Tap "Save Changes" to update.'
-                  : 'Profile picture selected! Tap "Save Changes" to update.',
-            ),
-            behavior: SnackBarBehavior.floating,
-            duration: const Duration(seconds: 2),
-          ),
+        // Open the interactive image cropper / reframing modal
+        final croppedPath = await ImageCropModal.show(
+          context,
+          imagePath: pickedFile.path,
+          isBanner: isBanner,
         );
+
+        if (croppedPath != null && mounted) {
+          setState(() {
+            if (isBanner) {
+              _selectedBannerPath = croppedPath;
+            } else {
+              _selectedPhotoPath = croppedPath;
+            }
+          });
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                isBanner
+                    ? 'Cover photo cropped! Tap "Save Changes" to update.'
+                    : 'Profile photo cropped! Tap "Save Changes" to update.',
+              ),
+              behavior: SnackBarBehavior.floating,
+              duration: const Duration(seconds: 2),
+            ),
+          );
+        }
       }
     } catch (e) {
       debugPrint('Error picking image: $e');
