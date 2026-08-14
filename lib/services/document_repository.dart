@@ -9,7 +9,7 @@ import 'package:the_shelf/blocs/shelf/shelf_state.dart';
 class DocumentRepository {
   static final DocumentRepository instance = DocumentRepository._internal();
   static const String _tableName = 'documents';
-  static const int _dbVersion = 3;
+  static const int _dbVersion = 4;
 
   Database? _db;
 
@@ -59,11 +59,32 @@ class DocumentRepository {
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
       onConfigure: _onConfigure,
+      onOpen: (db) async {
+        await _ensureSchema(db);
+      },
     );
   }
 
   Future<void> _onConfigure(Database db) async {
     await db.execute('PRAGMA foreign_keys = ON;');
+  }
+
+  Future<void> _ensureSchema(Database db) async {
+    try {
+      final docCols = await db.rawQuery("PRAGMA table_info($_tableName)");
+      if (docCols.isNotEmpty && !docCols.any((c) => c['name'] == 'user_id')) {
+        await db.execute("ALTER TABLE $_tableName ADD COLUMN user_id TEXT DEFAULT 'guest_local';");
+        await db.execute("CREATE INDEX IF NOT EXISTS idx_documents_user ON $_tableName(user_id);");
+      }
+    } catch (_) {}
+
+    try {
+      final colCols = await db.rawQuery("PRAGMA table_info(collections)");
+      if (colCols.isNotEmpty && !colCols.any((c) => c['name'] == 'user_id')) {
+        await db.execute("ALTER TABLE collections ADD COLUMN user_id TEXT DEFAULT 'guest_local';");
+        await db.execute("CREATE INDEX IF NOT EXISTS idx_collections_user ON collections(user_id);");
+      }
+    } catch (_) {}
   }
 
   Future<void> _onCreate(Database db, int version) async {
@@ -93,6 +114,9 @@ class DocumentRepository {
       await db.execute("ALTER TABLE $_tableName ADD COLUMN user_id TEXT DEFAULT 'guest_local';");
       await db.execute("ALTER TABLE collections ADD COLUMN user_id TEXT DEFAULT 'guest_local';");
       await db.execute("CREATE INDEX IF NOT EXISTS idx_documents_user ON $_tableName(user_id);");
+    }
+    if (oldVersion < 4) {
+      await _ensureSchema(db);
     }
   }
 
@@ -231,19 +255,14 @@ class DocumentRepository {
     );
   }
 
-  /// Clears all stored documents for the active user or entire table
+  /// Clears all stored documents for the active user
   Future<void> clearAllDocuments({String? userId}) async {
     final db = await database;
-    if (userId != null && userId.isNotEmpty) {
-      final tableInfo = await db.rawQuery("PRAGMA table_info($_tableName)");
-      final hasUserCol = tableInfo.any((c) => c['name'] == 'user_id');
-      if (hasUserCol) {
-        await db.delete(_tableName, where: 'user_id = ?', whereArgs: [userId]);
-      } else {
-        await db.delete(_tableName);
-      }
-    } else {
-      await db.delete(_tableName);
+    final effectiveUid = await resolveUserId(userId: userId);
+    final tableInfo = await db.rawQuery("PRAGMA table_info($_tableName)");
+    final hasUserCol = tableInfo.any((c) => c['name'] == 'user_id');
+    if (hasUserCol) {
+      await db.delete(_tableName, where: 'user_id = ?', whereArgs: [effectiveUid]);
     }
   }
 
@@ -267,23 +286,5 @@ class DocumentRepository {
       for (var row in results)
         row['shelf'] as String: row['count'] as int,
     };
-  }
-
-  /// Claims all `guest_local` documents and collections for a newly authenticated user.
-  Future<void> claimGuestData(String userId) async {
-    if (userId.isEmpty || userId == 'guest_local') return;
-    final db = await database;
-    await db.transaction((txn) async {
-      await txn.update(
-        _tableName,
-        {'user_id': userId},
-        where: "user_id = 'guest_local'",
-      );
-      await txn.update(
-        'collections',
-        {'user_id': userId},
-        where: "user_id = 'guest_local'",
-      );
-    });
   }
 }
