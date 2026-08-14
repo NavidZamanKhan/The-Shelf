@@ -18,8 +18,6 @@ class CloudLibraryService {
 
   factory CloudLibraryService() => instance;
 
-  static const String _keySyncedDocIds = 'cloud_synced_document_ids';
-
   FirebaseFirestore? get _firestore {
     try {
       return FirebaseFirestore.instance;
@@ -317,14 +315,16 @@ class CloudLibraryService {
     return null;
   }
 
+  String _syncedDocIdsKey(String uid) => 'cloud_synced_document_ids_$uid';
+
   /// Checks if a document has been synced to cloud.
   Future<bool> isDocumentSynced(String docId, {String? uid}) async {
+    final effectiveUid = await resolveUid(uid: uid);
     final prefs = await SharedPreferences.getInstance();
-    final synced = prefs.getStringList(_keySyncedDocIds) ?? [];
+    final synced = prefs.getStringList(_syncedDocIdsKey(effectiveUid)) ?? [];
     if (synced.contains(docId)) return true;
 
     try {
-      final effectiveUid = await resolveUid(uid: uid);
       final safeDocId = docId.replaceAll('/', '_').replaceAll('\\', '_');
       final db = _firestore;
       if (db != null) {
@@ -335,7 +335,7 @@ class CloudLibraryService {
             .doc(safeDocId)
             .get();
         if (doc.exists) {
-          await _markDocumentSynced(docId);
+          await _markDocumentSynced(docId, uid: effectiveUid);
           return true;
         }
       }
@@ -375,10 +375,10 @@ class CloudLibraryService {
 
       // 2. Remove from local synced doc IDs cache
       final prefs = await SharedPreferences.getInstance();
-      final synced = prefs.getStringList(_keySyncedDocIds) ?? [];
+      final synced = prefs.getStringList(_syncedDocIdsKey(effectiveUid)) ?? [];
       if (synced.contains(docId)) {
         synced.remove(docId);
-        await prefs.setStringList(_keySyncedDocIds, synced);
+        await prefs.setStringList(_syncedDocIdsKey(effectiveUid), synced);
       }
 
       debugPrint('Deleted document $docId from cloud for user $effectiveUid');
@@ -392,7 +392,7 @@ class CloudLibraryService {
   /// Backs up all local documents into the user's Cloud Firestore account.
   Future<int> backupAllDocuments({String? uid}) async {
     final effectiveUid = await resolveUid(uid: uid);
-    final docs = await DocumentRepository.instance.getAllDocuments();
+    final docs = await DocumentRepository.instance.getAllDocuments(userId: effectiveUid);
     int successCount = 0;
 
     for (final doc in docs) {
@@ -423,7 +423,7 @@ class CloudLibraryService {
             .collection('documents')
             .get();
 
-        final localDocs = await DocumentRepository.instance.getAllDocuments();
+        final localDocs = await DocumentRepository.instance.getAllDocuments(userId: effectiveUid);
         final localDocMap = {for (var d in localDocs) d.id: d};
 
         for (final doc in snapshot.docs) {
@@ -474,8 +474,8 @@ class CloudLibraryService {
               filePath: effectiveFilePath,
               addedAt: addedAt,
             );
-            await DocumentRepository.instance.insertDocument(item);
-            await _markDocumentSynced(id);
+            await DocumentRepository.instance.insertDocument(item, userId: effectiveUid);
+            await _markDocumentSynced(id, uid: effectiveUid);
             restoredCount++;
           } else if (localFile != null && existingLocal.filePath != localFile.path) {
             await DocumentRepository.instance.updateDocumentFilePath(id, localFile.path);
@@ -508,15 +508,16 @@ class CloudLibraryService {
     }
 
     final prefs = await SharedPreferences.getInstance();
-    final synced = prefs.getStringList(_keySyncedDocIds) ?? [];
+    final synced = prefs.getStringList(_syncedDocIdsKey(effectiveUid)) ?? [];
     synced.remove(docId);
-    await prefs.setStringList(_keySyncedDocIds, synced);
+    await prefs.setStringList(_syncedDocIdsKey(effectiveUid), synced);
   }
 
-  Future<void> _markDocumentSynced(String docId) async {
+  Future<void> _markDocumentSynced(String docId, {String? uid}) async {
+    final effectiveUid = await resolveUid(uid: uid);
     final prefs = await SharedPreferences.getInstance();
-    final synced = (prefs.getStringList(_keySyncedDocIds) ?? []).toSet();
+    final synced = (prefs.getStringList(_syncedDocIdsKey(effectiveUid)) ?? []).toSet();
     synced.add(docId);
-    await prefs.setStringList(_keySyncedDocIds, synced.toList());
+    await prefs.setStringList(_syncedDocIdsKey(effectiveUid), synced.toList());
   }
 }

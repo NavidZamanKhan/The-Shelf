@@ -5,6 +5,7 @@ import 'package:the_shelf/services/collection_repository.dart';
 
 class CollectionBloc extends Bloc<CollectionEvent, CollectionState> {
   final CollectionRepository _repository;
+  String? _currentUserId;
 
   CollectionBloc({CollectionRepository? repository})
       : _repository = repository ?? CollectionRepository.instance,
@@ -23,10 +24,11 @@ class CollectionBloc extends Bloc<CollectionEvent, CollectionState> {
     LoadCollections event,
     Emitter<CollectionState> emit,
   ) async {
+    _currentUserId = event.userId;
     emit(const CollectionLoading());
     try {
       final collections = await _repository.getAllCollections(userId: event.userId);
-      final docMap = await _repository.getDocumentCollectionMap();
+      final docMap = await _repository.getDocumentCollectionMap(userId: event.userId);
       emit(CollectionLoaded(
         collections: collections,
         documentCollectionMap: docMap,
@@ -40,6 +42,7 @@ class CollectionBloc extends Bloc<CollectionEvent, CollectionState> {
     ClearCollections event,
     Emitter<CollectionState> emit,
   ) {
+    _currentUserId = null;
     emit(const CollectionLoaded(collections: []));
   }
 
@@ -52,9 +55,10 @@ class CollectionBloc extends Bloc<CollectionEvent, CollectionState> {
         name: event.name,
         colorHex: event.colorHex,
         iconName: event.iconName,
+        userId: _currentUserId,
       );
-      final collections = await _repository.getAllCollections();
-      final docMap = await _repository.getDocumentCollectionMap();
+      final collections = await _repository.getAllCollections(userId: _currentUserId);
+      final docMap = await _repository.getDocumentCollectionMap(userId: _currentUserId);
       emit(CollectionLoaded(
         collections: collections,
         documentCollectionMap: docMap,
@@ -80,8 +84,8 @@ class CollectionBloc extends Bloc<CollectionEvent, CollectionState> {
   ) async {
     try {
       await _repository.updateCollection(event.collection);
-      final collections = await _repository.getAllCollections();
-      final docMap = await _repository.getDocumentCollectionMap();
+      final collections = await _repository.getAllCollections(userId: _currentUserId);
+      final docMap = await _repository.getDocumentCollectionMap(userId: _currentUserId);
       emit(CollectionLoaded(
         collections: collections,
         documentCollectionMap: docMap,
@@ -98,8 +102,8 @@ class CollectionBloc extends Bloc<CollectionEvent, CollectionState> {
   ) async {
     try {
       await _repository.deleteCollection(event.collectionId);
-      final collections = await _repository.getAllCollections();
-      final docMap = await _repository.getDocumentCollectionMap();
+      final collections = await _repository.getAllCollections(userId: _currentUserId);
+      final docMap = await _repository.getDocumentCollectionMap(userId: _currentUserId);
       emit(CollectionLoaded(
         collections: collections,
         documentCollectionMap: docMap,
@@ -120,8 +124,8 @@ class CollectionBloc extends Bloc<CollectionEvent, CollectionState> {
       } else {
         await _repository.removeDocumentFromCollection(event.collectionId, event.documentId);
       }
-      final collections = await _repository.getAllCollections();
-      final docMap = await _repository.getDocumentCollectionMap();
+      final collections = await _repository.getAllCollections(userId: _currentUserId);
+      final docMap = await _repository.getDocumentCollectionMap(userId: _currentUserId);
       emit(CollectionLoaded(
         collections: collections,
         documentCollectionMap: docMap,
@@ -137,8 +141,8 @@ class CollectionBloc extends Bloc<CollectionEvent, CollectionState> {
   ) async {
     try {
       await _repository.setDocumentCollections(event.documentId, event.collectionIds);
-      final collections = await _repository.getAllCollections();
-      final docMap = await _repository.getDocumentCollectionMap();
+      final collections = await _repository.getAllCollections(userId: _currentUserId);
+      final docMap = await _repository.getDocumentCollectionMap(userId: _currentUserId);
       emit(CollectionLoaded(
         collections: collections,
         documentCollectionMap: docMap,
@@ -155,8 +159,8 @@ class CollectionBloc extends Bloc<CollectionEvent, CollectionState> {
   ) async {
     try {
       await _repository.addDocumentsToCollection(event.collectionId, event.documentIds);
-      final collections = await _repository.getAllCollections();
-      final docMap = await _repository.getDocumentCollectionMap();
+      final collections = await _repository.getAllCollections(userId: _currentUserId);
+      final docMap = await _repository.getDocumentCollectionMap(userId: _currentUserId);
       emit(CollectionLoaded(
         collections: collections,
         documentCollectionMap: docMap,

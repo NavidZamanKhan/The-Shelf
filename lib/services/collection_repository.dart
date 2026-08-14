@@ -191,15 +191,27 @@ class CollectionRepository {
   }
 
   /// Gets all documents belonging to a collection via inner join
-  Future<List<ShelfItem>> getDocumentsInCollection(String collectionId) async {
+  Future<List<ShelfItem>> getDocumentsInCollection(String collectionId, {String? userId}) async {
     final db = await _db;
-    final List<Map<String, dynamic>> maps = await db.rawQuery('''
-      SELECT d.id, d.title, d.shelf, d.file_path, d.added_at
-      FROM documents d
-      INNER JOIN collection_documents cd ON d.id = cd.document_id
-      WHERE cd.collection_id = ?
-      ORDER BY cd.added_at DESC
-    ''', [collectionId]);
+    final effectiveUid = await _docRepo.resolveUserId(userId: userId);
+    final tableInfo = await db.rawQuery("PRAGMA table_info(documents)");
+    final hasUserCol = tableInfo.any((c) => c['name'] == 'user_id');
+
+    final List<Map<String, dynamic>> maps = hasUserCol
+        ? await db.rawQuery('''
+            SELECT d.id, d.title, d.shelf, d.file_path, d.added_at
+            FROM documents d
+            INNER JOIN collection_documents cd ON d.id = cd.document_id
+            WHERE cd.collection_id = ? AND d.user_id = ?
+            ORDER BY cd.added_at DESC
+          ''', [collectionId, effectiveUid])
+        : await db.rawQuery('''
+            SELECT d.id, d.title, d.shelf, d.file_path, d.added_at
+            FROM documents d
+            INNER JOIN collection_documents cd ON d.id = cd.document_id
+            WHERE cd.collection_id = ?
+            ORDER BY cd.added_at DESC
+          ''', [collectionId]);
 
     return maps.map((map) {
       return ShelfItem(
@@ -226,9 +238,20 @@ class CollectionRepository {
   }
 
   /// Returns a full map of documentId -> Set of collectionIds for efficient O(1) BLoC state lookup
-  Future<Map<String, Set<String>>> getDocumentCollectionMap() async {
+  Future<Map<String, Set<String>>> getDocumentCollectionMap({String? userId}) async {
     final db = await _db;
-    final List<Map<String, dynamic>> maps = await db.query('collection_documents');
+    final effectiveUid = await _docRepo.resolveUserId(userId: userId);
+    final tableInfo = await db.rawQuery("PRAGMA table_info(collections)");
+    final hasUserCol = tableInfo.any((c) => c['name'] == 'user_id');
+
+    final List<Map<String, dynamic>> maps = hasUserCol
+        ? await db.rawQuery('''
+            SELECT cd.document_id, cd.collection_id
+            FROM collection_documents cd
+            INNER JOIN collections c ON cd.collection_id = c.id
+            WHERE c.user_id = ?
+          ''', [effectiveUid])
+        : await db.query('collection_documents');
 
     final Map<String, Set<String>> resultMap = {};
     for (final row in maps) {

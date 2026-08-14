@@ -5,10 +5,8 @@ import 'package:the_shelf/blocs/auth/auth_bloc.dart';
 import 'package:the_shelf/blocs/auth/auth_event.dart';
 import 'package:the_shelf/blocs/auth/auth_state.dart';
 import 'package:the_shelf/blocs/collection/collection_bloc.dart';
-import 'package:the_shelf/blocs/collection/collection_event.dart';
 import 'package:the_shelf/blocs/document_import/document_import_bloc.dart';
 import 'package:the_shelf/blocs/shelf/shelf_bloc.dart';
-import 'package:the_shelf/blocs/shelf/shelf_event.dart';
 import 'package:the_shelf/blocs/theme/theme_cubit.dart';
 import 'package:the_shelf/screens/auth_screen.dart';
 import 'package:the_shelf/screens/home_screen.dart';
@@ -46,10 +44,10 @@ class TheShelfApp extends StatelessWidget {
           create: (context) => DocumentImportBloc(),
         ),
         BlocProvider<ShelfBloc>(
-          create: (context) => ShelfBloc()..add(const LoadShelfItemsEvent()),
+          create: (context) => ShelfBloc(),
         ),
         BlocProvider<CollectionBloc>(
-          create: (context) => CollectionBloc()..add(const LoadCollections()),
+          create: (context) => CollectionBloc(),
         ),
         BlocProvider<ThemeCubit>(
           create: (context) => ThemeCubit()..loadTheme(),

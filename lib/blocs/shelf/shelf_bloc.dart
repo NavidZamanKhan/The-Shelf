@@ -6,6 +6,7 @@ import 'package:the_shelf/services/document_repository.dart';
 class ShelfBloc extends Bloc<ShelfEvent, ShelfState> {
   final DocumentRepository _repository;
   final List<ShelfItem> _items = [];
+  String? _currentUserId;
 
   ShelfBloc({DocumentRepository? repository})
       : _repository = repository ?? DocumentRepository.instance,
@@ -20,6 +21,7 @@ class ShelfBloc extends Bloc<ShelfEvent, ShelfState> {
     LoadShelfItemsEvent event,
     Emitter<ShelfState> emit,
   ) async {
+    _currentUserId = event.userId;
     try {
       final dbItems = await _repository.getAllDocuments(userId: event.userId);
       _items.clear();
@@ -34,6 +36,7 @@ class ShelfBloc extends Bloc<ShelfEvent, ShelfState> {
     ClearShelfEvent event,
     Emitter<ShelfState> emit,
   ) {
+    _currentUserId = null;
     _items.clear();
     emit(const ShelfLoaded(items: []));
   }
@@ -51,7 +54,7 @@ class ShelfBloc extends Bloc<ShelfEvent, ShelfState> {
     );
 
     try {
-      await _repository.insertDocument(newItem);
+      await _repository.insertDocument(newItem, userId: _currentUserId);
       _items.insert(0, newItem);
       emit(ShelfLoaded(items: List.unmodifiable(_items)));
     } catch (e) {

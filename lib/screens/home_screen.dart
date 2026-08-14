@@ -81,6 +81,18 @@ class _HomeScreenState extends State<HomeScreen> {
     super.initState();
     _pageController = PageController(initialPage: _selectedFilterIndex);
     _loadSavedSettings();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final authState = context.read<AuthBloc>().state;
+      if (authState is Authenticated) {
+        final uid = authState.profile.uid;
+        context.read<ShelfBloc>().add(LoadShelfItemsEvent(userId: uid));
+        context.read<CollectionBloc>().add(LoadCollections(userId: uid));
+      } else if (authState is Unauthenticated) {
+        context.read<ShelfBloc>().add(const ClearShelfEvent());
+        context.read<CollectionBloc>().add(const ClearCollections());
+      }
+    });
   }
 
   Future<void> _loadSavedSettings() async {
