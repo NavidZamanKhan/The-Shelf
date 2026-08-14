@@ -270,32 +270,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ),
             ),
           ),
-
-          // Edit photo / profile button top-right
-          Positioned(
-            right: 16,
-            top: 16,
-            child: GestureDetector(
-              onTap: () {
-                if (profile != null) {
-                  EditProfileModal.show(context, profile: profile);
-                }
-              },
-              child: Container(
-                width: 36,
-                height: 36,
-                decoration: BoxDecoration(
-                  color: activePalette.cardBackground.withValues(alpha: 0.75),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Icon(
-                  PhosphorIcons.camera,
-                  size: 18,
-                  color: activePalette.primaryText.withValues(alpha: 0.8),
-                ),
-              ),
-            ),
-          ),
         ],
       ),
     );

@@ -1267,8 +1267,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           ),
                           child: Center(
                             child: Icon(
-                              PhosphorIcons.bug,
-                              color: activePalette.primaryText,
+                              PhosphorIcons.cpu,
+                              color: activePalette.isDark
+                                  ? activePalette.primaryText
+                                  : Colors.white,
                               size: 22,
                             ),
                           ),
