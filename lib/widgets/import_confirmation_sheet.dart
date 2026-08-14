@@ -17,13 +17,16 @@ class ImportConfirmationSheet extends StatefulWidget {
 
 class _ImportConfirmationSheetState extends State<ImportConfirmationSheet> {
   late TextEditingController _titleController;
-  late String _selectedShelf;
+  String? _selectedShelf;
 
   @override
   void initState() {
     super.initState();
     _titleController = TextEditingController(text: widget.summary.title);
-    _selectedShelf = widget.summary.classification.label;
+    // If low confidence or insufficient text, do NOT default to Miscellaneous. Require user choice.
+    if (!widget.summary.isLowConfidence) {
+      _selectedShelf = widget.summary.classification.label;
+    }
   }
 
   @override
@@ -38,6 +41,7 @@ class _ImportConfirmationSheetState extends State<ImportConfirmationSheet> {
     final classification = widget.summary.classification;
     final String recommendedShelf = classification.label;
     final double confidence = classification.confidence;
+    final bool isLowConfidence = widget.summary.isLowConfidence;
     final bool isRecommendedSelected = _selectedShelf == recommendedShelf;
 
     return SafeArea(
@@ -76,7 +80,9 @@ class _ImportConfirmationSheetState extends State<ImportConfirmationSheet> {
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Icon(
-                      Icons.picture_as_pdf,
+                      widget.summary.fileName.toLowerCase().endsWith('.epub')
+                          ? Icons.book
+                          : Icons.picture_as_pdf,
                       color: theme.colorScheme.primary,
                       size: 28,
                     ),
@@ -100,6 +106,27 @@ class _ImportConfirmationSheetState extends State<ImportConfirmationSheet> {
                             color: theme.colorScheme.onSurfaceVariant,
                           ),
                         ),
+                        if (widget.summary.isOcrUsed) ...[
+                          const SizedBox(height: 3),
+                          Row(
+                            children: [
+                              Icon(
+                                Icons.document_scanner,
+                                size: 12,
+                                color: theme.colorScheme.primary,
+                              ),
+                              const SizedBox(width: 4),
+                              Text(
+                                'Extracted via On-Device OCR',
+                                style: theme.textTheme.labelSmall?.copyWith(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w600,
+                                  color: theme.colorScheme.primary,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
                       ],
                     ),
                   ),
@@ -120,64 +147,107 @@ class _ImportConfirmationSheetState extends State<ImportConfirmationSheet> {
 
               const SizedBox(height: 16),
 
-              // Smart Recommended Shelf Badge
-              Container(
-                padding: const EdgeInsets.all(14),
-                decoration: BoxDecoration(
-                  color: isRecommendedSelected
-                      ? theme.colorScheme.secondaryContainer.withAlpha(128)
-                      : theme.colorScheme.surfaceContainerHighest,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(
+              // Recommendation Badge or Low-Confidence Notice
+              if (!isLowConfidence)
+                Container(
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
                     color: isRecommendedSelected
-                        ? theme.colorScheme.secondary
-                        : theme.colorScheme.outlineVariant,
+                        ? theme.colorScheme.secondaryContainer.withAlpha(128)
+                        : theme.colorScheme.surfaceContainerHighest,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: isRecommendedSelected
+                          ? theme.colorScheme.secondary
+                          : theme.colorScheme.outlineVariant,
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.auto_awesome,
+                        color: theme.colorScheme.secondary,
+                        size: 22,
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Smart Recommendation',
+                              style: theme.textTheme.labelSmall?.copyWith(
+                                color: theme.colorScheme.onSurfaceVariant,
+                              ),
+                            ),
+                            Text(
+                              '$recommendedShelf (${(confidence * 100).toStringAsFixed(1)}% confidence)',
+                              style: theme.textTheme.titleSmall?.copyWith(
+                                fontWeight: FontWeight.bold,
+                                color: theme.colorScheme.onSecondaryContainer,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                )
+              else
+                Container(
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.surfaceContainerHighest,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: theme.colorScheme.outlineVariant,
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.info_outline,
+                        color: theme.colorScheme.primary,
+                        size: 22,
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Select Shelf Required',
+                              style: theme.textTheme.labelSmall?.copyWith(
+                                color: theme.colorScheme.primary,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            Text(
+                              'Low text clarity detected • Please select the best shelf category below.',
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                color: theme.colorScheme.onSurfaceVariant,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-                child: Row(
-                  children: [
-                    Icon(
-                      Icons.auto_awesome,
-                      color: theme.colorScheme.secondary,
-                      size: 22,
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Smart Recommendation',
-                            style: theme.textTheme.labelSmall?.copyWith(
-                              color: theme.colorScheme.onSurfaceVariant,
-                            ),
-                          ),
-                          Text(
-                            '$recommendedShelf (${(confidence * 100).toStringAsFixed(1)}% confidence)',
-                            style: theme.textTheme.titleSmall?.copyWith(
-                              fontWeight: FontWeight.bold,
-                              color: theme.colorScheme.onSecondaryContainer,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
 
               const SizedBox(height: 16),
 
               // Shelf Category Dropdown
               DropdownButtonFormField<String>(
                 initialValue: _selectedShelf,
+                hint: const Text('Select a Shelf...'),
                 decoration: const InputDecoration(
                   labelText: 'Assign to Shelf',
                   border: OutlineInputBorder(),
                   prefixIcon: Icon(Icons.shelves),
                 ),
                 items: classification.probabilities.keys.map((String shelf) {
-                  final bool isTop = shelf == recommendedShelf;
+                  final bool isTop = !isLowConfidence && (shelf == recommendedShelf);
                   return DropdownMenuItem<String>(
                     value: shelf,
                     child: Text(
@@ -189,11 +259,9 @@ class _ImportConfirmationSheetState extends State<ImportConfirmationSheet> {
                   );
                 }).toList(),
                 onChanged: (newValue) {
-                  if (newValue != null) {
-                    setState(() {
-                      _selectedShelf = newValue;
-                    });
-                  }
+                  setState(() {
+                    _selectedShelf = newValue;
+                  });
                 },
               ),
 
@@ -241,14 +309,18 @@ class _ImportConfirmationSheetState extends State<ImportConfirmationSheet> {
                   const SizedBox(width: 12),
                   Expanded(
                     child: ElevatedButton.icon(
-                      onPressed: () {
-                        final confirmedTitle = _titleController.text.trim();
-                        Navigator.pop(context, {
-                          'confirmed': true,
-                          'title': confirmedTitle.isEmpty ? widget.summary.title : confirmedTitle,
-                          'shelf': _selectedShelf,
-                        });
-                      },
+                      onPressed: _selectedShelf == null
+                          ? null
+                          : () {
+                              final confirmedTitle = _titleController.text.trim();
+                              Navigator.pop(context, {
+                                'confirmed': true,
+                                'title': confirmedTitle.isEmpty
+                                    ? widget.summary.title
+                                    : confirmedTitle,
+                                'shelf': _selectedShelf!,
+                              });
+                            },
                       icon: const Icon(Icons.check),
                       label: const Text('Add to Shelf'),
                       style: ElevatedButton.styleFrom(

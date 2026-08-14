@@ -6,6 +6,7 @@ import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:read_pdf_text/read_pdf_text.dart';
 import 'package:the_shelf/models/imported_document_summary.dart';
+import 'package:the_shelf/services/ocr_service.dart';
 import 'package:the_shelf/services/shelf_classifier_service.dart';
 
 /// Service for picking PDF and EPUB files, extracting text, and predicting shelf classification.
@@ -177,17 +178,32 @@ class DocumentImportService {
     String extractedRawText = '';
     String? metadataTitle;
 
+    bool isOcrUsed = false;
+
     if (isEpub) {
       final epubData = await _extractEpubData(permanentPath, textLimit: textLimit);
       extractedRawText = epubData.text;
       metadataTitle = epubData.title;
     } else {
-      // Extract text using read_pdf_text plugin
+      // 1. First attempt fast text extraction using read_pdf_text plugin
       try {
         extractedRawText = await ReadPdfText.getPDFtext(permanentPath);
       } catch (e) {
         // Fallback if PDF text extraction encounters encrypted or non-text streams
         extractedRawText = '';
+      }
+
+      // 2. If extracted text is empty or predominantly watermark noise, trigger on-device OCR fallback
+      if (OcrService.instance.needsOcrFallback(extractedRawText)) {
+        try {
+          final ocrResult = await OcrService.instance.extractTextFromScannedPdf(permanentPath);
+          if (ocrResult.trim().isNotEmpty) {
+            extractedRawText = ocrResult;
+            isOcrUsed = true;
+          }
+        } catch (e) {
+          debugPrint('OCR fallback error: $e');
+        }
       }
     }
 
@@ -218,6 +234,7 @@ class DocumentImportService {
       title: cleanedTitle,
       textSnippet: textSnippet,
       classification: classification,
+      isOcrUsed: isOcrUsed,
     );
   }
 }

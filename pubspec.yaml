@@ -32,6 +32,8 @@ dependencies:
   app_links: ^7.2.1
   open_filex: ^4.7.0
   archive: ^4.0.9
+  google_mlkit_text_recognition: ^0.16.0
+  pdf_render: ^1.4.12
 
 dev_dependencies:
   flutter_test:

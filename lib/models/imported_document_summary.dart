@@ -7,6 +7,8 @@ class ImportedDocumentSummary {
   final String title;
   final String textSnippet;
   final ClassificationResult classification;
+  final bool isOcrUsed;
+  final bool isLowConfidence;
 
   ImportedDocumentSummary({
     required this.filePath,
@@ -14,5 +16,8 @@ class ImportedDocumentSummary {
     required this.title,
     required this.textSnippet,
     required this.classification,
-  });
+    this.isOcrUsed = false,
+    bool? isLowConfidence,
+  }) : isLowConfidence = isLowConfidence ??
+            (classification.confidence < 0.20 || textSnippet.trim().length < 50);
 }

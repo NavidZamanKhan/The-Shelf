@@ -194,7 +194,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
                   final String docId = DateTime.now().millisecondsSinceEpoch.toString();
 
-                  if (isInstant) {
+                  if (isInstant && !summary.isLowConfidence) {
                     final topShelf = summary.classification.label;
                     context.read<ShelfBloc>().add(
                           AddDocumentToShelfEvent(

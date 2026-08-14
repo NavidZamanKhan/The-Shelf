@@ -89,15 +89,17 @@ class ImportBottomSheetModal extends StatelessWidget {
                       width: 44,
                       height: 44,
                       decoration: BoxDecoration(
-                        gradient: activePalette.badgeGradient,
+                        color: activePalette.subtleBadgeBackground,
                         borderRadius: AppTheme.asymmetricBadgeRadius,
+                        border: Border.all(
+                          color: activePalette.cardBorder,
+                          width: 1.0,
+                        ),
                       ),
                       child: Center(
                         child: Icon(
                           PhosphorIcons.filePlus,
-                          color: activePalette.isDark
-                              ? activePalette.primaryText
-                              : Colors.white,
+                          color: activePalette.primaryAccent,
                           size: 22,
                         ),
                       ),
