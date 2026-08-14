@@ -104,7 +104,7 @@ class _ImageCropModalState extends State<ImageCropModal> {
         return;
       }
 
-      final ui.Image image = await boundary.toImage(pixelRatio: 3.0);
+      final ui.Image image = await boundary.toImage(pixelRatio: 1.5);
       final ByteData? byteData = await image.toByteData(format: ui.ImageByteFormat.png);
 
       if (byteData == null) {
@@ -114,7 +114,7 @@ class _ImageCropModalState extends State<ImageCropModal> {
 
       final Uint8List bytes = byteData.buffer.asUint8List();
       final tempDir = await getTemporaryDirectory();
-      final String filename = 'cropped_${widget.isBanner ? "banner" : "avatar"}_${DateTime.now().millisecondsSinceEpoch}.png';
+      final String filename = 'cropped_${widget.isBanner ? "banner" : "avatar"}_${DateTime.now().millisecondsSinceEpoch}.jpg';
       final String croppedPath = '${tempDir.path}/$filename';
       final File croppedFile = File(croppedPath);
       await croppedFile.writeAsBytes(bytes, flush: true);

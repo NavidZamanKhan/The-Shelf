@@ -218,20 +218,22 @@ class UserProfileRepository {
             permanentLocalFile,
             SettableMetadata(contentType: 'image/jpeg'),
           );
-          final snapshot = await uploadTask;
-          final downloadUrl = await snapshot.ref.getDownloadURL();
-          debugPrint('Uploaded $mediaType image to Firebase Storage: $downloadUrl');
-          return downloadUrl;
+          final snapshot = await uploadTask.whenComplete(() {});
+          if (snapshot.state == TaskState.success) {
+            final downloadUrl = await snapshot.ref.getDownloadURL();
+            debugPrint('Uploaded $mediaType image to Firebase Storage: $downloadUrl');
+            return downloadUrl;
+          }
         }
       } catch (e) {
-        debugPrint('Firebase Storage upload error: $e. Falling back to Cloud Firestore Data URL.');
+        debugPrint('Firebase Storage upload error: $e. Using optimized fallback.');
       }
     }
 
-    // 3. Robust cross-device Fallback: Read bytes and create Base64 Data URL
+    // 3. Robust cross-device Fallback: Read bytes and create Base64 Data URL only if compact (< 180 KB)
     try {
       final bytes = await permanentLocalFile.readAsBytes();
-      if (bytes.isNotEmpty) {
+      if (bytes.isNotEmpty && bytes.lengthInBytes < 180 * 1024) {
         final base64Str = base64Encode(bytes);
         return 'data:image/jpeg;base64,$base64Str';
       }
@@ -239,7 +241,7 @@ class UserProfileRepository {
       debugPrint('Error creating base64 data URL for profile media: $e');
     }
 
-    return 'relative:profile/${p.basename(permanentLocalFile.path)}';
+    return 'relative:profile/$uid/${p.basename(permanentLocalFile.path)}';
   }
 
   /// Helper utility for resolving safe ImageProvider across web URLs, base64 data URLs, and local files.
@@ -281,6 +283,16 @@ class UserProfileRepository {
         final profileFallback = File('${docsDir.path}/profile/$fileName');
         if (profileFallback.existsSync()) {
           return FileImage(profileFallback);
+        }
+
+        // Also check any subdirectories under profile/
+        final profileParent = Directory('${docsDir.path}/profile');
+        if (profileParent.existsSync()) {
+          for (final entity in profileParent.listSync(recursive: true)) {
+            if (entity is File && p.basename(entity.path) == fileName) {
+              return FileImage(entity);
+            }
+          }
         }
       }
 
