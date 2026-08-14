@@ -5,6 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:the_shelf/blocs/auth/auth_bloc.dart';
 import 'package:the_shelf/blocs/auth/auth_state.dart';
 import 'package:the_shelf/blocs/collection/collection_bloc.dart';
+import 'package:the_shelf/blocs/collection/collection_event.dart';
 import 'package:the_shelf/blocs/collection/collection_state.dart';
 import 'package:the_shelf/blocs/shelf/shelf_bloc.dart';
 import 'package:the_shelf/blocs/shelf/shelf_event.dart';
@@ -157,10 +158,17 @@ class _HomeScreenState extends State<HomeScreen> {
             BlocListener<AuthBloc, AuthState>(
               listener: (context, authState) async {
                 if (authState is Authenticated) {
-                  final count = await CloudLibraryService.instance.restoreCloudLibrary(uid: authState.profile.uid);
+                  final uid = authState.profile.uid;
+                  context.read<ShelfBloc>().add(LoadShelfItemsEvent(userId: uid));
+                  context.read<CollectionBloc>().add(LoadCollections(userId: uid));
+                  final count = await CloudLibraryService.instance.restoreCloudLibrary(uid: uid);
                   if (count > 0 && context.mounted) {
-                    context.read<ShelfBloc>().add(const LoadShelfItemsEvent());
+                    context.read<ShelfBloc>().add(LoadShelfItemsEvent(userId: uid));
+                    context.read<CollectionBloc>().add(LoadCollections(userId: uid));
                   }
+                } else if (authState is Unauthenticated) {
+                  context.read<ShelfBloc>().add(const ClearShelfEvent());
+                  context.read<CollectionBloc>().add(const ClearCollections());
                 }
               },
             ),

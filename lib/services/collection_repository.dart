@@ -31,13 +31,24 @@ class CollectionRepository {
 
   Future<Database> get _db async => _overrideDb ?? await _docRepo.database;
 
-  /// Retrieves all collections ordered by created_at DESC with current item counts
-  Future<List<CollectionModel>> getAllCollections() async {
+  /// Retrieves all collections ordered by created_at DESC with current item counts for the active user
+  Future<List<CollectionModel>> getAllCollections({String? userId}) async {
     final db = await _db;
-    final List<Map<String, dynamic>> collectionsRaw = await db.query(
-      'collections',
-      orderBy: 'created_at DESC',
-    );
+    final effectiveUid = await _docRepo.resolveUserId(userId: userId);
+    final tableInfo = await db.rawQuery("PRAGMA table_info(collections)");
+    final hasUserCol = tableInfo.any((c) => c['name'] == 'user_id');
+
+    final List<Map<String, dynamic>> collectionsRaw = hasUserCol
+        ? await db.query(
+            'collections',
+            where: 'user_id = ?',
+            whereArgs: [effectiveUid],
+            orderBy: 'created_at DESC',
+          )
+        : await db.query(
+            'collections',
+            orderBy: 'created_at DESC',
+          );
 
     List<CollectionModel> collections = [];
     for (final map in collectionsRaw) {
@@ -51,14 +62,25 @@ class CollectionRepository {
     return collections;
   }
 
-  /// Creates a new collection, enforcing the 20 collection cap
+  /// Creates a new collection, enforcing the 20 collection cap per user
   Future<CollectionModel> createCollection({
     required String name,
     required String colorHex,
     required String iconName,
+    String? userId,
   }) async {
     final db = await _db;
-    final count = Sqflite.firstIntValue(await db.rawQuery('SELECT COUNT(*) FROM collections')) ?? 0;
+    final effectiveUid = await _docRepo.resolveUserId(userId: userId);
+    final tableInfo = await db.rawQuery("PRAGMA table_info(collections)");
+    final hasUserCol = tableInfo.any((c) => c['name'] == 'user_id');
+
+    final count = Sqflite.firstIntValue(hasUserCol
+        ? await db.rawQuery(
+            'SELECT COUNT(*) FROM collections WHERE user_id = ?',
+            [effectiveUid],
+          )
+        : await db.rawQuery('SELECT COUNT(*) FROM collections')) ?? 0;
+        
     if (count >= maxCollectionCap) {
       throw CollectionLimitException('Maximum limit of $maxCollectionCap collections reached.');
     }
@@ -72,7 +94,11 @@ class CollectionRepository {
       itemCount: 0,
     );
 
-    await db.insert('collections', newCollection.toMap());
+    final map = newCollection.toMap();
+    if (hasUserCol) {
+      map['user_id'] = effectiveUid;
+    }
+    await db.insert('collections', map);
     return newCollection;
   }
 

@@ -1,5 +1,7 @@
 import 'dart:io';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:path/path.dart' as p;
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'package:the_shelf/blocs/shelf/shelf_state.dart';
 
@@ -18,6 +20,27 @@ class DocumentRepository {
   Future<Database> get database async {
     _db ??= await _initDatabase();
     return _db!;
+  }
+
+  /// Resolves the active user ID for SQLite data scoping.
+  Future<String> resolveUserId({String? userId}) async {
+    if (userId != null && userId.isNotEmpty) return userId;
+    try {
+      final fbUid = FirebaseAuth.instance.currentUser?.uid;
+      if (fbUid != null && fbUid.isNotEmpty) return fbUid;
+    } catch (_) {}
+
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final cachedUid = prefs.getString('auth_firebase_uid');
+      if (cachedUid != null && cachedUid.isNotEmpty) return cachedUid;
+      final email = prefs.getString('auth_email');
+      if (email != null && email.isNotEmpty) {
+        return email.trim().replaceAll('.', '_').replaceAll('@', '_at_');
+      }
+    } catch (_) {}
+
+    return 'guest_local';
   }
 
   Future<Database> _initDatabase() async {
@@ -80,7 +103,8 @@ class DocumentRepository {
         name TEXT NOT NULL,
         color_hex TEXT NOT NULL,
         icon_name TEXT NOT NULL,
-        created_at TEXT NOT NULL
+        created_at TEXT NOT NULL,
+        user_id TEXT DEFAULT 'guest_local'
       )
     ''');
 
@@ -99,29 +123,49 @@ class DocumentRepository {
     await db.execute('CREATE INDEX IF NOT EXISTS idx_col_docs_document ON collection_documents(document_id);');
   }
 
-  /// Inserts a new document record into SQLite
-  Future<void> insertDocument(ShelfItem item) async {
+  /// Inserts a new document record into SQLite scoped to the active user.
+  Future<void> insertDocument(ShelfItem item, {String? userId}) async {
     final db = await database;
+    final effectiveUid = await resolveUserId(userId: userId);
+    final tableInfo = await db.rawQuery("PRAGMA table_info($_tableName)");
+    final hasUserCol = tableInfo.any((c) => c['name'] == 'user_id');
+
+    final data = <String, dynamic>{
+      'id': item.id,
+      'title': item.title,
+      'shelf': item.shelf,
+      'file_path': item.filePath,
+      'added_at': item.addedAt.toIso8601String(),
+    };
+    if (hasUserCol) {
+      data['user_id'] = effectiveUid;
+    }
+
     await db.insert(
       _tableName,
-      {
-        'id': item.id,
-        'title': item.title,
-        'shelf': item.shelf,
-        'file_path': item.filePath,
-        'added_at': item.addedAt.toIso8601String(),
-      },
+      data,
       conflictAlgorithm: ConflictAlgorithm.replace,
     );
   }
 
-  /// Retrieves all persisted documents ordered by addedAt descending
-  Future<List<ShelfItem>> getAllDocuments() async {
+  /// Retrieves all persisted documents for the active user ordered by addedAt descending.
+  Future<List<ShelfItem>> getAllDocuments({String? userId}) async {
     final db = await database;
-    final List<Map<String, dynamic>> maps = await db.query(
-      _tableName,
-      orderBy: 'added_at DESC',
-    );
+    final effectiveUid = await resolveUserId(userId: userId);
+    final tableInfo = await db.rawQuery("PRAGMA table_info($_tableName)");
+    final hasUserCol = tableInfo.any((c) => c['name'] == 'user_id');
+
+    final List<Map<String, dynamic>> maps = hasUserCol
+        ? await db.query(
+            _tableName,
+            where: 'user_id = ?',
+            whereArgs: [effectiveUid],
+            orderBy: 'added_at DESC',
+          )
+        : await db.query(
+            _tableName,
+            orderBy: 'added_at DESC',
+          );
 
     return maps.map((map) {
       return ShelfItem(
@@ -134,15 +178,26 @@ class DocumentRepository {
     }).toList();
   }
 
-  /// Retrieves documents matching a specific shelf category
-  Future<List<ShelfItem>> getDocumentsByShelf(String shelf) async {
+  /// Retrieves documents matching a specific shelf category for the active user.
+  Future<List<ShelfItem>> getDocumentsByShelf(String shelf, {String? userId}) async {
     final db = await database;
-    final List<Map<String, dynamic>> maps = await db.query(
-      _tableName,
-      where: 'LOWER(shelf) = ?',
-      whereArgs: [shelf.trim().toLowerCase()],
-      orderBy: 'added_at DESC',
-    );
+    final effectiveUid = await resolveUserId(userId: userId);
+    final tableInfo = await db.rawQuery("PRAGMA table_info($_tableName)");
+    final hasUserCol = tableInfo.any((c) => c['name'] == 'user_id');
+
+    final List<Map<String, dynamic>> maps = hasUserCol
+        ? await db.query(
+            _tableName,
+            where: 'LOWER(shelf) = ? AND user_id = ?',
+            whereArgs: [shelf.trim().toLowerCase(), effectiveUid],
+            orderBy: 'added_at DESC',
+          )
+        : await db.query(
+            _tableName,
+            where: 'LOWER(shelf) = ?',
+            whereArgs: [shelf.trim().toLowerCase()],
+            orderBy: 'added_at DESC',
+          );
 
     return maps.map((map) {
       return ShelfItem(
@@ -176,19 +231,38 @@ class DocumentRepository {
     );
   }
 
-  /// Clears all stored documents (used primarily for test cleanup)
-  Future<void> clearAllDocuments() async {
+  /// Clears all stored documents for the active user or entire table
+  Future<void> clearAllDocuments({String? userId}) async {
     final db = await database;
-    await db.delete(_tableName);
+    if (userId != null && userId.isNotEmpty) {
+      final tableInfo = await db.rawQuery("PRAGMA table_info($_tableName)");
+      final hasUserCol = tableInfo.any((c) => c['name'] == 'user_id');
+      if (hasUserCol) {
+        await db.delete(_tableName, where: 'user_id = ?', whereArgs: [userId]);
+      } else {
+        await db.delete(_tableName);
+      }
+    } else {
+      await db.delete(_tableName);
+    }
   }
 
   /// Returns genre distribution as `Map<shelfName, count>` for the Profile donut chart.
-  /// Uses real SQLite data grouped by the `shelf` column.
-  Future<Map<String, int>> getGenreDistribution() async {
+  /// Uses real SQLite data scoped to the active user and grouped by the `shelf` column.
+  Future<Map<String, int>> getGenreDistribution({String? userId}) async {
     final db = await database;
-    final results = await db.rawQuery(
-      'SELECT shelf, COUNT(*) as count FROM $_tableName GROUP BY shelf ORDER BY count DESC',
-    );
+    final effectiveUid = await resolveUserId(userId: userId);
+    final tableInfo = await db.rawQuery("PRAGMA table_info($_tableName)");
+    final hasUserCol = tableInfo.any((c) => c['name'] == 'user_id');
+
+    final results = hasUserCol
+        ? await db.rawQuery(
+            'SELECT shelf, COUNT(*) as count FROM $_tableName WHERE user_id = ? GROUP BY shelf ORDER BY count DESC',
+            [effectiveUid],
+          )
+        : await db.rawQuery(
+            'SELECT shelf, COUNT(*) as count FROM $_tableName GROUP BY shelf ORDER BY count DESC',
+          );
     return {
       for (var row in results)
         row['shelf'] as String: row['count'] as int,

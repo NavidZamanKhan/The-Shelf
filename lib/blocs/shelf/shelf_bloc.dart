@@ -11,6 +11,7 @@ class ShelfBloc extends Bloc<ShelfEvent, ShelfState> {
       : _repository = repository ?? DocumentRepository.instance,
         super(const ShelfLoaded(items: [])) {
     on<LoadShelfItemsEvent>(_onLoadShelfItems);
+    on<ClearShelfEvent>(_onClearShelf);
     on<AddDocumentToShelfEvent>(_onAddDocumentToShelf);
     on<DeleteDocumentEvent>(_onDeleteDocument);
   }
@@ -20,13 +21,21 @@ class ShelfBloc extends Bloc<ShelfEvent, ShelfState> {
     Emitter<ShelfState> emit,
   ) async {
     try {
-      final dbItems = await _repository.getAllDocuments();
+      final dbItems = await _repository.getAllDocuments(userId: event.userId);
       _items.clear();
       _items.addAll(dbItems);
       emit(ShelfLoaded(items: List.unmodifiable(_items)));
     } catch (e) {
       emit(ShelfError('Failed to load shelf items: ${e.toString()}'));
     }
+  }
+
+  void _onClearShelf(
+    ClearShelfEvent event,
+    Emitter<ShelfState> emit,
+  ) {
+    _items.clear();
+    emit(const ShelfLoaded(items: []));
   }
 
   Future<void> _onAddDocumentToShelf(

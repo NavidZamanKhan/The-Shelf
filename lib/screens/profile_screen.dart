@@ -9,6 +9,8 @@ import 'package:the_shelf/blocs/auth/auth_event.dart';
 import 'package:the_shelf/blocs/auth/auth_state.dart';
 import 'package:the_shelf/blocs/collection/collection_bloc.dart';
 import 'package:the_shelf/blocs/collection/collection_state.dart';
+import 'package:the_shelf/blocs/shelf/shelf_bloc.dart';
+import 'package:the_shelf/blocs/shelf/shelf_state.dart';
 import 'package:the_shelf/blocs/theme/theme_cubit.dart';
 import 'package:the_shelf/models/user_profile.dart';
 import 'package:the_shelf/services/document_repository.dart';
@@ -34,10 +36,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
   @override
   void initState() {
     super.initState();
-    _loadGenreData();
+    final authState = context.read<AuthBloc>().state;
+    final uid = authState is Authenticated ? authState.profile.uid : null;
+    _loadGenreData(userId: uid);
   }
 
-  Future<void> _loadGenreData() async {
+  Future<void> _loadGenreData({String? userId}) async {
     try {
       Directory? docsDir;
       try {
@@ -49,7 +53,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           .contains('Test');
       final distribution = isTesting
           ? <String, int>{}
-          : await DocumentRepository.instance.getGenreDistribution();
+          : await DocumentRepository.instance.getGenreDistribution(userId: userId);
 
       if (mounted) {
         setState(() {
@@ -124,35 +128,52 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Widget build(BuildContext context) {
     final activePalette = context.watch<ThemeCubit>().state.resolvedPalette;
 
-    return SingleChildScrollView(
-      padding: const EdgeInsets.only(bottom: 32),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // --- Banner Header with Avatar ---
-          _buildBannerHeader(activePalette),
+    return MultiBlocListener(
+      listeners: [
+        BlocListener<AuthBloc, AuthState>(
+          listener: (context, state) {
+            final uid = state is Authenticated ? state.profile.uid : null;
+            _loadGenreData(userId: uid);
+          },
+        ),
+        BlocListener<ShelfBloc, ShelfState>(
+          listener: (context, state) {
+            final authState = context.read<AuthBloc>().state;
+            final uid = authState is Authenticated ? authState.profile.uid : null;
+            _loadGenreData(userId: uid);
+          },
+        ),
+      ],
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.only(bottom: 32),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // --- Banner Header with Avatar ---
+            _buildBannerHeader(activePalette),
 
-          // --- Identity Section ---
-          _buildIdentitySection(activePalette),
+            // --- Identity Section ---
+            _buildIdentitySection(activePalette),
 
-          // --- Reading Motto / Bio Section ---
-          _buildMottoCard(activePalette),
+            // --- Reading Motto / Bio Section ---
+            _buildMottoCard(activePalette),
 
-          const SizedBox(height: 20),
+            const SizedBox(height: 20),
 
-          // --- Donut Chart Card ---
-          _buildDonutChartCard(activePalette),
+            // --- Donut Chart Card ---
+            _buildDonutChartCard(activePalette),
 
-          const SizedBox(height: 16),
+            const SizedBox(height: 16),
 
-          // --- Stat Strip ---
-          _buildStatStrip(activePalette),
+            // --- Stat Strip ---
+            _buildStatStrip(activePalette),
 
-          const SizedBox(height: 24),
+            const SizedBox(height: 24),
 
-          // --- Log Out Button ---
-          _buildLogOutButton(activePalette),
-        ],
+            // --- Log Out Button ---
+            _buildLogOutButton(activePalette),
+          ],
+        ),
       ),
     );
   }

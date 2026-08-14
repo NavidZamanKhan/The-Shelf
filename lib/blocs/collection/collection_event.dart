@@ -9,7 +9,15 @@ abstract class CollectionEvent extends Equatable {
 }
 
 class LoadCollections extends CollectionEvent {
-  const LoadCollections();
+  final String? userId;
+  const LoadCollections({this.userId});
+
+  @override
+  List<Object?> get props => [userId];
+}
+
+class ClearCollections extends CollectionEvent {
+  const ClearCollections();
 }
 
 class CreateCollection extends CollectionEvent {

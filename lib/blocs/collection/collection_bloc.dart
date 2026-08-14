@@ -10,6 +10,7 @@ class CollectionBloc extends Bloc<CollectionEvent, CollectionState> {
       : _repository = repository ?? CollectionRepository.instance,
         super(const CollectionInitial()) {
     on<LoadCollections>(_onLoadCollections);
+    on<ClearCollections>(_onClearCollections);
     on<CreateCollection>(_onCreateCollection);
     on<UpdateCollection>(_onUpdateCollection);
     on<DeleteCollection>(_onDeleteCollection);
@@ -24,7 +25,7 @@ class CollectionBloc extends Bloc<CollectionEvent, CollectionState> {
   ) async {
     emit(const CollectionLoading());
     try {
-      final collections = await _repository.getAllCollections();
+      final collections = await _repository.getAllCollections(userId: event.userId);
       final docMap = await _repository.getDocumentCollectionMap();
       emit(CollectionLoaded(
         collections: collections,
@@ -33,6 +34,13 @@ class CollectionBloc extends Bloc<CollectionEvent, CollectionState> {
     } catch (e) {
       emit(CollectionError('Failed to load collections: ${e.toString()}'));
     }
+  }
+
+  void _onClearCollections(
+    ClearCollections event,
+    Emitter<CollectionState> emit,
+  ) {
+    emit(const CollectionLoaded(collections: []));
   }
 
   Future<void> _onCreateCollection(

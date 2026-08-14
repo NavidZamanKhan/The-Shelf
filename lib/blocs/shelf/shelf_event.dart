@@ -8,7 +8,15 @@ abstract class ShelfEvent extends Equatable {
 }
 
 class LoadShelfItemsEvent extends ShelfEvent {
-  const LoadShelfItemsEvent();
+  final String? userId;
+  const LoadShelfItemsEvent({this.userId});
+
+  @override
+  List<Object?> get props => [userId];
+}
+
+class ClearShelfEvent extends ShelfEvent {
+  const ClearShelfEvent();
 }
 
 class AddDocumentToShelfEvent extends ShelfEvent {
