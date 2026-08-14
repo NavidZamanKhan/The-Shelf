@@ -15,6 +15,7 @@ import 'package:the_shelf/services/cloud_library_service.dart';
 import 'package:the_shelf/theme/app_color_palette.dart';
 import 'package:the_shelf/theme/app_theme.dart';
 import 'package:the_shelf/widgets/account_security_modal.dart';
+import 'package:the_shelf/widgets/google_logo_icon.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -477,13 +478,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       border: Border.all(color: activePalette.cardBorder, width: 1.0),
                     ),
                     child: Center(
-                      child: Icon(
-                        _isGoogleOnlyUser
-                            ? PhosphorIcons.googleLogoBold
-                            : PhosphorIcons.userBold,
-                        color: activePalette.primaryAccent,
-                        size: 22,
-                      ),
+                      child: _isGoogleOnlyUser
+                          ? const GoogleLogoIcon(size: 22)
+                          : Icon(
+                              PhosphorIcons.userBold,
+                              color: activePalette.primaryAccent,
+                              size: 22,
+                            ),
                     ),
                   ),
                   const SizedBox(width: 14),
@@ -719,7 +720,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     width: 44,
                     height: 44,
                     decoration: BoxDecoration(
-                      gradient: activePalette.badgeGradient,
+                      color: activePalette.subtleBadgeBackground,
                       borderRadius: AppTheme.asymmetricBadgeRadius,
                       border: Border.all(
                         color: activePalette.cardBorder,
@@ -729,9 +730,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     child: Center(
                       child: Icon(
                         PhosphorIcons.lightningBold,
-                        color: activePalette.isDark
-                            ? activePalette.primaryText
-                            : Colors.white,
+                        color: activePalette.primaryAccent,
                         size: 22,
                       ),
                     ),
@@ -789,7 +788,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     width: 44,
                     height: 44,
                     decoration: BoxDecoration(
-                      gradient: activePalette.badgeGradient,
+                      color: activePalette.subtleBadgeBackground,
                       borderRadius: AppTheme.asymmetricBadgeRadius,
                       border: Border.all(
                         color: activePalette.cardBorder,
@@ -799,9 +798,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     child: Center(
                       child: Icon(
                         PhosphorIcons.hardDrivesBold,
-                        color: activePalette.isDark
-                            ? activePalette.primaryText
-                            : Colors.white,
+                        color: activePalette.primaryAccent,
                         size: 22,
                       ),
                     ),
@@ -866,7 +863,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       width: 44,
                       height: 44,
                       decoration: BoxDecoration(
-                        gradient: activePalette.badgeGradient,
+                        color: activePalette.subtleBadgeBackground,
                         borderRadius: AppTheme.asymmetricBadgeRadius,
                         border: Border.all(
                           color: activePalette.cardBorder,
@@ -876,9 +873,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       child: Center(
                         child: Icon(
                           PhosphorIcons.stackBold,
-                          color: activePalette.isDark
-                              ? activePalette.primaryText
-                              : Colors.white,
+                          color: activePalette.primaryAccent,
                           size: 22,
                         ),
                       ),
@@ -1195,10 +1190,21 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ),
                 child: Row(
                   children: [
-                    Icon(
-                      PhosphorIcons.books,
-                      size: 24,
-                      color: activePalette.primaryAccent,
+                    Container(
+                      width: 44,
+                      height: 44,
+                      decoration: BoxDecoration(
+                        color: activePalette.subtleBadgeBackground,
+                        borderRadius: AppTheme.asymmetricBadgeRadius,
+                        border: Border.all(color: activePalette.cardBorder, width: 1.0),
+                      ),
+                      child: Center(
+                        child: Icon(
+                          PhosphorIcons.books,
+                          size: 22,
+                          color: activePalette.primaryAccent,
+                        ),
+                      ),
                     ),
                     const SizedBox(width: 14),
                     Column(
@@ -1262,15 +1268,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           width: 44,
                           height: 44,
                           decoration: BoxDecoration(
-                            gradient: activePalette.badgeGradient,
+                            color: activePalette.subtleBadgeBackground,
                             borderRadius: AppTheme.asymmetricBadgeRadius,
+                            border: Border.all(color: activePalette.cardBorder, width: 1.0),
                           ),
                           child: Center(
                             child: Icon(
                               PhosphorIcons.cpu,
-                              color: activePalette.isDark
-                                  ? activePalette.primaryText
-                                  : Colors.white,
+                              color: activePalette.primaryAccent,
                               size: 22,
                             ),
                           ),
