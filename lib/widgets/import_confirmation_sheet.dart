@@ -134,7 +134,7 @@ class _ImportConfirmationSheetState extends State<ImportConfirmationSheet> {
                                 ),
                                 const SizedBox(width: 5),
                                 Text(
-                                  'On-Device OCR Recognized',
+                                  'Recognized via On-Device OCR',
                                   style: TextStyle(
                                     fontSize: 11,
                                     fontWeight: FontWeight.w600,
