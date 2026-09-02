@@ -6,63 +6,31 @@ The Shelf is a privacy-first, on-device digital library and document manager bui
 
 ## User Interface Showcase
 
-### 1. Library & Smart Classification
+### 1. Onboarding & Core Library
 
 <table>
   <thead>
     <tr>
+      <th width="33.33%" align="center">Authentication Flow</th>
       <th width="33.33%" align="center">Home Library Shelves</th>
-      <th width="33.33%" align="center">Smart Categorization</th>
-      <th width="33.33%" align="center">On-Device OCR Recognition</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <td align="center" valign="top">
-        <img src="assets/screenshots/01_home_library_shelves.png" width="100%" alt="Home Library Shelves" />
-      </td>
-      <td align="center" valign="top">
-        <img src="assets/screenshots/02_smart_import_recommendation.png" width="100%" alt="Smart Categorization" />
-      </td>
-      <td align="center" valign="top">
-        <img src="assets/screenshots/03_on_device_ocr_import.png" width="100%" alt="On-Device OCR Recognition" />
-      </td>
-    </tr>
-    <tr>
-      <td align="center" valign="top">Populated-first shelf sorting, unread item counters, format segmented filters, and header actions.</td>
-      <td align="center" valign="top">Sub-millisecond machine learning predictions with confidence scores and editable document titles.</td>
-      <td align="center" valign="top">Native Apple Vision OCR extraction with fallback safety-net prompt for low-clarity scans.</td>
-    </tr>
-  </tbody>
-</table>
-
----
-
-### 2. Custom Collections & Reader Profile
-
-<table>
-  <thead>
-    <tr>
-      <th width="33.33%" align="center">Custom Collections</th>
-      <th width="33.33%" align="center">Create Collection Modal</th>
       <th width="33.33%" align="center">Reader Profile & Analytics</th>
     </tr>
   </thead>
   <tbody>
     <tr>
       <td align="center" valign="top">
-        <img src="assets/screenshots/04_custom_collections.png" width="100%" alt="Custom Collections" />
+        <img src="assets/screenshots/09_authentication_flow.png" width="100%" alt="Authentication Flow" />
       </td>
       <td align="center" valign="top">
-        <img src="assets/screenshots/05_create_collection.png" width="100%" alt="Create Collection Modal" />
+        <img src="assets/screenshots/01_home_library_shelves.png" width="100%" alt="Home Library Shelves" />
       </td>
       <td align="center" valign="top">
         <img src="assets/screenshots/06_profile_analytics.png" width="100%" alt="Reader Profile & Analytics" />
       </td>
     </tr>
     <tr>
-      <td align="center" valign="top">User-curated document playlists with many-to-many SQLite relationships and item counts.</td>
-      <td align="center" valign="top">Interactive color accent palette selection and Phosphor vector iconography customization.</td>
+      <td align="center" valign="top">Email, passwordless Magic Link, and official Google Sign-In with guest mode access.</td>
+      <td align="center" valign="top">Populated-first shelf sorting, unread item counters, format segmented filters, and header actions.</td>
       <td align="center" valign="top">Library genre breakdown donut chart, reading motto banner, and account management.</td>
     </tr>
   </tbody>
@@ -70,32 +38,64 @@ The Shelf is a privacy-first, on-device digital library and document manager bui
 
 ---
 
-### 3. Preferences, Themes & Authentication
+### 2. Intelligent Document Ingestion & Collections
 
 <table>
   <thead>
     <tr>
-      <th width="33.33%" align="center">Appearance & Themes</th>
-      <th width="33.33%" align="center">Storage & Cloud Settings</th>
-      <th width="33.33%" align="center">Authentication Flow</th>
+      <th width="33.33%" align="center">Smart Categorization</th>
+      <th width="33.33%" align="center">On-Device OCR Recognition</th>
+      <th width="33.33%" align="center">Custom Collections</th>
     </tr>
   </thead>
   <tbody>
     <tr>
+      <td align="center" valign="top">
+        <img src="assets/screenshots/02_smart_import_recommendation.png" width="100%" alt="Smart Categorization" />
+      </td>
+      <td align="center" valign="top">
+        <img src="assets/screenshots/03_on_device_ocr_import.png" width="100%" alt="On-Device OCR Recognition" />
+      </td>
+      <td align="center" valign="top">
+        <img src="assets/screenshots/04_custom_collections.png" width="100%" alt="Custom Collections" />
+      </td>
+    </tr>
+    <tr>
+      <td align="center" valign="top">Sub-millisecond machine learning predictions with confidence scores and editable document titles.</td>
+      <td align="center" valign="top">Native Apple Vision OCR extraction with fallback safety-net prompt for low-clarity scans.</td>
+      <td align="center" valign="top">User-curated document playlists with many-to-many SQLite relationships and item counts.</td>
+    </tr>
+  </tbody>
+</table>
+
+---
+
+### 3. Customization, Theming & Storage
+
+<table>
+  <thead>
+    <tr>
+      <th width="33.33%" align="center">Create Collection Modal</th>
+      <th width="33.33%" align="center">Appearance & Themes</th>
+      <th width="33.33%" align="center">Storage & Cloud Settings</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td align="center" valign="top">
+        <img src="assets/screenshots/05_create_collection.png" width="100%" alt="Create Collection Modal" />
+      </td>
       <td align="center" valign="top">
         <img src="assets/screenshots/07_appearance_theming.png" width="100%" alt="Appearance & Themes" />
       </td>
       <td align="center" valign="top">
         <img src="assets/screenshots/08_library_storage_settings.png" width="100%" alt="Storage & Cloud Settings" />
       </td>
-      <td align="center" valign="top">
-        <img src="assets/screenshots/09_authentication_flow.png" width="100%" alt="Authentication Flow" />
-      </td>
     </tr>
     <tr>
+      <td align="center" valign="top">Interactive color accent palette selection and Phosphor vector iconography customization.</td>
       <td align="center" valign="top">Nine theme combinations with real-time palette switching across light, dark, and system modes.</td>
       <td align="center" valign="top">Local storage cache management, shelf visibility toggles, and manual cloud backup controls.</td>
-      <td align="center" valign="top">Email, passwordless Magic Link, and official Google Sign-In with guest mode access.</td>
     </tr>
   </tbody>
 </table>
